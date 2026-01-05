@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Staff Management System</title>
+    <title>HSDEC Korean Worker Management System</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -28,12 +28,12 @@
         .btn-danger { background: linear-gradient(135deg, #f44336 0%, #e91e63 100%); }
         .search-box { display: flex; gap: 10px; margin-bottom: 30px; }
         .search-box input { flex: 1; }
-        .staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
-        .staff-card { border: 2px solid #ddd; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.3s; }
-        .staff-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-color: #667eea; }
-        .staff-photo { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; background: #f0f0f0; }
-        .staff-name { font-size: 1.3em; font-weight: 600; margin-bottom: 10px; }
-        .staff-info { color: #666; line-height: 1.6; }
+        .Worker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .Worker-card { border: 2px solid #ddd; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.3s; }
+        .Worker-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-color: #667eea; }
+        .Worker-photo { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; background: #f0f0f0; }
+        .Worker-name { font-size: 1.3em; font-weight: 600; margin-bottom: 10px; }
+        .Worker-info { color: #666; line-height: 1.6; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; }
         .modal.active { display: flex; align-items: center; justify-content: center; padding: 20px; }
         .modal-content { background: white; border-radius: 20px; padding: 40px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; }
@@ -58,15 +58,15 @@
         .checklist-item.incomplete { background: #ffebee; }
         .action-buttons { display: flex; gap: 10px; margin-top: 20px; }
         .action-buttons .btn { flex: 1; }
-        .staff-card.selected { border-color: #667eea; background: #f0f4ff; }
-        .staff-checkbox { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; cursor: pointer; }
+        .Worker-card.selected { border-color: #667eea; background: #f0f4ff; }
+        .Worker-checkbox { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>🏢 HSDEC Staff Management</h1>
-            <p>スタッフ管理システム</p>
+            <h1>🏢 HSDEC 韓国労働者管理システム</h1>
+    <p>Korean Worker Management System</p>
         </header>
         
         <div class="tabs">
@@ -82,7 +82,7 @@
                     <button class="btn" id="search-btn">検索</button>
                 </div>
                 <div id="batch-filters" style="margin-bottom:20px;"></div>
-                <div id="staff-list" class="staff-grid"></div>
+                <div id="Worker-list" class="Worker-grid"></div>
                 <div id="no-results" style="display:none;text-align:center;padding:40px;color:#999;">該当なし</div>
             </div>
 
@@ -119,7 +119,7 @@
             
             <div id="add-tab" class="tab-content">
                 <div class="success-message" id="success-message">✅ 登録完了！</div>
-                <form id="staff-form">
+                <form id="Worker-form">
                     <h2 style="margin-bottom:30px;">基本情報</h2>
                     <div class="form-row">
                         <div class="form-group"><label>名前 *</label><input type="text" name="name" required></div>
@@ -166,7 +166,7 @@
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-bottom:30px;">
                 <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:30px;border-radius:12px;text-align:center;">
                     <div style="font-size:3em;font-weight:bold;margin-bottom:10px;" id="stat-total">0</div>
-                    <div style="font-size:1.2em;opacity:0.9;">総スタッフ数</div>
+                    <div style="font-size:1.2em;opacity:0.9;">総労働者数</div>
                 </div>
                 <div style="background:linear-gradient(135deg,#4caf50 0%,#66bb6a 100%);color:white;padding:30px;border-radius:12px;text-align:center;">
                     <div style="font-size:3em;font-weight:bold;margin-bottom:10px;" id="stat-complete">0%</div>
@@ -179,7 +179,7 @@
             </div>
             
             <div style="background:white;padding:20px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);margin-bottom:20px;">
-                <h3 style="margin-bottom:20px;">期別スタッフ数</h3>
+                <h3 style="margin-bottom:20px;">期別労働者数</h3>
                 <div id="batch-chart"></div>
             </div>
             
@@ -193,7 +193,7 @@
     
     <div id="detail-modal" class="modal">
         <div class="modal-content">
-            <div class="modal-header"><h2>スタッフ詳細</h2><button class="close-btn" id="close-detail">&times;</button></div>
+            <div class="modal-header"><h2>労働者詳細</h2><button class="close-btn" id="close-detail">&times;</button></div>
             <div id="detail-content"></div>
         </div>
     </div>
@@ -226,7 +226,7 @@
     document.getElementById('close-edit').addEventListener('click', () => close('edit-modal'));
     document.getElementById('detail-modal').addEventListener('click', e => { if (e.target.id === 'detail-modal') close('detail-modal'); });
     document.getElementById('edit-modal').addEventListener('click', e => { if (e.target.id === 'edit-modal') close('edit-modal'); });
-    document.getElementById('staff-form').addEventListener('submit', add);
+    document.getElementById('Worker-form').addEventListener('submit', add);
     document.getElementById('edit-form').addEventListener('submit', update);
     
     async function load() {
@@ -270,17 +270,17 @@
     }
     
     function show(d) {
-        const c = document.getElementById('staff-list'), n = document.getElementById('no-results');
+        const c = document.getElementById('Worker-list'), n = document.getElementById('no-results');
         if (d.length === 0) { c.style.display = 'none'; n.style.display = 'block'; return; }
         c.style.display = 'grid'; n.style.display = 'none';
         c.innerHTML = d.map(s => {
             const cnt = [s.has_passport, s.has_idcard, s.has_health_check, s.has_contract, s.has_visa, s.has_insurance].filter(Boolean).length;
             const isSelected = selected.includes(s.id);
-return `<div class="staff-card ${isSelected ? 'selected' : ''}" onclick="${selectMode ? `toggleSelect(${s.id}, event)` : `detail(${s.id})`}">
-    ${selectMode ? `<input type="checkbox" class="staff-checkbox" ${isSelected ? 'checked' : ''} onclick="toggleSelect(${s.id}, event)">` : ''}
-                ${s.photo_url ? `<img src="${s.photo_url}" class="staff-photo">` : `<div class="staff-photo" style="display:flex;align-items:center;justify-content:center;font-size:3em;">👤</div>`}
-                <div class="staff-name">${s.name || '未登録'}</div>
-                <div class="staff-info">${s.batch ? `📚 ${s.batch}<br>` : ''}${s.passport_number ? `🛂 ${s.passport_number}<br>` : ''}📋 書類: ${cnt}/6</div>
+return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${selectMode ? `toggleSelect(${s.id}, event)` : `detail(${s.id})`}">
+    ${selectMode ? `<input type="checkbox" class="Worker-checkbox" ${isSelected ? 'checked' : ''} onclick="toggleSelect(${s.id}, event)">` : ''}
+                ${s.photo_url ? `<img src="${s.photo_url}" class="Worker-photo">` : `<div class="Worker-photo" style="display:flex;align-items:center;justify-content:center;font-size:3em;">👤</div>`}
+                <div class="Worker-name">${s.name || '未登録'}</div>
+                <div class="Worker-info">${s.batch ? `📚 ${s.batch}<br>` : ''}${s.passport_number ? `🛂 ${s.passport_number}<br>` : ''}📋 書類: ${cnt}/6</div>
             </div>`;
         }).join('');
     }
@@ -413,7 +413,7 @@ return `<div class="staff-card ${isSelected ? 'selected' : ''}" onclick="${selec
         const blob = new Blob([bom, csv], {type: 'text/csv;charset=utf-8;'});
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = 'スタッフ一覧_' + new Date().toISOString().split('T')[0] + '.csv';
+        link.download = '韓国労働者一覧_' + new Date().toISOString().split('T')[0] + '.csv';
         link.click();
     };
     
@@ -515,7 +515,7 @@ return `<div class="staff-card ${isSelected ? 'selected' : ''}" onclick="${selec
     window.loadStats = function() {
         if (all.length === 0) return;
         
-        // 総スタッフ数
+        // 総労働者数
         document.getElementById('stat-total').textContent = all.length;
         
         // 書類完了率
@@ -531,7 +531,7 @@ return `<div class="staff-card ${isSelected ? 'selected' : ''}" onclick="${selec
         const recent = all.filter(s => s.created_at && s.created_at.startsWith(thisMonth)).length;
         document.getElementById('stat-recent').textContent = recent;
         
-        // 期別スタッフ数グラフ
+        // 期別労働者数グラフ
         const batchData = {};
         all.forEach(s => {
             if (s.batch) {
