@@ -88,6 +88,28 @@
                 <button class="btn btn-success btn-small" onclick="exportCSV()">📄 CSV出力</button>
             </div>
             
+            <div style="background:#f9f9f9;padding:20px;border-radius:12px;margin-bottom:20px;">
+    <h3 style="margin-bottom:15px;">🔍 高度な検索</h3>
+    <div class="form-row">
+        <input type="text" id="adv-name" placeholder="名前">
+        <input type="text" id="adv-passport" placeholder="パスポート番号">
+        <select id="adv-batch">
+            <option value="">全ての期</option>
+        </select>
+    </div>
+    <div class="form-row" style="margin-top:10px;">
+        <input type="date" id="adv-date-from" placeholder="契約開始日(から)">
+        <input type="date" id="adv-date-to" placeholder="契約開始日(まで)">
+        <select id="adv-docs">
+            <option value="">書類状況</option>
+            <option value="complete">全て提出済</option>
+            <option value="incomplete">未提出あり</option>
+        </select>
+    </div>
+    <button class="btn btn-small" onclick="advSearch()" style="margin-top:10px;">検索実行</button>
+    <button class="btn btn-secondary btn-small" onclick="clearAdv()" style="margin-top:10px;">クリア</button>
+</div>
+            
             <div id="add-tab" class="tab-content">
                 <div class="success-message" id="success-message">✅ 登録完了！</div>
                 <form id="staff-form">
