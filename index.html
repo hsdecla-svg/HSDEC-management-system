@@ -370,16 +370,16 @@
         </header>
         
         <div class="tabs">
-        <button class="tab active" onclick="switchTab('list', this)">📋 スタッフ一覧</button>
-　　　　<button class="tab" onclick="switchTab('add', this)">➕ 新規登録</button>
+            <button class="tab active" data-tab="list">📋 スタッフ一覧</button>
+            <button class="tab" data-tab="add">➕ 新規登録</button>
         </div>
         
         <div class="content">
             <!-- スタッフ一覧 -->
             <div id="list-tab" class="tab-content active">
                 <div class="search-box">
-                    <input type="text" id="search-input" placeholder="🔍 名前で検索..." oninput="searchStaff()">
-                    <button onclick="searchStaff()">検索</button>
+                    <input type="text" id="search-input" placeholder="🔍 名前で検索...">
+                    <button id="search-btn">検索</button>
                 </div>
                 
                 <div class="filter-buttons" id="batch-filters"></div>
@@ -394,7 +394,7 @@
             <div id="add-tab" class="tab-content">
                 <div class="success-message" id="success-message">✅ 登録が完了しました！</div>
                 
-                <form id="staff-form" onsubmit="submitForm(event)">
+                <form id="staff-form">
                     <h2 style="margin-bottom: 30px;">基本情報</h2>
                     
                     <div class="form-row">
@@ -497,11 +497,11 @@
     </div>
     
     <!-- 詳細モーダル -->
-    <div id="detail-modal" class="modal" onclick="closeModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
+    <div id="detail-modal" class="modal">
+        <div class="modal-content">
             <div class="modal-header">
                 <h2>スタッフ詳細</h2>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
+                <button class="close-btn" id="close-modal-btn">&times;</button>
             </div>
             <div id="detail-content"></div>
         </div>
@@ -516,17 +516,40 @@
         let allStaff = [];
         let currentBatchFilter = 'all';
         
-        function switchTab(tabName, element) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    
-    element.classList.add('active');
-    document.getElementById(tabName + '-tab').classList.add('active');
-    
-    if (tabName === 'list') {
-        loadStaff();
-    }
-}
+        // タブ切り替え機能
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabName = this.getAttribute('data-tab');
+                
+                // タブのアクティブ状態を切り替え
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // コンテンツのアクティブ状態を切り替え
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(tabName + '-tab').classList.add('active');
+                
+                // スタッフ一覧タブの場合はデータを読み込む
+                if (tabName === 'list') {
+                    loadStaff();
+                }
+            });
+        });
+        
+        // 検索機能
+        document.getElementById('search-input').addEventListener('input', searchStaff);
+        document.getElementById('search-btn').addEventListener('click', searchStaff);
+        
+        // モーダルを閉じる
+        document.getElementById('close-modal-btn').addEventListener('click', closeModal);
+        document.getElementById('detail-modal').addEventListener('click', function(e) {
+            if (e.target.id === 'detail-modal') {
+                closeModal();
+            }
+        });
+        
+        // フォーム送信
+        document.getElementById('staff-form').addEventListener('submit', submitForm);
         
         async function loadStaff() {
             const { data, error } = await supabase
@@ -548,16 +571,20 @@
             const batches = [...new Set(allStaff.map(s => s.batch).filter(b => b))];
             const container = document.getElementById('batch-filters');
             
-            container.innerHTML = `
-                <button class="filter-btn ${currentBatchFilter === 'all' ? 'active' : ''}" 
-                        onclick="filterByBatch('all')">全て表示</button>
-            `;
+            container.innerHTML = '';
+            
+            const allBtn = document.createElement('button');
+            allBtn.className = 'filter-btn' + (currentBatchFilter === 'all' ? ' active' : '');
+            allBtn.textContent = '全て表示';
+            allBtn.addEventListener('click', () => filterByBatch('all'));
+            container.appendChild(allBtn);
             
             batches.forEach(batch => {
-                container.innerHTML += `
-                    <button class="filter-btn ${currentBatchFilter === batch ? 'active' : ''}" 
-                            onclick="filterByBatch('${batch}')">${batch}</button>
-                `;
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn' + (currentBatchFilter === batch ? ' active' : '');
+                btn.textContent = batch;
+                btn.addEventListener('click', () => filterByBatch(batch));
+                container.appendChild(btn);
             });
         }
         
@@ -604,7 +631,7 @@
             noResults.style.display = 'none';
             
             container.innerHTML = staff.map(s => `
-                <div class="staff-card" onclick="showDetail(${s.id})">
+                <div class="staff-card" data-id="${s.id}">
                     ${s.photo_url ? 
                         `<img src="${s.photo_url}" alt="${s.name}" class="staff-photo">` :
                         `<div class="staff-photo" style="display:flex;align-items:center;justify-content:center;font-size:3em;">👤</div>`
@@ -617,9 +644,17 @@
                     </div>
                 </div>
             `).join('');
+            
+            // カードクリックイベント
+            document.querySelectorAll('.staff-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    const id = parseInt(this.getAttribute('data-id'));
+                    showDetail(id);
+                });
+            });
         }
         
-        async function showDetail(id) {
+        function showDetail(id) {
             const staff = allStaff.find(s => s.id === id);
             if (!staff) return;
             
@@ -679,10 +714,8 @@
             return `<a href="${url}" target="_blank" class="pdf-link">${label}</a>`;
         }
         
-        function closeModal(event) {
-            if (!event || event.target.id === 'detail-modal') {
-                document.getElementById('detail-modal').classList.remove('active');
-            }
+        function closeModal() {
+            document.getElementById('detail-modal').classList.remove('active');
         }
         
         async function submitForm(event) {
@@ -716,6 +749,7 @@
             loadStaff();
         }
         
+        // 初回ロード
         loadStaff();
     </script>
 </body>
