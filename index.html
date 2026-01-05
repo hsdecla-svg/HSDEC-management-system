@@ -474,15 +474,15 @@ body {
 };
     
     function updateUI() {
-        const t = translations[currentLang];
-        const savedLang = localStorage.getItem('language');
-if (savedLang && translations[savedLang]) {
-    currentLang = savedLang;
-    if (currentLang === 'lo') {
-        document.body.style.fontFamily = "'Noto Sans Lao', 'Segoe UI', sans-serif";
-    }
-    updateUI();
-}
+    const t = translations[currentLang];
+    
+    // テキスト翻訳
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key]) {
+            el.textContent = t[key];
+        }
+    });
         
         // テキスト翻訳
     document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -783,7 +783,7 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
         const batches = [...new Set(all.map(s => s.batch).filter(x => x))];
         const sel = document.getElementById('adv-batch');
         if (!sel) return;
-        sel.innerHTML = '<option value="">全ての期</option>';
+        sel.innerHTML = '<option value="">全期生</option>';
         batches.forEach(b => {
             const opt = document.createElement('option');
             opt.value = b;
