@@ -76,9 +76,9 @@ body {
     <div class="container">
         <header style="position:relative;">
     <div style="position:absolute;top:20px;right:20px;display:flex;gap:10px;">
-        <button onclick="setLang('ja')" style="background:white;color:#667eea;border:2px solid white;padding:8px 15px;border-radius:8px;cursor:pointer;font-weight:600;">🇯🇵 日本語</button>
-        <button onclick="setLang('en')" style="background:white;color:#667eea;border:2px solid white;padding:8px 15px;border-radius:8px;cursor:pointer;font-weight:600;">🇬🇧 English</button>
-        <button onclick="setLang('lo')" style="background:white;color:#667eea;border:2px solid white;padding:8px 15px;border-radius:8px;cursor:pointer;font-weight:600;">🇱🇦 ລາວ</button>
+        <button id="lang-ja" style="background:white;color:#667eea;border:2px solid white;padding:8px 15px;border-radius:8px;cursor:pointer;font-weight:600;">🇯🇵 日本語</button>
+<button id="lang-en" style="background:white;color:#667eea;border:2px solid white;padding:8px 15px;border-radius:8px;cursor:pointer;font-weight:600;">🇬🇧 English</button>
+<button id="lang-lo" style="background:white;color:#667eea;border:2px solid white;padding:8px 15px;border-radius:8px;cursor:pointer;font-weight:600;">🇱🇦 ລາວ</button>
     </div>
     <h1>
         <img src="https://raw.githubusercontent.com/hsdecla-svg/HSDEC-management-system/main/HSDB-logo.png" style="height:60px;vertical-align:middle;margin-right:15px;border-radius:8px;">
@@ -898,6 +898,9 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
             </div>`;
         }).join('');
     };
+    document.getElementById('lang-ja').addEventListener('click', () => setLang('ja'));
+    document.getElementById('lang-en').addEventListener('click', () => setLang('en'));
+    document.getElementById('lang-lo').addEventListener('click', () => setLang('lo'));
     
     load();
 })();
