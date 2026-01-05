@@ -151,7 +151,7 @@
     <script>
 (function() {
     const sb = window.supabase.createClient('https://zgmqllufmqanixgwdjok.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnbXFsbHVmbXFhbml4Z3dkam9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk0MjAsImV4cCI6MjA4MjkxNTQyMH0.xg-5T7DfcW2enMAXvudNOMPbvvm1WSwRHGZ_Vpdyrrw');
-    let all = [], flt = 'all', eid = null;
+    let all = [], filtered = [], flt = 'all', eid = null;
     
     document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', function() {
         const n = this.getAttribute('data-tab');
