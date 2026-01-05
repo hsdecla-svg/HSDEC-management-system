@@ -64,17 +64,23 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <img src="https://raw.githubusercontent.com/hsdecla-svg/HSDEC-management-system/main/HSDB-logo.png" style="height:60px;vertical-align:middle;margin-right:15px;border-radius:8px;">
-     HSDEC 韓国労働者管理システム
+        <header style="position:relative;">
+    <div style="position:absolute;top:20px;right:20px;display:flex;gap:10px;">
+        <button onclick="setLang('ja')" style="background:white;color:#667eea;border:2px solid white;padding:8px 15px;border-radius:8px;cursor:pointer;font-weight:600;">🇯🇵 日本語</button>
+        <button onclick="setLang('en')" style="background:white;color:#667eea;border:2px solid white;padding:8px 15px;border-radius:8px;cursor:pointer;font-weight:600;">🇬🇧 English</button>
+        <button onclick="setLang('lo')" style="background:white;color:#667eea;border:2px solid white;padding:8px 15px;border-radius:8px;cursor:pointer;font-weight:600;">🇱🇦 ລາວ</button>
+    </div>
+    <h1>
+        <img src="https://raw.githubusercontent.com/hsdecla-svg/HSDEC-management-system/main/HSDB-logo.png" style="height:60px;vertical-align:middle;margin-right:15px;border-radius:8px;">
+        <span data-i18n="title">🏢 HSDEC 韓国労働者管理システム</span>
     </h1>
-    <p>Korean Worker Management System</p>
-        </header>
+    <p data-i18n="subtitle">Korean Worker Management System</p>
+</header>
         
         <div class="tabs">
-    <button class="tab active" data-tab="list">📋 一覧</button>
-    <button class="tab" data-tab="add">➕ 登録</button>
-    <button class="tab" data-tab="stats">📊 統計</button>
+     <button class="tab active" data-tab="list" data-i18n="tabList">📋 一覧</button>
+    <button class="tab" data-tab="add" data-i18n="tabAdd">➕ 登録</button>
+    <button class="tab" data-tab="stats" data-i18n="tabStats">📊 統計</button>
 </div>
         
         <div class="content">
@@ -98,13 +104,13 @@
 </div>
             
             <div style="background:#f9f9f9;padding:20px;border-radius:12px;margin-bottom:20px;">
-    <h3 style="margin-bottom:15px;">🔍 高度な検索</h3>
+  <h3 style="margin-bottom:15px" data-i18n="advSearch">🔍 高度な検索</h3>
     <div class="form-row">
-        <input type="text" id="adv-name" placeholder="名前">
-        <input type="text" id="adv-passport" placeholder="パスポート番号">
-        <select id="adv-batch">
-            <option value="">全ての期</option>
-        </select>
+        <input type="text" id="adv-name" data-placeholder="searchName" placeholder="名前">
+<input type="text" id="adv-passport" data-placeholder="searchPassport" placeholder="パスポート番号">
+<select id="adv-batch" data-first-option="searchAllBatch">
+    <option value="">全ての期</option>
+</select>
     </div>
     <div class="form-row" style="margin-top:10px;">
         <input type="date" id="adv-date-from" placeholder="契約開始日(から)">
@@ -115,8 +121,8 @@
             <option value="incomplete">未提出あり</option>
         </select>
     </div>
-    <button class="btn btn-small" onclick="advSearch()" style="margin-top:10px;">検索実行</button>
-    <button class="btn btn-secondary btn-small" onclick="clearAdv()" style="margin-top:10px;">クリア</button>
+    <button class="btn btn-small" onclick="advSearch()" style="margin-top:10px" data-i18n="btnSearch">検索実行</button>
+<button class="btn btn-secondary btn-small" onclick="clearAdv()" style="margin-top:10px" data-i18n="btnClear">クリア</button>
 </div>
             
             <div id="add-tab" class="tab-content">
@@ -210,6 +216,260 @@
     <script>
 (function() {
     const sb = window.supabase.createClient('https://zgmqllufmqanixgwdjok.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnbXFsbHVmbXFhbml4Z3dkam9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk0MjAsImV4cCI6MjA4MjkxNTQyMH0.xg-5T7DfcW2enMAXvudNOMPbvvm1WSwRHGZ_Vpdyrrw');
+    const translations = {
+        ja: {
+            title: '🏢 HSDEC 韓国労働者管理システム',
+            subtitle: 'Korean Worker Management System',
+            tabList: '📋 一覧',
+            tabAdd: '➕ 登録',
+            tabStats: '📊 統計',
+            btnExcel: '📥 Excel出力',
+            btnCSV: '📄 CSV出力',
+            btnBulkDelete: '🗑️ 選択を削除',
+            selectMode: '選択モード',
+            advSearch: '🔍 高度な検索',
+            searchName: '名前',
+            searchPassport: 'パスポート番号',
+            searchAllBatch: '全ての期',
+            searchDateFrom: '契約開始日(から)',
+            searchDateTo: '契約開始日(まで)',
+            searchDocs: '書類状況',
+            searchDocsComplete: '全て提出済',
+            searchDocsIncomplete: '未提出あり',
+            btnSearch: '検索実行',
+            btnClear: 'クリア',
+            noResults: '該当なし',
+            formBasic: '基本情報',
+            formName: '名前',
+            formBirthDate: '生年月日',
+            formGender: '性別',
+            formGenderSelect: '選択',
+            formGenderMale: '男性',
+            formGenderFemale: '女性',
+            formNationality: '国籍',
+            formPassport: 'パスポート番号',
+            formPhone: '電話番号',
+            formPeriod: '期・日付情報',
+            formBatch: '第○期生',
+            formBatchPlaceholder: '例:第3期生',
+            formInterview: '面接日',
+            formKitStart: 'KIT勉強開始日',
+            formContractStart: '契約開始日',
+            formContractEnd: '契約終了日',
+            formDocs: '📋 書類チェックリスト',
+            formDocPassport: 'パスポート',
+            formDocId: 'IDカード',
+            formDocHealth: '健康診断書',
+            formDocContract: '労働契約書',
+            formDocVisa: 'ビザ',
+            formDocInsurance: '保険証',
+            formFiles: '📎 ファイルURL',
+            formPhoto: '顔写真URL',
+            formPassportPdf: 'パスポートPDF',
+            formIdPdf: 'IDカードPDF',
+            formHealthPdf: '健康診断書PDF',
+            btnRegister: '✅ 登録',
+            successMsg: '✅ 登録完了！',
+            statsTitle: '📊 統計ダッシュボード',
+            statTotal: '総労働者数',
+            statComplete: '書類完了率',
+            statRecent: '今月の登録',
+            statsByBatch: '期別労働者数',
+            statsDocStatus: '書類提出状況',
+            detailTitle: '労働者詳細',
+            detailBasic: '📋 基本情報',
+            detailPeriod: '📅 期・日付',
+            detailDocs: '✅ チェックリスト',
+            detailFiles: '📎 書類',
+            detailPeriodLabel: '期',
+            detailNotRegistered: '(未登録)',
+            btnEdit: '✏️ 編集',
+            btnPrint: '🖨️ 印刷',
+            btnDelete: '🗑️ 削除',
+            editTitle: '編集',
+            btnSave: '💾  保存',
+            confirmDelete: '本当に削除しますか？',
+            confirmBulkDelete: '件を削除しますか？',
+            alertSelectItems: '削除する項目を選択してください',
+            errorOccurred: 'エラーが発生しました: '
+        },
+        en: {
+            title: '🏢 HSDEC Korean Worker Management System',
+            subtitle: 'Korean Worker Management System',
+            tabList: '📋 List',
+            tabAdd: '➕ Register',
+            tabStats: '📊 Statistics',
+            btnExcel: '📥 Excel Export',
+            btnCSV: '📄 CSV Export',
+            btnBulkDelete: '🗑️ Delete Selected',
+            selectMode: 'Selection Mode',
+            advSearch: '🔍 Advanced Search',
+            searchName: 'Name',
+            searchPassport: 'Passport Number',
+            searchAllBatch: 'All Periods',
+            searchDateFrom: 'Contract Start (From)',
+            searchDateTo: 'Contract Start (To)',
+            searchDocs: 'Document Status',
+            searchDocsComplete: 'All Submitted',
+            searchDocsIncomplete: 'Missing Documents',
+            btnSearch: 'Search',
+            btnClear: 'Clear',
+            noResults: 'No Results',
+            formBasic: 'Basic Information',
+            formName: 'Name',
+            formBirthDate: 'Date of Birth',
+            formGender: 'Gender',
+            formGenderSelect: 'Select',
+            formGenderMale: 'Male',
+            formGenderFemale: 'Female',
+            formNationality: 'Nationality',
+            formPassport: 'Passport Number',
+            formPhone: 'Phone Number',
+            formPeriod: 'Period & Date Information',
+            formBatch: 'Period',
+            formBatchPlaceholder: 'e.g., Period 3',
+            formInterview: 'Interview Date',
+            formKitStart: 'KIT Training Start',
+            formContractStart: 'Contract Start',
+            formContractEnd: 'Contract End',
+            formDocs: '📋 Document Checklist',
+            formDocPassport: 'Passport',
+            formDocId: 'ID Card',
+            formDocHealth: 'Health Certificate',
+            formDocContract: 'Labor Contract',
+            formDocVisa: 'Visa',
+            formDocInsurance: 'Insurance',
+            formFiles: '📎 File URLs',
+            formPhoto: 'Photo URL',
+            formPassportPdf: 'Passport PDF',
+            formIdPdf: 'ID Card PDF',
+            formHealthPdf: 'Health Certificate PDF',
+            btnRegister: '✅ Register',
+            successMsg: '✅ Registration Complete!',
+            statsTitle: '📊 Statistics Dashboard',
+            statTotal: 'Total Workers',
+            statComplete: 'Document Completion Rate',
+            statRecent: 'Registered This Month',
+            statsByBatch: 'Workers by Period',
+            statsDocStatus: 'Document Submission Status',
+            detailTitle: 'Worker Details',
+            detailBasic: '📋 Basic Info',
+            detailPeriod: '📅 Period & Dates',
+            detailDocs: '✅ Checklist',
+            detailFiles: '📎 Documents',
+            detailPeriodLabel: 'Period',
+            detailNotRegistered: '(Not Registered)',
+            btnEdit: '✏️ Edit',
+            btnPrint: '🖨️ Print',
+            btnDelete: '🗑️ Delete',
+            editTitle: 'Edit',
+            btnSave: '💾 Save',
+            confirmDelete: 'Are you sure you want to delete?',
+            confirmBulkDelete: ' items will be deleted. Continue?',
+            alertSelectItems: 'Please select items to delete',
+            errorOccurred: 'Error occurred: '
+        },
+        lo: {
+            title: '🏢 ລະບົບຄຸ້ມຄອງແຮງງານເກົາຫຼີ HSDEC',
+            subtitle: 'ລະບົບຄຸ້ມຄອງແຮງງານເກົາຫຼີ',
+            tabList: '📋 ລາຍການ',
+            tabAdd: '➕ ລົງທະບຽນ',
+            tabStats: '📊 ສະຖິຕິ',
+            btnExcel: '📥 ສົ່ງອອກ Excel',
+            btnCSV: '📄 ສົ່ງອອກ CSV',
+            btnBulkDelete: '🗑️ ລຶບທີ່ເລືອກ',
+            selectMode: 'ໂໝດເລືອກ',
+            advSearch: '🔍 ຄົ້ນຫາຂັ້ນສູງ',
+            searchName: 'ຊື່',
+            searchPassport: 'ເລກໜັງສືຜ່ານແດນ',
+            searchAllBatch: 'ທຸກລຸ້ນ',
+            searchDateFrom: 'ວັນເລີ່ມສັນຍາ (ຈາກ)',
+            searchDateTo: 'ວັນເລີ່ມສັນຍາ (ຫາ)',
+            searchDocs: 'ສະຖານະເອກະສານ',
+            searchDocsComplete: 'ສົ່ງຄົບແລ້ວ',
+            searchDocsIncomplete: 'ຍັງບໍ່ຄົບ',
+            btnSearch: 'ຄົ້ນຫາ',
+            btnClear: 'ລຶບລ້າງ',
+            noResults: 'ບໍ່ພົບຂໍ້ມູນ',
+            formBasic: 'ຂໍ້ມູນພື້ນຖານ',
+            formName: 'ຊື່',
+            formBirthDate: 'ວັນເດືອນປີເກີດ',
+            formGender: 'ເພດ',
+            formGenderSelect: 'ເລືອກ',
+            formGenderMale: 'ຊາຍ',
+            formGenderFemale: 'ຍິງ',
+            formNationality: 'ສັນຊາດ',
+            formPassport: 'ເລກໜັງສືຜ່ານແດນ',
+            formPhone: 'ເບີໂທລະສັບ',
+            formPeriod: 'ຂໍ້ມູນລຸ້ນ ແລະ ວັນທີ',
+            formBatch: 'ລຸ້ນທີ່',
+            formBatchPlaceholder: 'ຕົວຢ່າງ: ລຸ້ນທີ 3',
+            formInterview: 'ວັນສຳພາດ',
+            formKitStart: 'ວັນເລີ່ມຮຽນ KIT',
+            formContractStart: 'ວັນເລີ່ມສັນຍາ',
+            formContractEnd: 'ວັນສິ້ນສຸດສັນຍາ',
+            formDocs: '📋 ລາຍການກວດເອກະສານ',
+            formDocPassport: 'ໜັງສືຜ່ານແດນ',
+            formDocId: 'ບັດປະຈຳຕົວ',
+            formDocHealth: 'ໃບກວດສຸຂະພາບ',
+            formDocContract: 'ສັນຍາຈ້າງງານ',
+            formDocVisa: 'ວີຊາ',
+            formDocInsurance: 'ປະກັນໄພ',
+            formFiles: '📎 URL ໄຟລ໌',
+            formPhoto: 'URL ຮູບພາບ',
+            formPassportPdf: 'PDF ໜັງສືຜ່ານແດນ',
+            formIdPdf: 'PDF ບັດປະຈຳຕົວ',
+            formHealthPdf: 'PDF ໃບກວດສຸຂະພາບ',
+            btnRegister: '✅ ລົງທະບຽນ',
+            successMsg: '✅ ລົງທະບຽນສຳເລັດ!',
+            statsTitle: '📊 ກະດານສະຖິຕິ',
+            statTotal: 'ຈຳນວນແຮງງານທັງໝົດ',
+            statComplete: 'ອັດຕາເອກະສານຄົບ',
+            statRecent: 'ລົງທະບຽນເດືອນນີ້',
+            statsByBatch: 'ຈຳນວນແຮງງານຕາມລຸ້ນ',
+            statsDocStatus: 'ສະຖານະການສົ່ງເອກະສານ',
+            detailTitle: 'ລາຍລະອຽດແຮງງານ',
+            detailBasic: '📋 ຂໍ້ມູນພື້ນຖານ',
+            detailPeriod: '📅 ລຸ້ນ ແລະ ວັນທີ',
+            detailDocs: '✅ ລາຍການກວດ',
+            detailFiles: '📎 ເອກະສານ',
+            detailPeriodLabel: 'ລຸ້ນ',
+            detailNotRegistered: '(ບໍ່ທັນລົງທະບຽນ)',
+            btnEdit: '✏️ ແກ້ໄຂ',
+            btnPrint: '🖨️ ພິມ',
+            btnDelete: '🗑️ ລຶບ',
+            editTitle: 'ແກ້ໄຂ',
+            btnSave: '💾 ບັນທຶກ',
+            confirmDelete: 'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບ?',
+            confirmBulkDelete: ' ລາຍການຈະຖືກລຶບ. ສືບຕໍ່ບໍ່?',
+            alertSelectItems: 'ກະລຸນາເລືອກລາຍການທີ່ຕ້ອງການລຶບ',
+            errorOccurred: 'ເກີດຂໍ້ຜິດພາດ: '
+        }
+    };
+    
+    let currentLang = 'ja';
+    
+    window.setLang = function(lang) {
+        currentLang = lang;
+        localStorage.setItem('language', lang);
+        updateUI();
+    };
+    
+    function updateUI() {
+        const t = translations[currentLang];
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (t[key]) {
+                el.textContent = t[key];
+            }
+        });
+    }
+    
+    const savedLang = localStorage.getItem('language');
+    if (savedLang && translations[savedLang]) {
+        currentLang = savedLang;
+        updateUI();
+    }
     let all = [], filtered = [], flt = 'all', eid = null;
     
     document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', function() {
