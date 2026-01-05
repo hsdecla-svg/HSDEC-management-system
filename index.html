@@ -339,6 +339,26 @@
         close('detail-modal');
         load();
     }
+    window.exportExcel = function() {
+        const data = filtered.length ? filtered : all;
+        if (data.length === 0) { alert('データがありません'); return; }
+        
+        let csv = 'ID,名前,生年月日,性別,国籍,パスポート,電話,期,面接日,KIT開始,契約開始,契約終了,パスポート提出,ID提出,健診提出,契約提出,ビザ提出,保険提出\n';
+        data.forEach(s => {
+            csv += `${s.id},"${s.name||''}","${s.birth_date||''}","${s.gender||''}","${s.nationality||''}","${s.passport_number||''}","${s.phone_number||''}","${s.batch||''}","${s.interview_date||''}","${s.kit_start_date||''}","${s.contract_start||''}","${s.contract_end||''}",${s.has_passport?'○':''},${s.has_idcard?'○':''},${s.has_health_check?'○':''},${s.has_contract?'○':''},${s.has_visa?'○':''},${s.has_insurance?'○':''}\n`;
+        });
+        
+        const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+        const blob = new Blob([bom, csv], {type: 'text/csv;charset=utf-8;'});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'スタッフ一覧_' + new Date().toISOString().split('T')[0] + '.csv';
+        link.click();
+    };
+    
+    window.exportCSV = function() {
+        exportExcel();
+    };
     
     load();
 })();
