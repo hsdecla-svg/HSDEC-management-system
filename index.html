@@ -128,6 +128,14 @@
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
         
+        .btn-danger {
+            background: linear-gradient(135deg, #f44336 0%, #e91e63 100%);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
         .search-box {
             display: flex;
             gap: 10px;
@@ -361,6 +369,72 @@
             color: #999;
             font-size: 1.2em;
         }
+        
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+        
+        .checkbox-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        
+        .checkbox-item label {
+            margin: 0;
+            cursor: pointer;
+            font-weight: normal;
+        }
+        
+        .checklist-status {
+            display: grid;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        
+        .checklist-item.complete {
+            background: #e8f5e9;
+        }
+        
+        .checklist-item.incomplete {
+            background: #ffebee;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .action-buttons .btn {
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -467,6 +541,35 @@
                         <input type="date" name="contract_end">
                     </div>
                     
+                    <h2 style="margin: 40px 0 20px;">📋 書類チェックリスト</h2>
+                    
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="has_passport" id="add_has_passport">
+                            <label for="add_has_passport">パスポート</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="has_idcard" id="add_has_idcard">
+                            <label for="add_has_idcard">IDカード</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="has_health_check" id="add_has_health_check">
+                            <label for="add_has_health_check">健康診断書</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="has_contract" id="add_has_contract">
+                            <label for="add_has_contract">労働契約書</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="has_visa" id="add_has_visa">
+                            <label for="add_has_visa">ビザ</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" name="has_insurance" id="add_has_insurance">
+                            <label for="add_has_insurance">保険証</label>
+                        </div>
+                    </div>
+                    
                     <h2 style="margin: 40px 0 30px;">📎 ファイルURL（Google Driveリンク等）</h2>
                     
                     <div class="form-group">
@@ -499,9 +602,19 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>スタッフ詳細</h2>
-                <button class="close-btn" id="close-modal-btn">&times;</button>
+                <button class="close-btn" id="close-detail-btn">&times;</button>
             </div>
             <div id="detail-content"></div>
+        </div>
+    </div>
+    
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>スタッフ編集</h2>
+                <button class="close-btn" id="close-edit-btn">&times;</button>
+            </div>
+            <form id="edit-form"></form>
         </div>
     </div>
 
@@ -514,6 +627,7 @@
             
             let allStaff = [];
             let currentBatchFilter = 'all';
+            let currentEditId = null;
             
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', function() {
@@ -534,14 +648,23 @@
             document.getElementById('search-input').addEventListener('input', searchStaff);
             document.getElementById('search-btn').addEventListener('click', searchStaff);
             
-            document.getElementById('close-modal-btn').addEventListener('click', closeModal);
+            document.getElementById('close-detail-btn').addEventListener('click', () => closeModal('detail-modal'));
+            document.getElementById('close-edit-btn').addEventListener('click', () => closeModal('edit-modal'));
+            
             document.getElementById('detail-modal').addEventListener('click', function(e) {
                 if (e.target.id === 'detail-modal') {
-                    closeModal();
+                    closeModal('detail-modal');
+                }
+            });
+            
+            document.getElementById('edit-modal').addEventListener('click', function(e) {
+                if (e.target.id === 'edit-modal') {
+                    closeModal('edit-modal');
                 }
             });
             
             document.getElementById('staff-form').addEventListener('submit', submitForm);
+            document.getElementById('edit-form').addEventListener('submit', submitEditForm);
             
             async function loadStaff() {
                 const { data, error } = await supabase
@@ -622,20 +745,24 @@
                 container.style.display = 'grid';
                 noResults.style.display = 'none';
                 
-                container.innerHTML = staff.map(s => `
-                    <div class="staff-card" data-id="${s.id}">
-                        ${s.photo_url ? 
-                            `<img src="${s.photo_url}" alt="${s.name}" class="staff-photo">` :
-                            `<div class="staff-photo" style="display:flex;align-items:center;justify-content:center;font-size:3em;">👤</div>`
-                        }
-                        <div class="staff-name">${s.name || '名前未登録'}</div>
-                        <div class="staff-info">
-                            ${s.batch ? `📚 ${s.batch}<br>` : ''}
-                            ${s.passport_number ? `🛂 ${s.passport_number}<br>` : ''}
-                            ${s.phone_number ? `📱 ${s.phone_number}` : ''}
+                container.innerHTML = staff.map(s => {
+                    const completedDocs = [s.has_passport, s.has_idcard, s.has_health_check, s.has_contract, s.has_visa, s.has_insurance].filter(Boolean).length;
+                    return `
+                        <div class="staff-card" data-id="${s.id}">
+                            ${s.photo_url ? 
+                                `<img src="${s.photo_url}" alt="${s.name}" class="staff-photo">` :
+                                `<div class="staff-photo" style="display:flex;align-items:center;justify-content:center;font-size:3em;">👤</div>`
+                            }
+                            <div class="staff-name">${s.name || '名前未登録'}</div>
+                            <div class="staff-info">
+                                ${s.batch ? `📚 ${s.batch}<br>` : ''}
+                                ${s.passport_number ? `🛂 ${s.passport_number}<br>` : ''}
+                                ${s.phone_number ? `📱 ${s.phone_number}<br>` : ''}
+                                📋 書類: ${completedDocs}/6
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
                 
                 document.querySelectorAll('.staff-card').forEach(card => {
                     card.addEventListener('click', function() {
@@ -676,12 +803,29 @@
                     </div>
                     
                     <div class="detail-section">
+                        <h3>✅ 書類チェックリスト</h3>
+                        <div class="checklist-status">
+                            ${createChecklistItem('パスポート', staff.has_passport)}
+                            ${createChecklistItem('IDカード', staff.has_idcard)}
+                            ${createChecklistItem('健康診断書', staff.has_health_check)}
+                            ${createChecklistItem('労働契約書', staff.has_contract)}
+                            ${createChecklistItem('ビザ', staff.has_visa)}
+                            ${createChecklistItem('保険証', staff.has_insurance)}
+                        </div>
+                    </div>
+                    
+                    <div class="detail-section">
                         <h3>📎 書類リンク</h3>
                         <div class="pdf-links">
                             ${createPdfLink('パスポート', staff.passport_pdf_url)}
                             ${createPdfLink('IDカード', staff.idcard_pdf_url)}
                             ${createPdfLink('健康診断書', staff.health_check_pdf_url)}
                         </div>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button class="btn" onclick="window.editStaff(${staff.id})">✏️ 編集</button>
+                        <button class="btn btn-danger" onclick="window.deleteStaff(${staff.id})">🗑️ 削除</button>
                     </div>
                 `;
                 
@@ -698,50 +842,13 @@
                 `;
             }
             
+            function createChecklistItem(label, isComplete) {
+                return `
+                    <div class="checklist-item ${isComplete ? 'complete' : 'incomplete'}">
+                        <span>${isComplete ? '✅' : '❌'}</span>
+                        <span>${label}</span>
+                    </div>
+                `;
+            }
+            
             function createPdfLink(label, url) {
-                if (!url) {
-                    return `<div class="pdf-link empty">${label} (未登録)</div>`;
-                }
-                return `<a href="${url}" target="_blank" class="pdf-link">${label}</a>`;
-            }
-            
-            function closeModal() {
-                document.getElementById('detail-modal').classList.remove('active');
-            }
-            
-            async function submitForm(event) {
-                event.preventDefault();
-                
-                const form = event.target;
-                const formData = new FormData(form);
-                const data = {};
-                
-                for (let [key, value] of formData.entries()) {
-                    data[key] = value || null;
-                }
-                
-                const { error } = await supabase
-                    .from('workers')
-                    .insert([data]);
-                
-                if (error) {
-                    alert('エラーが発生しました: ' + error.message);
-                    console.error('Error:', error);
-                    return;
-                }
-                
-                document.getElementById('success-message').classList.add('show');
-                form.reset();
-                
-                setTimeout(() => {
-                    document.getElementById('success-message').classList.remove('show');
-                }, 3000);
-                
-                loadStaff();
-            }
-            
-            loadStaff();
-        })();
-    </script>
-</body>
-</html>
