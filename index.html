@@ -6,435 +6,58 @@
     <title>HSDEC Staff Management System</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-        
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-        
-        .tabs {
-            display: flex;
-            background: #f5f5f5;
-            border-bottom: 2px solid #ddd;
-        }
-        
-        .tab {
-            flex: 1;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            font-size: 1.1em;
-            font-weight: 600;
-            transition: all 0.3s;
-            border: none;
-            background: none;
-        }
-        
-        .tab:hover {
-            background: #e0e0e0;
-        }
-        
-        .tab.active {
-            background: white;
-            color: #667eea;
-            border-bottom: 3px solid #667eea;
-        }
-        
-        .content {
-            padding: 30px;
-        }
-        
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #333;
-        }
-        
-        input, select, textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1em;
-            transition: border 0.3s;
-        }
-        
-        input:focus, select:focus, textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        
-        .form-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-        }
-        
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px 40px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-        
-        .btn-danger {
-            background: linear-gradient(135deg, #f44336 0%, #e91e63 100%);
-        }
-        
-        .btn-secondary {
-            background: #6c757d;
-        }
-        
-        .search-box {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-        }
-        
-        .search-box input {
-            flex: 1;
-        }
-        
-        .staff-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-        
-        .staff-card {
-            border: 2px solid #ddd;
-            border-radius: 12px;
-            padding: 20px;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: white;
-        }
-        
-        .staff-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-            border-color: #667eea;
-        }
-        
-        .staff-photo {
-            width: 100%;
-            height: 200px;
-            object-fit: cover;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            background: #f0f0f0;
-        }
-        
-        .staff-name {
-            font-size: 1.3em;
-            font-weight: 600;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .staff-info {
-            color: #666;
-            line-height: 1.6;
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 1000;
-            overflow-y: auto;
-        }
-        
-        .modal.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        
-        .modal-content {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            max-width: 800px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #ddd;
-        }
-        
-        .close-btn {
-            background: none;
-            border: none;
-            font-size: 2em;
-            cursor: pointer;
-            color: #999;
-            padding: 0;
-            width: 40px;
-            height: 40px;
-        }
-        
-        .close-btn:hover {
-            color: #333;
-            transform: none;
-        }
-        
-        .detail-photo {
-            width: 250px;
-            height: 300px;
-            object-fit: cover;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        
-        .detail-section {
-            margin-bottom: 30px;
-        }
-        
-        .detail-section h3 {
-            color: #667eea;
-            margin-bottom: 15px;
-            font-size: 1.3em;
-        }
-        
-        .detail-row {
-            display: grid;
-            grid-template-columns: 150px 1fr;
-            gap: 10px;
-            margin-bottom: 10px;
-            padding: 10px;
-            background: #f9f9f9;
-            border-radius: 8px;
-        }
-        
-        .detail-label {
-            font-weight: 600;
-            color: #555;
-        }
-        
-        .pdf-links {
-            display: grid;
-            gap: 10px;
-        }
-        
-        .pdf-link {
-            display: flex;
-            align-items: center;
-            padding: 15px;
-            background: #f0f0f0;
-            border-radius: 8px;
-            text-decoration: none;
-            color: #333;
-            transition: all 0.3s;
-        }
-        
-        .pdf-link:hover {
-            background: #667eea;
-            color: white;
-            transform: translateX(5px);
-        }
-        
-        .pdf-link::before {
-            content: "📄";
-            margin-right: 10px;
-            font-size: 1.5em;
-        }
-        
-        .pdf-link.empty {
-            opacity: 0.5;
-            pointer-events: none;
-        }
-        
-        .pdf-link.empty::before {
-            content: "❌";
-        }
-        
-        .success-message {
-            background: #4caf50;
-            color: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
-        }
-        
-        .success-message.show {
-            display: block;
-            animation: slideDown 0.3s ease;
-        }
-        
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .filter-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .filter-btn {
-            padding: 10px 20px;
-            background: #f0f0f0;
-            border: 2px solid #ddd;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 1em;
-        }
-        
-        .filter-btn.active {
-            background: #667eea;
-            color: white;
-            border-color: #667eea;
-        }
-        
-        .no-results {
-            text-align: center;
-            padding: 60px 20px;
-            color: #999;
-            font-size: 1.2em;
-        }
-        
-        .checkbox-group {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-top: 10px;
-        }
-        
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px;
-            background: #f9f9f9;
-            border-radius: 8px;
-            transition: background 0.3s;
-        }
-        
-        .checkbox-item:hover {
-            background: #f0f0f0;
-        }
-        
-        .checkbox-item input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-        }
-        
-        .checkbox-item label {
-            margin: 0;
-            cursor: pointer;
-            font-weight: normal;
-        }
-        
-        .checklist-status {
-            display: grid;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        
-        .checklist-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 12px;
-            background: #f9f9f9;
-            border-radius: 6px;
-        }
-        
-        .checklist-item.complete {
-            background: #e8f5e9;
-        }
-        
-        .checklist-item.incomplete {
-            background: #ffebee;
-        }
-        
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        
-        .action-buttons .btn {
-            flex: 1;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 20px 20px 0 0; }
+        h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .tabs { display: flex; background: #f5f5f5; border-bottom: 2px solid #ddd; }
+        .tab { flex: 1; padding: 20px; text-align: center; cursor: pointer; font-size: 1.1em; font-weight: 600; transition: all 0.3s; border: none; background: none; }
+        .tab:hover { background: #e0e0e0; }
+        .tab.active { background: white; color: #667eea; border-bottom: 3px solid #667eea; }
+        .content { padding: 30px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em; }
+        input:focus, select:focus { outline: none; border-color: #667eea; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; border: none; border-radius: 8px; font-size: 1.1em; font-weight: 600; cursor: pointer; }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-danger { background: linear-gradient(135deg, #f44336 0%, #e91e63 100%); }
+        .search-box { display: flex; gap: 10px; margin-bottom: 30px; }
+        .search-box input { flex: 1; }
+        .staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .staff-card { border: 2px solid #ddd; border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.3s; }
+        .staff-card:hover { transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-color: #667eea; }
+        .staff-photo { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; background: #f0f0f0; }
+        .staff-name { font-size: 1.3em; font-weight: 600; margin-bottom: 10px; }
+        .staff-info { color: #666; line-height: 1.6; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; }
+        .modal.active { display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .modal-content { background: white; border-radius: 20px; padding: 40px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #ddd; }
+        .close-btn { background: none; border: none; font-size: 2em; cursor: pointer; color: #999; }
+        .detail-section { margin-bottom: 30px; }
+        .detail-section h3 { color: #667eea; margin-bottom: 15px; font-size: 1.3em; }
+        .detail-row { display: grid; grid-template-columns: 150px 1fr; gap: 10px; margin-bottom: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px; }
+        .detail-label { font-weight: 600; }
+        .pdf-link { display: block; padding: 15px; background: #f0f0f0; border-radius: 8px; text-decoration: none; color: #333; margin-bottom: 10px; }
+        .pdf-link:hover { background: #667eea; color: white; }
+        .pdf-link.empty { opacity: 0.5; pointer-events: none; }
+        .success-message { background: #4caf50; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: none; }
+        .success-message.show { display: block; }
+        .filter-btn { padding: 10px 20px; background: #f0f0f0; border: 2px solid #ddd; border-radius: 20px; cursor: pointer; margin: 0 5px 10px 0; }
+        .filter-btn.active { background: #667eea; color: white; border-color: #667eea; }
+        .checkbox-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 10px; }
+        .checkbox-item { display: flex; align-items: center; gap: 10px; padding: 12px; background: #f9f9f9; border-radius: 8px; }
+        .checkbox-item input { width: 20px; height: 20px; }
+        .checklist-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #f9f9f9; border-radius: 6px; margin-bottom: 8px; }
+        .checklist-item.complete { background: #e8f5e9; }
+        .checklist-item.incomplete { background: #ffebee; }
+        .action-buttons { display: flex; gap: 10px; margin-top: 20px; }
+        .action-buttons .btn { flex: 1; }
     </style>
 </head>
 <body>
@@ -455,144 +78,52 @@
                     <input type="text" id="search-input" placeholder="🔍 名前で検索...">
                     <button class="btn" id="search-btn">検索</button>
                 </div>
-                
-                <div class="filter-buttons" id="batch-filters"></div>
-                
+                <div id="batch-filters" style="margin-bottom:20px;"></div>
                 <div id="staff-list" class="staff-grid"></div>
-                <div id="no-results" class="no-results" style="display:none;">
-                    該当するスタッフが見つかりません
-                </div>
+                <div id="no-results" style="display:none;text-align:center;padding:40px;color:#999;">該当なし</div>
             </div>
             
             <div id="add-tab" class="tab-content">
-                <div class="success-message" id="success-message">✅ 登録が完了しました！</div>
-                
+                <div class="success-message" id="success-message">✅ 登録完了！</div>
                 <form id="staff-form">
-                    <h2 style="margin-bottom: 30px;">基本情報</h2>
-                    
+                    <h2 style="margin-bottom:30px;">基本情報</h2>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>名前 *</label>
-                            <input type="text" name="name" required>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>生年月日</label>
-                            <input type="date" name="birth_date">
-                        </div>
+                        <div class="form-group"><label>名前 *</label><input type="text" name="name" required></div>
+                        <div class="form-group"><label>生年月日</label><input type="date" name="birth_date"></div>
                     </div>
-                    
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>性別</label>
-                            <select name="gender">
-                                <option value="">選択してください</option>
-                                <option value="男性">男性</option>
-                                <option value="女性">女性</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>国籍</label>
-                            <input type="text" name="nationality" value="Laos">
-                        </div>
+                        <div class="form-group"><label>性別</label><select name="gender"><option value="">選択</option><option value="男性">男性</option><option value="女性">女性</option></select></div>
+                        <div class="form-group"><label>国籍</label><input type="text" name="nationality" value="Laos"></div>
                     </div>
-                    
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>パスポート番号</label>
-                            <input type="text" name="passport_number">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>電話番号</label>
-                            <input type="text" name="phone_number">
-                        </div>
+                        <div class="form-group"><label>パスポート番号</label><input type="text" name="passport_number"></div>
+                        <div class="form-group"><label>電話番号</label><input type="text" name="phone_number"></div>
                     </div>
-                    
-                    <h2 style="margin: 40px 0 30px;">期・日付情報</h2>
-                    
+                    <h2 style="margin:40px 0 30px;">期・日付情報</h2>
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>第○期生</label>
-                            <input type="text" name="batch" placeholder="例: 第3期生">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>面接日</label>
-                            <input type="date" name="interview_date">
-                        </div>
+                        <div class="form-group"><label>第○期生</label><input type="text" name="batch" placeholder="例:第3期生"></div>
+                        <div class="form-group"><label>面接日</label><input type="date" name="interview_date"></div>
                     </div>
-                    
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>KIT勉強開始日</label>
-                            <input type="date" name="kit_start_date">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>契約開始日</label>
-                            <input type="date" name="contract_start">
-                        </div>
+                        <div class="form-group"><label>KIT勉強開始日</label><input type="date" name="kit_start_date"></div>
+                        <div class="form-group"><label>契約開始日</label><input type="date" name="contract_start"></div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label>契約終了日</label>
-                        <input type="date" name="contract_end">
-                    </div>
-                    
-                    <h2 style="margin: 40px 0 20px;">📋 書類チェックリスト</h2>
-                    
+                    <div class="form-group"><label>契約終了日</label><input type="date" name="contract_end"></div>
+                    <h2 style="margin:40px 0 20px;">📋 書類チェックリスト</h2>
                     <div class="checkbox-group">
-                        <div class="checkbox-item">
-                            <input type="checkbox" name="has_passport" id="add_has_passport">
-                            <label for="add_has_passport">パスポート</label>
-                        </div>
-                        <div class="checkbox-item">
-                            <input type="checkbox" name="has_idcard" id="add_has_idcard">
-                            <label for="add_has_idcard">IDカード</label>
-                        </div>
-                        <div class="checkbox-item">
-                            <input type="checkbox" name="has_health_check" id="add_has_health_check">
-                            <label for="add_has_health_check">健康診断書</label>
-                        </div>
-                        <div class="checkbox-item">
-                            <input type="checkbox" name="has_contract" id="add_has_contract">
-                            <label for="add_has_contract">労働契約書</label>
-                        </div>
-                        <div class="checkbox-item">
-                            <input type="checkbox" name="has_visa" id="add_has_visa">
-                            <label for="add_has_visa">ビザ</label>
-                        </div>
-                        <div class="checkbox-item">
-                            <input type="checkbox" name="has_insurance" id="add_has_insurance">
-                            <label for="add_has_insurance">保険証</label>
-                        </div>
+                        <div class="checkbox-item"><input type="checkbox" name="has_passport" id="p1"><label for="p1">パスポート</label></div>
+                        <div class="checkbox-item"><input type="checkbox" name="has_idcard" id="p2"><label for="p2">IDカード</label></div>
+                        <div class="checkbox-item"><input type="checkbox" name="has_health_check" id="p3"><label for="p3">健康診断書</label></div>
+                        <div class="checkbox-item"><input type="checkbox" name="has_contract" id="p4"><label for="p4">労働契約書</label></div>
+                        <div class="checkbox-item"><input type="checkbox" name="has_visa" id="p5"><label for="p5">ビザ</label></div>
+                        <div class="checkbox-item"><input type="checkbox" name="has_insurance" id="p6"><label for="p6">保険証</label></div>
                     </div>
-                    
-                    <h2 style="margin: 40px 0 30px;">📎 ファイルURL（Google Driveリンク等）</h2>
-                    
-                    <div class="form-group">
-                        <label>顔写真URL</label>
-                        <input type="url" name="photo_url" placeholder="https://drive.google.com/...">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>パスポートPDF URL</label>
-                        <input type="url" name="passport_pdf_url" placeholder="https://drive.google.com/...">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>IDカードPDF URL</label>
-                        <input type="url" name="idcard_pdf_url" placeholder="https://drive.google.com/...">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>健康診断書PDF URL</label>
-                        <input type="url" name="health_check_pdf_url" placeholder="https://drive.google.com/...">
-                    </div>
-                    
-                    <button type="submit" class="btn" style="margin-top: 30px; width: 100%;">✅ 登録する</button>
+                    <h2 style="margin:40px 0 30px;">📎 ファイルURL</h2>
+                    <div class="form-group"><label>顔写真URL</label><input type="url" name="photo_url"></div>
+                    <div class="form-group"><label>パスポートPDF</label><input type="url" name="passport_pdf_url"></div>
+                    <div class="form-group"><label>IDカードPDF</label><input type="url" name="idcard_pdf_url"></div>
+                    <div class="form-group"><label>健康診断書PDF</label><input type="url" name="health_check_pdf_url"></div>
+                    <button type="submit" class="btn" style="margin-top:30px;width:100%;">✅ 登録</button>
                 </form>
             </div>
         </div>
@@ -600,255 +131,212 @@
     
     <div id="detail-modal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>スタッフ詳細</h2>
-                <button class="close-btn" id="close-detail-btn">&times;</button>
-            </div>
+            <div class="modal-header"><h2>スタッフ詳細</h2><button class="close-btn" id="close-detail">&times;</button></div>
             <div id="detail-content"></div>
         </div>
     </div>
     
     <div id="edit-modal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2>スタッフ編集</h2>
-                <button class="close-btn" id="close-edit-btn">&times;</button>
-            </div>
+            <div class="modal-header"><h2>編集</h2><button class="close-btn" id="close-edit">&times;</button></div>
             <form id="edit-form"></form>
         </div>
     </div>
 
     <script>
-        (function() {
-            const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
-            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnbXFsbHVmbXFhbml4Z3dkam9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk0MjAsImV4cCI6MjA4MjkxNTQyMH0.xg-5T7DfcW2enMAXvudNOMPbvvm1WSwRHGZ_Vpdyrrw';
-            
-            const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            
-            let allStaff = [];
-            let currentBatchFilter = 'all';
-            let currentEditId = null;
-            
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', function() {
-                    const tabName = this.getAttribute('data-tab');
-                    
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    this.classList.add('active');
-                    
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                    document.getElementById(tabName + '-tab').classList.add('active');
-                    
-                    if (tabName === 'list') {
-                        loadStaff();
-                    }
-                });
-            });
-            
-            document.getElementById('search-input').addEventListener('input', searchStaff);
-            document.getElementById('search-btn').addEventListener('click', searchStaff);
-            
-            document.getElementById('close-detail-btn').addEventListener('click', () => closeModal('detail-modal'));
-            document.getElementById('close-edit-btn').addEventListener('click', () => closeModal('edit-modal'));
-            
-            document.getElementById('detail-modal').addEventListener('click', function(e) {
-                if (e.target.id === 'detail-modal') {
-                    closeModal('detail-modal');
-                }
-            });
-            
-            document.getElementById('edit-modal').addEventListener('click', function(e) {
-                if (e.target.id === 'edit-modal') {
-                    closeModal('edit-modal');
-                }
-            });
-            
-            document.getElementById('staff-form').addEventListener('submit', submitForm);
-            document.getElementById('edit-form').addEventListener('submit', submitEditForm);
-            
-            async function loadStaff() {
-                const { data, error } = await supabase
-                    .from('workers')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                
-                if (error) {
-                    console.error('Error:', error);
-                    return;
-                }
-                
-                allStaff = data || [];
-                createBatchFilters();
-                displayStaff(allStaff);
-            }
-            
-            function createBatchFilters() {
-                const batches = [...new Set(allStaff.map(s => s.batch).filter(b => b))];
-                const container = document.getElementById('batch-filters');
-                
-                container.innerHTML = '';
-                
-                const allBtn = document.createElement('button');
-                allBtn.className = 'filter-btn' + (currentBatchFilter === 'all' ? ' active' : '');
-                allBtn.textContent = '全て表示';
-                allBtn.addEventListener('click', () => filterByBatch('all'));
-                container.appendChild(allBtn);
-                
-                batches.forEach(batch => {
-                    const btn = document.createElement('button');
-                    btn.className = 'filter-btn' + (currentBatchFilter === batch ? ' active' : '');
-                    btn.textContent = batch;
-                    btn.addEventListener('click', () => filterByBatch(batch));
-                    container.appendChild(btn);
-                });
-            }
-            
-            function filterByBatch(batch) {
-                currentBatchFilter = batch;
-                createBatchFilters();
-                
-                if (batch === 'all') {
-                    displayStaff(allStaff);
-                } else {
-                    displayStaff(allStaff.filter(s => s.batch === batch));
-                }
-            }
-            
-            function searchStaff() {
-                const query = document.getElementById('search-input').value.toLowerCase();
-                
-                let filtered = allStaff;
-                if (currentBatchFilter !== 'all') {
-                    filtered = filtered.filter(s => s.batch === currentBatchFilter);
-                }
-                
-                if (query) {
-                    filtered = filtered.filter(s => 
-                        s.name?.toLowerCase().includes(query) ||
-                        s.passport_number?.toLowerCase().includes(query)
-                    );
-                }
-                
-                displayStaff(filtered);
-            }
-            
-            function displayStaff(staff) {
-                const container = document.getElementById('staff-list');
-                const noResults = document.getElementById('no-results');
-                
-                if (staff.length === 0) {
-                    container.style.display = 'none';
-                    noResults.style.display = 'block';
-                    return;
-                }
-                
-                container.style.display = 'grid';
-                noResults.style.display = 'none';
-                
-                container.innerHTML = staff.map(s => {
-                    const completedDocs = [s.has_passport, s.has_idcard, s.has_health_check, s.has_contract, s.has_visa, s.has_insurance].filter(Boolean).length;
-                    return `
-                        <div class="staff-card" data-id="${s.id}">
-                            ${s.photo_url ? 
-                                `<img src="${s.photo_url}" alt="${s.name}" class="staff-photo">` :
-                                `<div class="staff-photo" style="display:flex;align-items:center;justify-content:center;font-size:3em;">👤</div>`
-                            }
-                            <div class="staff-name">${s.name || '名前未登録'}</div>
-                            <div class="staff-info">
-                                ${s.batch ? `📚 ${s.batch}<br>` : ''}
-                                ${s.passport_number ? `🛂 ${s.passport_number}<br>` : ''}
-                                ${s.phone_number ? `📱 ${s.phone_number}<br>` : ''}
-                                📋 書類: ${completedDocs}/6
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                
-                document.querySelectorAll('.staff-card').forEach(card => {
-                    card.addEventListener('click', function() {
-                        const id = parseInt(this.getAttribute('data-id'));
-                        showDetail(id);
-                    });
-                });
-            }
-            
-            function showDetail(id) {
-                const staff = allStaff.find(s => s.id === id);
-                if (!staff) return;
-                
-                const content = document.getElementById('detail-content');
-                content.innerHTML = `
-                    ${staff.photo_url ? 
-                        `<img src="${staff.photo_url}" alt="${staff.name}" class="detail-photo">` :
-                        `<div class="detail-photo" style="display:flex;align-items:center;justify-content:center;font-size:5em;background:#f0f0f0;">👤</div>`
-                    }
-                    
-                    <div class="detail-section">
-                        <h3>📋 基本情報</h3>
-                        ${createDetailRow('名前', staff.name)}
-                        ${createDetailRow('生年月日', staff.birth_date)}
-                        ${createDetailRow('性別', staff.gender)}
-                        ${createDetailRow('国籍', staff.nationality)}
-                        ${createDetailRow('パスポート番号', staff.passport_number)}
-                        ${createDetailRow('電話番号', staff.phone_number)}
-                    </div>
-                    
-                    <div class="detail-section">
-                        <h3>📅 期・日付情報</h3>
-                        ${createDetailRow('期', staff.batch)}
-                        ${createDetailRow('面接日', staff.interview_date)}
-                        ${createDetailRow('KIT勉強開始日', staff.kit_start_date)}
-                        ${createDetailRow('契約開始日', staff.contract_start)}
-                        ${createDetailRow('契約終了日', staff.contract_end)}
-                    </div>
-                    
-                    <div class="detail-section">
-                        <h3>✅ 書類チェックリスト</h3>
-                        <div class="checklist-status">
-                            ${createChecklistItem('パスポート', staff.has_passport)}
-                            ${createChecklistItem('IDカード', staff.has_idcard)}
-                            ${createChecklistItem('健康診断書', staff.has_health_check)}
-                            ${createChecklistItem('労働契約書', staff.has_contract)}
-                            ${createChecklistItem('ビザ', staff.has_visa)}
-                            ${createChecklistItem('保険証', staff.has_insurance)}
-                        </div>
-                    </div>
-                    
-                    <div class="detail-section">
-                        <h3>📎 書類リンク</h3>
-                        <div class="pdf-links">
-                            ${createPdfLink('パスポート', staff.passport_pdf_url)}
-                            ${createPdfLink('IDカード', staff.idcard_pdf_url)}
-                            ${createPdfLink('健康診断書', staff.health_check_pdf_url)}
-                        </div>
-                    </div>
-                    
-                    <div class="action-buttons">
-                        <button class="btn" onclick="window.editStaff(${staff.id})">✏️ 編集</button>
-                        <button class="btn btn-danger" onclick="window.deleteStaff(${staff.id})">🗑️ 削除</button>
-                    </div>
-                `;
-                
-                document.getElementById('detail-modal').classList.add('active');
-            }
-            
-            function createDetailRow(label, value) {
-                if (!value) return '';
-                return `
-                    <div class="detail-row">
-                        <div class="detail-label">${label}:</div>
-                        <div>${value}</div>
-                    </div>
-                `;
-            }
-            
-            function createChecklistItem(label, isComplete) {
-                return `
-                    <div class="checklist-item ${isComplete ? 'complete' : 'incomplete'}">
-                        <span>${isComplete ? '✅' : '❌'}</span>
-                        <span>${label}</span>
-                    </div>
-                `;
-            }
-            
-            function createPdfLink(label, url) {
+(function() {
+    const sb = window.supabase.createClient('https://zgmqllufmqanixgwdjok.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnbXFsbHVmbXFhbml4Z3dkam9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk0MjAsImV4cCI6MjA4MjkxNTQyMH0.xg-5T7DfcW2enMAXvudNOMPbvvm1WSwRHGZ_Vpdyrrw');
+    let all = [], flt = 'all', eid = null;
+    
+    document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', function() {
+        const n = this.getAttribute('data-tab');
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        this.classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
+        document.getElementById(n + '-tab').classList.add('active');
+        if (n === 'list') load();
+    }));
+    
+    document.getElementById('search-input').addEventListener('input', search);
+    document.getElementById('search-btn').addEventListener('click', search);
+    document.getElementById('close-detail').addEventListener('click', () => close('detail-modal'));
+    document.getElementById('close-edit').addEventListener('click', () => close('edit-modal'));
+    document.getElementById('detail-modal').addEventListener('click', e => { if (e.target.id === 'detail-modal') close('detail-modal'); });
+    document.getElementById('edit-modal').addEventListener('click', e => { if (e.target.id === 'edit-modal') close('edit-modal'); });
+    document.getElementById('staff-form').addEventListener('submit', add);
+    document.getElementById('edit-form').addEventListener('submit', update);
+    
+    async function load() {
+        const {data, error} = await sb.from('workers').select('*').order('created_at', {ascending: false});
+        if (error) { console.error(error); return; }
+        all = data || [];
+        filters();
+        show(all);
+    }
+    
+    function filters() {
+        const b = [...new Set(all.map(s => s.batch).filter(x => x))];
+        const c = document.getElementById('batch-filters');
+        c.innerHTML = '';
+        const a = document.createElement('button');
+        a.className = 'filter-btn' + (flt === 'all' ? ' active' : '');
+        a.textContent = '全て';
+        a.onclick = () => filter('all');
+        c.appendChild(a);
+        b.forEach(x => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn' + (flt === x ? ' active' : '');
+            btn.textContent = x;
+            btn.onclick = () => filter(x);
+            c.appendChild(btn);
+        });
+    }
+    
+    function filter(b) {
+        flt = b;
+        filters();
+        show(b === 'all' ? all : all.filter(s => s.batch === b));
+    }
+    
+    function search() {
+        const q = document.getElementById('search-input').value.toLowerCase();
+        let f = flt === 'all' ? all : all.filter(s => s.batch === flt);
+        if (q) f = f.filter(s => s.name?.toLowerCase().includes(q) || s.passport_number?.toLowerCase().includes(q));
+        show(f);
+    }
+    
+    function show(d) {
+        const c = document.getElementById('staff-list'), n = document.getElementById('no-results');
+        if (d.length === 0) { c.style.display = 'none'; n.style.display = 'block'; return; }
+        c.style.display = 'grid'; n.style.display = 'none';
+        c.innerHTML = d.map(s => {
+            const cnt = [s.has_passport, s.has_idcard, s.has_health_check, s.has_contract, s.has_visa, s.has_insurance].filter(Boolean).length;
+            return `<div class="staff-card" onclick="detail(${s.id})">
+                ${s.photo_url ? `<img src="${s.photo_url}" class="staff-photo">` : `<div class="staff-photo" style="display:flex;align-items:center;justify-content:center;font-size:3em;">👤</div>`}
+                <div class="staff-name">${s.name || '未登録'}</div>
+                <div class="staff-info">${s.batch ? `📚 ${s.batch}<br>` : ''}${s.passport_number ? `🛂 ${s.passport_number}<br>` : ''}📋 書類: ${cnt}/6</div>
+            </div>`;
+        }).join('');
+    }
+    
+    window.detail = function(id) {
+        const s = all.find(x => x.id === id);
+        if (!s) return;
+        document.getElementById('detail-content').innerHTML = `
+            ${s.photo_url ? `<img src="${s.photo_url}" style="width:250px;height:300px;object-fit:cover;border-radius:12px;margin:0 auto 20px;display:block;">` : `<div style="width:250px;height:300px;background:#f0f0f0;border-radius:12px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:5em;">👤</div>`}
+            <div class="detail-section"><h3>📋 基本情報</h3>
+                ${row('名前', s.name)}${row('生年月日', s.birth_date)}${row('性別', s.gender)}${row('国籍', s.nationality)}${row('パスポート', s.passport_number)}${row('電話', s.phone_number)}
+            </div>
+            <div class="detail-section"><h3>📅 期・日付</h3>
+                ${row('期', s.batch)}${row('面接日', s.interview_date)}${row('KIT開始', s.kit_start_date)}${row('契約開始', s.contract_start)}${row('契約終了', s.contract_end)}
+            </div>
+            <div class="detail-section"><h3>✅ チェックリスト</h3>
+                ${chk('パスポート', s.has_passport)}${chk('IDカード', s.has_idcard)}${chk('健康診断書', s.has_health_check)}${chk('労働契約書', s.has_contract)}${chk('ビザ', s.has_visa)}${chk('保険証', s.has_insurance)}
+            </div>
+            <div class="detail-section"><h3>📎 書類</h3>
+                ${link('パスポート', s.passport_pdf_url)}${link('IDカード', s.idcard_pdf_url)}${link('健康診断書', s.health_check_pdf_url)}
+            </div>
+            <div class="action-buttons">
+                <button class="btn" onclick="edit(${s.id})">✏️ 編集</button>
+                <button class="btn btn-danger" onclick="del(${s.id})">🗑️ 削除</button>
+            </div>`;
+        document.getElementById('detail-modal').classList.add('active');
+    };
+    
+    function row(l, v) { return v ? `<div class="detail-row"><div class="detail-label">${l}:</div><div>${v}</div></div>` : ''; }
+    function chk(l, c) { return `<div class="checklist-item ${c ? 'complete' : 'incomplete'}"><span>${c ? '✅' : '❌'}</span><span>${l}</span></div>`; }
+    function link(l, u) { return u ? `<a href="${u}" target="_blank" class="pdf-link">📄 ${l}</a>` : `<div class="pdf-link empty">❌ ${l} (未登録)</div>`; }
+    
+    window.edit = function(id) {
+        eid = id;
+        const s = all.find(x => x.id === id);
+        document.getElementById('edit-form').innerHTML = `
+            <div class="form-row">
+                <div class="form-group"><label>名前</label><input name="name" value="${s.name || ''}"></div>
+                <div class="form-group"><label>生年月日</label><input type="date" name="birth_date" value="${s.birth_date || ''}"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>性別</label><select name="gender"><option value="">選択</option><option value="男性" ${s.gender === '男性' ? 'selected' : ''}>男性</option><option value="女性" ${s.gender === '女性' ? 'selected' : ''}>女性</option></select></div>
+                <div class="form-group"><label>国籍</label><input name="nationality" value="${s.nationality || ''}"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>パスポート</label><input name="passport_number" value="${s.passport_number || ''}"></div>
+                <div class="form-group"><label>電話</label><input name="phone_number" value="${s.phone_number || ''}"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>期</label><input name="batch" value="${s.batch || ''}"></div>
+                <div class="form-group"><label>面接日</label><input type="date" name="interview_date" value="${s.interview_date || ''}"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>KIT開始</label><input type="date" name="kit_start_date" value="${s.kit_start_date || ''}"></div>
+                <div class="form-group"><label>契約開始</label><input type="date" name="contract_start" value="${s.contract_start || ''}"></div>
+            </div>
+            <div class="form-group"><label>契約終了</label><input type="date" name="contract_end" value="${s.contract_end || ''}"></div>
+            <h3 style="margin:20px 0;">チェックリスト</h3>
+            <div class="checkbox-group">
+                <div class="checkbox-item"><input type="checkbox" name="has_passport" ${s.has_passport ? 'checked' : ''}><label>パスポート</label></div>
+                <div class="checkbox-item"><input type="checkbox" name="has_idcard" ${s.has_idcard ? 'checked' : ''}><label>IDカード</label></div>
+                <div class="checkbox-item"><input type="checkbox" name="has_health_check" ${s.has_health_check ? 'checked' : ''}><label>健康診断書</label></div>
+                <div class="checkbox-item"><input type="checkbox" name="has_contract" ${s.has_contract ? 'checked' : ''}><label>労働契約書</label></div>
+                <div class="checkbox-item"><input type="checkbox" name="has_visa" ${s.has_visa ? 'checked' : ''}><label>ビザ</label></div>
+                <div class="checkbox-item"><input type="checkbox" name="has_insurance" ${s.has_insurance ? 'checked' : ''}><label>保険証</label></div>
+            </div>
+            <h3 style="margin:20px 0;">URL</h3>
+            <div class="form-group"><label>顔写真</label><input type="url" name="photo_url" value="${s.photo_url || ''}"></div>
+            <div class="form-group"><label>パスポートPDF</label><input type="url" name="passport_pdf_url" value="${s.passport_pdf_url || ''}"></div>
+            <div class="form-group"><label>IDカードPDF</label><input type="url" name="idcard_pdf_url" value="${s.idcard_pdf_url || ''}"></div>
+            <div class="form-group"><label>健康診断書PDF</label><input type="url" name="health_check_pdf_url" value="${s.health_check_pdf_url || ''}"></div>
+            <button type="submit" class="btn" style="width:100%;margin-top:20px;">💾 保存</button>`;
+        document.getElementById('edit-modal').classList.add('active');
+    };
+    
+    window.del = async function(id) {
+        if (!confirm('本当に削除しますか？')) return;
+        const {error} = await sb.from('workers').delete().eq('id', id);
+        if (error) { alert('エラー: ' + error.message); return; }
+        close('detail-modal');
+        load();
+    };
+    
+    function close(m) { document.getElementById(m).classList.remove('active'); }
+    
+    async function add(e) {
+        e.preventDefault();
+        const f = new FormData(e.target), d = {};
+        for (let [k, v] of f.entries()) d[k] = v || null;
+        d.has_passport = !!f.get('has_passport');
+        d.has_idcard = !!f.get('has_idcard');
+        d.has_health_check = !!f.get('has_health_check');
+        d.has_contract = !!f.get('has_contract');
+        d.has_visa = !!f.get('has_visa');
+        d.has_insurance = !!f.get('has_insurance');
+        const {error} = await sb.from('workers').insert([d]);
+        if (error) { alert('エラー: ' + error.message); return; }
+        document.getElementById('success-message').classList.add('show');
+        e.target.reset();
+        setTimeout(() => document.getElementById('success-message').classList.remove('show'), 3000);
+        load();
+    }
+    
+    async function update(e) {
+        e.preventDefault();
+        const f = new FormData(e.target), d = {};
+        for (let [k, v] of f.entries()) d[k] = v || null;
+        d.has_passport = !!f.get('has_passport');
+        d.has_idcard = !!f.get('has_idcard');
+        d.has_health_check = !!f.get('has_health_check');
+        d.has_contract = !!f.get('has_contract');
+        d.has_visa = !!f.get('has_visa');
+        d.has_insurance = !!f.get('has_insurance');
+        const {error} = await sb.from('workers').update(d).eq('id', eid);
+        if (error) { alert('エラー: ' + error.message); return; }
+        close('edit-modal');
+        close('detail-modal');
+        load();
+    }
+    
+    load();
+})();
+    </script>
+</body>
+</html>
