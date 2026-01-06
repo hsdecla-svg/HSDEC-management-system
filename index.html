@@ -1185,6 +1185,8 @@ window.showAddUserModal = function() {
 };
 
 window.loadUsers = async function() {
+    const sb = window.supabase.createClient('https://zgmqllufmqanixgwdjok.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnbXFsbHVmbXFhbml4Z3dkam9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk0MjAsImV4cCI6MjA4MjkxNTQyMH0.xg-5T7DfcW2enMAXvudNOMPbvvm1WSwRHGZ_Vpdyrrw');
+    
     const { data, error } = await sb.from('users').select('*').order('created_at', { ascending: false });
     if (error) {
         console.error('Error loading users:', error);
@@ -1215,6 +1217,8 @@ window.loadUsers = async function() {
 };
 
 window.editUser = async function(userId) {
+    const sb = window.supabase.createClient('https://zgmqllufmqanixgwdjok.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnbXFsbHVmbXFhbml4Z3dkam9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk0MjAsImV4cCI6MjA4MjkxNTQyMH0.xg-5T7DfcW2enMAXvudNOMPbvvm1WSwRHGZ_Vpdyrrw');
+    
     const { data, error } = await sb.from('users').select('*').eq('id', userId).single();
     if (error) {
         alert('ユーザー情報の取得に失敗しました');
@@ -1232,6 +1236,8 @@ window.editUser = async function(userId) {
 };
 
 window.deleteUser = async function(userId, email) {
+    const sb = window.supabase.createClient('https://zgmqllufmqanixgwdjok.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnbXFsbHVmbXFhbml4Z3dkam9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk0MjAsImV4cCI6MjA4MjkxNTQyMH0.xg-5T7DfcW2enMAXvudNOMPbvvm1WSwRHGZ_Vpdyrrw');
+    
     if (!confirm(`${email} を削除しますか？`)) return;
     
     const { error } = await sb.from('users').delete().eq('id', userId);
