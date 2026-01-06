@@ -766,28 +766,30 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
     }
         
     window.detail = function(id) {
-        const s = all.find(x => x.id === id);
-        if (!s) return;
-        document.getElementById('detail-content').innerHTML = `
-            ${s.photo_url ? `<img src="${s.photo_url}" style="width:250px;height:300px;object-fit:cover;border-radius:12px;margin:0 auto 20px;display:block;">` : `<div style="width:250px;height:300px;background:#f0f0f0;border-radius:12px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:5em;">👤</div>`}
-            <div class="detail-section"><h3>📋 基本情報</h3>
-                ${row('名前', s.name)}${row('生年月日', s.birth_date)}${row('性別', s.gender)}${row('国籍', s.nationality)}${row('パスポート', s.passport_number)}${row('電話', s.phone_number)}
-            </div>
-            <div class="detail-section"><h3>📅 期・日付</h3>
-                ${row('期', s.batch)}${row('面接日', s.interview_date)}${row('KIT開始', s.kit_start_date)}${row('契約開始', s.contract_start)}${row('契約終了', s.contract_end)}
-            </div>
-            <div class="detail-section"><h3>✅ チェックリスト</h3>
-                ${chk('パスポート', s.has_passport)}${chk('IDカード', s.has_idcard)}${chk('健康診断書', s.has_health_check)}${chk('労働契約書', s.has_contract)}${chk('ビザ', s.has_visa)}${chk('保険証', s.has_insurance)}
-            </div>
-            <div class="detail-section"><h3>📎 書類</h3>
-                ${link('パスポート', s.passport_pdf_url)}${link('IDカード', s.idcard_pdf_url)}${link('健康診断書', s.health_check_pdf_url)}
-            </div>
-            <div class="action-buttons">
-                <button class="btn" onclick="edit(${s.id})">✏️ 編集</button>
-                <button class="btn btn-danger" onclick="del(${s.id})">🗑️ 削除</button>
-            </div>`;
-        document.getElementById('detail-modal').classList.add('active');
-    };
+    const s = all.find(x => x.id === id);
+    if (!s) return;
+    const t = translations[currentLang];
+    
+    document.getElementById('detail-content').innerHTML = `
+        ${s.photo_url ? `<img src="${s.photo_url}" style="width:250px;height:300px;object-fit:cover;border-radius:12px;margin:0 auto 20px;display:block;">` : `<div style="width:250px;height:300px;background:#f0f0f0;border-radius:12px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:5em;">👤</div>`}
+        <div class="detail-section"><h3>${t.detailBasic || '📋 基本情報'}</h3>
+            ${row(t.formName || '名前', s.name)}${row(t.formBirthDate || '生年月日', s.birth_date)}${row(t.formGender || '性別', s.gender)}${row(t.formNationality || '国籍', s.nationality)}${row(t.formPassport || 'パスポート', s.passport_number)}${row(t.formPhone || '電話', s.phone_number)}
+        </div>
+        <div class="detail-section"><h3>${t.detailPeriod || '📅 期・日付'}</h3>
+            ${row(t.detailPeriodLabel || '期', s.batch)}${row(t.formInterview || '面接日', s.interview_date)}${row(t.formKitStart || 'KIT開始', s.kit_start_date)}${row(t.formContractStart || '契約開始', s.contract_start)}${row(t.formContractEnd || '契約終了', s.contract_end)}
+        </div>
+        <div class="detail-section"><h3>${t.detailDocs || '✅ チェックリスト'}</h3>
+            ${chk(t.formDocPassport || 'パスポート', s.has_passport)}${chk(t.formDocId || 'IDカード', s.has_idcard)}${chk(t.formDocHealth || '健康診断書', s.has_health_check)}${chk(t.formDocContract || '労働契約書', s.has_contract)}${chk(t.formDocVisa || 'ビザ', s.has_visa)}${chk(t.formDocInsurance || '保険証', s.has_insurance)}
+        </div>
+        <div class="detail-section"><h3>${t.detailFiles || '📎 書類'}</h3>
+            ${link(t.formDocPassport || 'パスポート', s.passport_pdf_url)}${link(t.formDocId || 'IDカード', s.idcard_pdf_url)}${link(t.formDocHealth || '健康診断書', s.health_check_pdf_url)}
+        </div>
+        <div class="action-buttons">
+            <button class="btn" onclick="edit(${s.id})">${t.btnEdit || '✏️ 編集'}</button>
+            <button class="btn btn-danger" onclick="del(${s.id})">${t.btnDelete || '🗑️ 削除'}</button>
+        </div>`;
+    document.getElementById('detail-modal').classList.add('active');
+};
     
     function row(l, v) { return v ? `<div class="detail-row"><div class="detail-label">${l}:</div><div>${v}</div></div>` : ''; }
     function chk(l, c) { return `<div class="checklist-item ${c ? 'complete' : 'incomplete'}"><span>${c ? '✅' : '❌'}</span><span>${l}</span></div>`; }
