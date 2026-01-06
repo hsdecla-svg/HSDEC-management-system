@@ -105,11 +105,11 @@ body {
             </div>
 
             <div style="margin-bottom:20px;display:flex;gap:10px;align-items:center;">
-    <button class="btn btn-success btn-small" onclick="exportExcel()">📥 Excel出力</button>
-    <button class="btn btn-success btn-small" onclick="exportCSV()">📄 CSV出力</button>
-    <button class="btn btn-danger btn-small" id="bulk-delete-btn" style="display:none;" onclick="bulkDelete()">🗑️ 選択を削除</button>
+    <button class="btn btn-success btn-small" onclick="exportExcel()"><span data-i18n="btnExcelExport">📥 Excel出力</span></button>
+    <button class="btn btn-success btn-small" onclick="exportCSV()"><span data-i18n="btnCsvExport">📄 CSV出力</span></button>
+    <button class="btn btn-danger btn-small" id="bulk-delete-btn" style="display:none;" onclick="bulkDelete()"><span data-i18n="btnBulkDelete">🗑️ 選択を削除</span></button>
     <label style="margin-left:auto;">
-        <input type="checkbox" id="select-mode" onchange="toggleSelectMode()"> 選択モード
+        <input type="checkbox" id="select-mode" onchange="toggleSelectMode()"> <span data-i18n="labelSelectMode">選択モード</span>
     </label>
 </div>
             
@@ -179,49 +179,33 @@ body {
                 </form>
             </div>
             <div id="stats-tab" class="tab-content">
-            <h2 style="margin-bottom:30px;">📊 統計ダッシュボード</h2>
+            <h2 style="margin-bottom:30px;"><span data-i18n="titleStatsDashboard">📊 統計ダッシュボード</span></h2>
             
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;margin-bottom:30px;">
                 <div style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:30px;border-radius:12px;text-align:center;">
                     <div style="font-size:3em;font-weight:bold;margin-bottom:10px;" id="stat-total">0</div>
-                    <div style="font-size:1.2em;opacity:0.9;">総労働者数</div>
+                    <div style="font-size:1.2em;opacity:0.9;" data-i18n="statTotalWorkers">総労働者数</div>
                 </div>
                 <div style="background:linear-gradient(135deg,#4caf50 0%,#66bb6a 100%);color:white;padding:30px;border-radius:12px;text-align:center;">
                     <div style="font-size:3em;font-weight:bold;margin-bottom:10px;" id="stat-complete">0%</div>
-                    <div style="font-size:1.2em;opacity:0.9;">書類完了率</div>
+                    <div style="font-size:1.2em;opacity:0.9;" data-i18n="statDocsComplete">書類完了率</div>
                 </div>
                 <div style="background:linear-gradient(135deg,#ff9800 0%,#ffa726 100%);color:white;padding:30px;border-radius:12px;text-align:center;">
                     <div style="font-size:3em;font-weight:bold;margin-bottom:10px;" id="stat-recent">0</div>
-                    <div style="font-size:1.2em;opacity:0.9;">今月の登録</div>
+                    <div style="font-size:1.2em;opacity:0.9;" data-i18n="statThisMonth">今月の登録</div>
                 </div>
             </div>
             
             <div style="background:white;padding:20px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);margin-bottom:20px;">
-                <h3 style="margin-bottom:20px;">期別労働者数</h3>
+                <h3 style="margin-bottom:20px;" data-i18n="chartBatchTitle">期別労働者数</h3>
                 <div id="batch-chart"></div>
             </div>
             
             <div style="background:white;padding:20px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);">
-                <h3 style="margin-bottom:20px;">書類提出状況</h3>
+                <h3 style="margin-bottom:20px;" data-i18n="chartDocsTitle">書類提出状況</h3>
                 <div id="docs-chart"></div>
             </div>
         </div>
-        </div>
-    </div>
-    
-    <div id="detail-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header"><h2>労働者詳細</h2><button class="close-btn" id="close-detail">&times;</button></div>
-            <div id="detail-content"></div>
-        </div>
-    </div>
-    
-    <div id="edit-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header"><h2>編集</h2><button class="close-btn" id="close-edit">&times;</button></div>
-            <form id="edit-form"></form>
-        </div>
-    </div>
 
     <script>
 window.addEventListener('DOMContentLoaded', function() {
@@ -291,6 +275,15 @@ function initApp() {
             formIdPdf: 'IDカードPDF',
             formHealthPdf: '健康診断書PDF',
             btnRegister: '✅ 登録',
+            btnExcelExport: '📥 Excel出力',
+            btnCsvExport: '📄 CSV出力',
+            labelSelectMode: '選択モード',
+            titleStatsDashboard: '📊 統計ダッシュボード',
+            statTotalWorkers: '総労働者数',
+            statDocsComplete: '書類完了率',
+            statThisMonth: '今月の登録',
+            chartBatchTitle: '期別労働者数',
+            chartDocsTitle: '書類提出状況',
             successMsg: '✅ 登録完了！',
             statsTitle: '📊 統計ダッシュボード',
             statTotal: '総労働者数',
@@ -367,6 +360,15 @@ function initApp() {
             formIdPdf: 'ID Card PDF',
             formHealthPdf: 'Health Certificate PDF',
             btnRegister: '✅ Register',
+            btnExcelExport: '📥 Excel Export',
+            btnCsvExport: '📄 CSV Export',
+            labelSelectMode: 'Selection Mode',
+            titleStatsDashboard: '📊 Statistics Dashboard',
+            statTotalWorkers: 'Total Workers',
+            statDocsComplete: 'Document Completion Rate',
+            statThisMonth: 'Registered This Month',
+            chartBatchTitle: 'Workers by Period',
+            chartDocsTitle: 'Document Submission Status',
             successMsg: '✅ Registration Complete!',
             statsTitle: '📊 Statistics Dashboard',
             statTotal: 'Total Workers',
@@ -443,6 +445,15 @@ function initApp() {
             formIdPdf: 'PDF ບັດປະຈຳຕົວ',
             formHealthPdf: 'PDF ໃບກວດສຸຂະພາບ',
             btnRegister: '✅ ລົງທະບຽນ',
+            btnExcelExport: '📥 ສົ່ງອອກ Excel',
+            btnCsvExport: '📄 ສົ່ງອອກ CSV',
+            labelSelectMode: 'ໂໝດເລືອກ',
+            titleStatsDashboard: '📊 ກະດານສະຖິຕິ',
+            statTotalWorkers: 'ຈຳນວນແຮງງານທັງໝົດ',
+            statDocsComplete: 'ອັດຕາເອກະສານຄົບ',
+            statThisMonth: 'ລົງທະບຽນເດືອນນີ້',
+            chartBatchTitle: 'ຈຳນວນແຮງງານຕາມລຸ້ນ',
+            chartDocsTitle: 'ສະຖານະການສົ່ງເອກະສານ',
             successMsg: '✅ ລົງທະບຽນສຳເລັດ!',
             statsTitle: '📊 ກະດານສະຖິຕິ',
             statTotal: 'ຈຳນວນແຮງງານທັງໝົດ',
