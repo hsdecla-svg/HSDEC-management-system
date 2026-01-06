@@ -206,7 +206,27 @@ body {
                 <div id="docs-chart"></div>
             </div>
         </div>
-
+            
+ <div id="detail-modal" class="modal"> 
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="detailTitle">労働者詳細</h2>
+                <button class="close-btn" id="close-detail">&times;</button>
+            </div>
+            <div id="detail-content"></div>
+        </div>
+    </div>
+    
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-i18n="editTitle">編集</h2>
+                <button class="close-btn" id="close-edit">&times;</button>
+            </div>
+            <form id="edit-form"></form>
+        </div>
+    </div> 
+            
     <script>
 window.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
