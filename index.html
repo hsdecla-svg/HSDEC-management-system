@@ -780,6 +780,33 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
     };
     
     window.clearAdv = function() {
+        window.exportExcel = function() {
+    const data = (filtered.length > 0 ? filtered : all);
+    
+    const rows = [
+        ['名前', 'パスポート番号', 'バッチ', '契約開始日', 'ビザ有効期限', 'ステータス', '書類状況']
+    ];
+    
+    data.forEach(w => {
+        const docCount = [w.has_passport, w.has_idcard, w.has_health_check, w.has_contract, w.has_visa, w.has_insurance].filter(Boolean).length;
+        rows.push([
+            w.name || '',
+            w.passport_number || '',
+            w.batch || '',
+            w.contract_start || '',
+            w.visa_expiry || '',
+            w.status || '',
+            docCount + '/6'
+        ]);
+    });
+    
+    const csv = rows.map(r => r.join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'workers_' + new Date().toISOString().split('T')[0] + '.csv';
+    link.click();
+};
         document.getElementById('adv-name').value = '';
         document.getElementById('adv-passport').value = '';
         document.getElementById('adv-batch').value = '';
