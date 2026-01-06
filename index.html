@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HSDEC Korean Worker Management System</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bcryptjs/2.4.3/bcrypt.min.js"></script>
     <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;600;700&display=swap');
 
@@ -327,7 +328,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     .from('users')
                     .select('*')
                     .eq('email', email)
-                    .eq('password', password)
                     .single();
                 
                 if (error || !data) {
@@ -335,6 +335,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('login-error').textContent = 'メールアドレスまたはパスワードが正しくありません';
                     return;
                 }
+                
+                // パスワードをハッシュと比較
+const isPasswordValid = bcrypt.compareSync(password, data.password_hash);
+if (!isPasswordValid) {
+    document.getElementById('login-error').style.display = 'block';
+    document.getElementById('login-error').textContent = 'メールアドレスまたはパスワードが正しくありません';
+    return;
+}
                 
                 // ログイン成功
                 currentUser = data;
