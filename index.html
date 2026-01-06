@@ -73,6 +73,27 @@ body {
     </style>
 </head>
 <body>
+     <!-- ログイン画面 -->
+    <div id="login-screen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div style="background:white;padding:40px;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,0.2);width:400px;max-width:90%;">
+            <h2 style="text-align:center;margin-bottom:30px;color:#333;">🏢 HSDEC ログイン</h2>
+            <form id="login-form">
+                <div style="margin-bottom:20px;">
+                    <label style="display:block;margin-bottom:8px;color:#666;font-weight:600;">メールアドレス</label>
+                    <input type="email" id="login-email" required style="width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:8px;font-size:16px;">
+                </div>
+                <div style="margin-bottom:30px;">
+                    <label style="display:block;margin-bottom:8px;color:#666;font-weight:600;">パスワード</label>
+                    <input type="password" id="login-password" required style="width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:8px;font-size:16px;">
+                </div>
+                <button type="submit" style="width:100%;padding:14px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;">ログイン</button>
+                <div id="login-error" style="display:none;margin-top:15px;padding:12px;background:#fee;border-radius:8px;color:#c33;text-align:center;"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- メインコンテンツ（最初は非表示） -->
+    <div id="main-content" style="display:none;">
     <div class="container">
         <header style="position:relative;">
     <div style="position:absolute;top:20px;right:20px;display:flex;gap:10px;">
@@ -228,9 +249,66 @@ body {
     </div> 
             
     <script>
-window.addEventListener('DOMContentLoaded', function() {
+        // セッション管理
+let currentUser = null;
+
+// ログイン処理
+document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const sb = window.supabase.createClient('https://zgmqllufmqanixgwdjok.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnbXFsbHVmbXFhbml4Z3dkam9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk0MjAsImV4cCI6MjA4MjkxNTQyMH0.xg-5T7DfcW2enMAXvudNOMPbvvm1WSwRHGZ_Vpdyrrw');
+                
+                const { data, error } = await sb
+                    .from('users')
+                    .select('*')
+                    .eq('email', email)
+                    .eq('password', password)
+                    .single();
+                
+                if (error || !data) {
+                    document.getElementById('login-error').style.display = 'block';
+                    document.getElementById('login-error').textContent = 'メールアドレスまたはパスワードが正しくありません';
+                    return;
+                }
+                
+                // ログイン成功
+                currentUser = data;
+                sessionStorage.setItem('currentUser', JSON.stringify(data));
+                
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-content').style.display = 'block';
+                
+                // アプリを初期化
+                initAppAfterLogin();
+                
+            } catch (err) {
+                console.error('Login error:', err);
+                document.getElementById('login-error').style.display = 'block';
+                document.getElementById('login-error').textContent = 'エラーが発生しました';
+            }
+        });
+    }
+    
+    // セッションチェック
+    const savedUser = sessionStorage.getItem('currentUser');
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        initAppAfterLogin();
+    }
+});
+
+function initAppAfterLogin() {
     setTimeout(function() {
-        if (typeof window.supabase === 'undefined') {
+if (typeof window.supabase === 'undefined') {
             console.error('Supabase library not loaded');
             alert('システムの読み込みに失敗しました。ページを再読み込みしてください。');
             return;
@@ -238,7 +316,7 @@ window.addEventListener('DOMContentLoaded', function() {
         
         initApp();
     }, 100);
-});
+}
 
 function initApp() {
     const sb = window.supabase.createClient('https://zgmqllufmqanixgwdjok.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnbXFsbHVmbXFhbml4Z3dkam9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk0MjAsImV4cCI6MjA4MjkxNTQyMH0.xg-5T7DfcW2enMAXvudNOMPbvvm1WSwRHGZ_Vpdyrrw');
@@ -997,8 +1075,53 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
     document.getElementById('lang-en').addEventListener('click', () => setLang('en'));
     document.getElementById('lang-lo').addEventListener('click', () => setLang('lo'));
     
-    load();
+    // 権限に応じてUIを調整
+    function applyRoleRestrictions() {
+        const role = currentUser?.role;
+        
+        if (role === 'viewer') {
+            // 閲覧者：登録タブを非表示、編集・削除ボタンを非表示
+            const addTab = document.querySelector('[data-tab="add"]');
+            if (addTab) addTab.style.display = 'none';
+            
+            // 編集・削除ボタンを非表示にするスタイルを追加
+            const style = document.createElement('style');
+            style.textContent = '.action-buttons { display: none !important; }';
+            document.head.appendChild(style);
+            
+        } else if (role === 'staff') {
+            // スタッフ：削除ボタンのみ非表示
+            const style = document.createElement('style');
+            style.textContent = '.btn-danger { display: none !important; } #bulk-delete-btn { display: none !important; }';
+            document.head.appendChild(style);
+        }
+        
+        // ユーザー情報を表示
+        const header = document.querySelector('.header');
+        if (header) {
+            const userInfo = document.createElement('div');
+            userInfo.style.cssText = 'margin-left:auto;display:flex;align-items:center;gap:15px;';
+            userInfo.innerHTML = `
+                <span style="color:white;">👤 ${currentUser.name} (${role === 'admin' ? '管理者' : role === 'staff' ? 'スタッフ' : '閲覧者'})</span>
+                <button onclick="logout()" style="padding:8px 16px;background:rgba(255,255,255,0.2);color:white;border:none;border-radius:6px;cursor:pointer;">ログアウト</button>
+            `;
+            header.appendChild(userInfo);
+        }
     }
-    </script>
+    
+    applyRoleRestrictions();
+    
+    load();
+}
+    // ログアウト機能
+window.logout = function() {
+    if (confirm('ログアウトしますか？')) {
+        currentUser = null;
+        sessionStorage.removeItem('currentUser');
+        location.reload();
+    }
+};
+</script>
+             </div> <!-- main-content の閉じタグ -->
 </body>
 </html>
