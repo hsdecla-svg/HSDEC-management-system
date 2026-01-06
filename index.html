@@ -699,8 +699,57 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
                 <div class="Worker-info">${s.batch ? `📚 ${s.batch}<br>` : ''}${s.passport_number ? `🛂 ${s.passport_number}<br>` : ''}${currentLang === 'en' ? '📋 Docs' : currentLang === 'lo' ? '📋 ເອກະສານ' : '📋 書類'}: ${cnt}/6</div>
             </div>`;
         }).join('');
-    }
+    };
     
+    window.setLang = function(lang) {
+        currentLang = lang;
+        localStorage.setItem('language', lang);
+        
+        if (lang === 'lo') {
+            document.body.style.fontFamily = "'Noto Sans Lao', 'Segoe UI', sans-serif";
+        } else {
+            document.body.style.fontFamily = "'Segoe UI', sans-serif";
+        }
+        
+        updateUI();
+    };
+    
+    function updateUI() {
+        const t = translations[currentLang];
+        
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (t[key]) {
+                el.textContent = t[key];
+            }
+        });
+        
+        document.querySelectorAll('[data-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-placeholder');
+            if (t[key]) {
+                el.placeholder = t[key];
+            }
+        });
+        
+        document.querySelectorAll('[data-first-option]').forEach(el => {
+            const key = el.getAttribute('data-first-option');
+            if (t[key] && el.options[0]) {
+                el.options[0].text = t[key];
+            }
+        });
+        
+        const docsSelect = document.getElementById('adv-docs');
+        if (docsSelect && docsSelect.options) {
+            if (docsSelect.options[0]) docsSelect.options[0].text = t.searchDocs;
+            if (docsSelect.options[1]) docsSelect.options[1].text = t.searchDocsComplete;
+            if (docsSelect.options[2]) docsSelect.options[2].text = t.searchDocsIncomplete;
+        }
+        
+        if (all.length > 0) {
+            filters();
+        }
+    }
+        
     window.detail = function(id) {
         const s = all.find(x => x.id === id);
         if (!s) return;
@@ -874,26 +923,6 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
         filtered = [];
         show(all);
     };
-
-    window.exportExcel = function() {
-    const data = (filtered.length > 0 ? filtered : all);
-    
-    const rows = [
-        ['名前', 'パスポート番号', 'バッチ', '契約開始日', 'ビザ有効期限', 'ステータス', '書類状況']
-    ];
-    
-    data.forEach(w => {
-        const docCount = [w.has_passport, w.has_idcard, w.has_health_check, w.has_contract, w.has_visa, w.has_insurance].filter(Boolean).length;
-        rows.push([
-            w.name || '',
-            w.passport_number || '',
-            w.batch || '',
-            w.contract_start || '',
-            w.visa_expiry || '',
-            w.status || '',
-            docCount + '/6'
-        ]);
-    });
     
     const csv = rows.map(r => r.join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
