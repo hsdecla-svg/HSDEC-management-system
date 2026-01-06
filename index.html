@@ -337,6 +337,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 // パスワードをハッシュと比較
+                // bcryptが読み込まれているか確認
+if (typeof bcrypt === 'undefined') {
+    alert('システムの読み込み中です。もう一度お試しください。');
+    return;
+}
+                
 const isPasswordValid = bcrypt.compareSync(password, data.password_hash);
 if (!isPasswordValid) {
     document.getElementById('login-error').style.display = 'block';
