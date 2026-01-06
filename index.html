@@ -376,6 +376,9 @@ if (!isPasswordValid) {
             }
         });
     }
+
+    }
+});
     
     // セッションチェック
     const savedUser = sessionStorage.getItem('currentUser');
@@ -385,7 +388,6 @@ if (!isPasswordValid) {
         document.getElementById('main-content').style.display = 'block';
         initAppAfterLogin();
     }
-});
 
 function initAppAfterLogin() {
     setTimeout(function() {
