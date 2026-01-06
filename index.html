@@ -780,7 +780,17 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
     };
     
     window.clearAdv = function() {
-        window.exportExcel = function() {
+        document.getElementById('adv-name').value = '';
+        document.getElementById('adv-passport').value = '';
+        document.getElementById('adv-batch').value = '';
+        document.getElementById('adv-date-from').value = '';
+        document.getElementById('adv-date-to').value = '';
+        document.getElementById('adv-docs').value = '';
+        filtered = [];
+        show(all);
+    };
+
+    window.exportExcel = function() {
     const data = (filtered.length > 0 ? filtered : all);
     
     const rows = [
@@ -807,15 +817,6 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
     link.download = 'workers_' + new Date().toISOString().split('T')[0] + '.csv';
     link.click();
 };
-        document.getElementById('adv-name').value = '';
-        document.getElementById('adv-passport').value = '';
-        document.getElementById('adv-batch').value = '';
-        document.getElementById('adv-date-from').value = '';
-        document.getElementById('adv-date-to').value = '';
-        document.getElementById('adv-docs').value = '';
-        filtered = [];
-        show(all);
-    };
     
     function populateBatch() {
         const batches = [...new Set(all.map(s => s.batch).filter(x => x))];
