@@ -315,6 +315,15 @@ let currentUser = null;
 document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
+          // bcryptの読み込みを待つ
+        const checkBcrypt = setInterval(() => {
+            if (typeof bcrypt !== 'undefined') {
+                clearInterval(checkBcrypt);
+                setupLoginForm();
+            }
+        }, 100);
+        
+        function setupLoginForm() {
         loginForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
