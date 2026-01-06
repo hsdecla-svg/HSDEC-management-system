@@ -919,14 +919,6 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
         show(all);
     };
     
-    const csv = rows.map(r => r.join(',')).join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = 'workers_' + new Date().toISOString().split('T')[0] + '.csv';
-    link.click();
-};
-    
     function populateBatch() {
         const batches = [...new Set(all.map(s => s.batch).filter(x => x))];
         const sel = document.getElementById('adv-batch');
