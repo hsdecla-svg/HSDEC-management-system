@@ -1293,10 +1293,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('user-modal').classList.remove('active');
             }
         });
+    }
+    
     load();
 }
-    
-    // ログアウト機能
+
+// ログアウト機能
 window.logout = function() {
     if (confirm('ログアウトしますか？')) {
         currentUser = null;
