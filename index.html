@@ -224,10 +224,10 @@ body {
     </div>
 
     <script>
-(function() {
-    // Supabaseライブラリの読み込みを待つ
+window.addEventListener('load', function() {
     if (typeof window.supabase === 'undefined') {
         console.error('Supabase library not loaded');
+        alert('システムの読み込みに失敗しました。ページを再読み込みしてください。');
         return;
     }
     const sb = window.supabase.createClient('https://zgmqllufmqanixgwdjok.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnbXFsbHVmbXFhbml4Z3dkam9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk0MjAsImV4cCI6MjA4MjkxNTQyMH0.xg-5T7DfcW2enMAXvudNOMPbvvm1WSwRHGZ_Vpdyrrw');
@@ -908,7 +908,7 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
     document.getElementById('lang-lo').addEventListener('click', () => setLang('lo'));
     
     load();
-})();
+});
     </script>
 </body>
 </html>
