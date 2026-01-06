@@ -112,6 +112,8 @@ body {
      <button class="tab active" data-tab="list" data-i18n="tabList">📋 一覧</button>
     <button class="tab" data-tab="add" data-i18n="tabAdd">➕ 登録</button>
     <button class="tab" data-tab="stats" data-i18n="tabStats">📊 統計</button>
+            <button class="tab" data-tab="users" id="users-tab-btn" style="display:none;">👥 ユーザー管理</button>
+    <button class="tab" data-tab="users" id="users-tab-btn" style="display:none;" data-i18n="tabUsers">👥 ユーザー管理</button>
 </div>
         
         <div class="content">
@@ -215,6 +217,30 @@ body {
                     <div style="font-size:3em;font-weight:bold;margin-bottom:10px;" id="stat-recent">0</div>
                     <div style="font-size:1.2em;opacity:0.9;" data-i18n="statThisMonth">今月の登録</div>
                 </div>
+
+                <!-- ユーザー管理タブ -->
+        <div id="users-tab" class="tab-content">
+            <h2 style="margin-bottom:30px;">👥 ユーザー管理</h2>
+            
+            <div style="margin-bottom:20px;">
+                <button class="btn" onclick="showAddUserModal()">➕ 新規ユーザー追加</button>
+            </div>
+            
+            <div id="users-list" style="background:white;border-radius:12px;padding:20px;overflow-x:auto;">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:#f5f5f5;">
+                            <th style="padding:12px;text-align:left;border-bottom:2px solid #ddd;">名前</th>
+                            <th style="padding:12px;text-align:left;border-bottom:2px solid #ddd;">メールアドレス</th>
+                            <th style="padding:12px;text-align:left;border-bottom:2px solid #ddd;">権限</th>
+                            <th style="padding:12px;text-align:left;border-bottom:2px solid #ddd;">作成日</th>
+                            <th style="padding:12px;text-align:center;border-bottom:2px solid #ddd;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body">
+                    </tbody>
+                </table>
+            </div>
             </div>
             
             <div style="background:white;padding:20px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);margin-bottom:20px;">
@@ -239,6 +265,39 @@ body {
     </div>
     
     <div id="edit-modal" class="modal">
+        <!-- ユーザー追加/編集モーダル -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="user-modal-title">新規ユーザー追加</h2>
+                <button class="close-btn" id="close-user">&times;</button>
+            </div>
+            <form id="user-form">
+                <div class="form-group">
+                    <label>名前</label>
+                    <input type="text" id="user-name" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>メールアドレス</label>
+                    <input type="email" id="user-email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label>パスワード</label>
+                    <input type="password" id="user-password" name="password" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label>権限</label>
+                    <select id="user-role" name="role" required>
+                        <option value="">選択してください</option>
+                        <option value="admin">管理者（全機能）</option>
+                        <option value="staff">スタッフ（閲覧・編集のみ）</option>
+                        <option value="viewer">閲覧者（閲覧のみ）</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn" style="width:100%;margin-top:20px;">保存</button>
+            </form>
+        </div>
+        
         <div class="modal-content">
             <div class="modal-header">
                 <h2 data-i18n="editTitle">編集</h2>
@@ -725,6 +784,7 @@ function initApp() {
         document.getElementById(n + '-tab').classList.add('active');
         if (n === 'list') load();
     if (n === 'stats') loadStats();
+        if (n === 'users') loadUsers();
     }));
     
     document.getElementById('search-input').addEventListener('input', search);
@@ -1079,6 +1139,12 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
     function applyRoleRestrictions() {
         const role = currentUser?.role;
         
+        // 管理者のみユーザー管理タブを表示
+    if (role === 'admin') {
+        const usersTabBtn = document.getElementById('users-tab-btn');
+        if (usersTabBtn) usersTabBtn.style.display = 'block';
+    }
+        
         if (role === 'viewer') {
             // 閲覧者：登録タブを非表示、編集・削除ボタンを非表示
             const addTab = document.querySelector('[data-tab="add"]');
@@ -1115,6 +1181,125 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
 }
     // ログアウト機能
 window.logout = function() {
+    // ユーザー管理機能
+window.showAddUserModal = function() {
+    document.getElementById('user-modal-title').textContent = '新規ユーザー追加';
+    document.getElementById('user-form').reset();
+    document.getElementById('user-form').dataset.mode = 'add';
+    document.getElementById('user-modal').classList.add('active');
+};
+
+window.loadUsers = async function() {
+    const { data, error } = await sb.from('users').select('*').order('created_at', { ascending: false });
+    if (error) {
+        console.error('Error loading users:', error);
+        return;
+    }
+    
+    const tbody = document.getElementById('users-table-body');
+    tbody.innerHTML = data.map(user => {
+        const roleText = user.role === 'admin' ? '管理者' : user.role === 'staff' ? 'スタッフ' : '閲覧者';
+        const roleColor = user.role === 'admin' ? '#667eea' : user.role === 'staff' ? '#4caf50' : '#ff9800';
+        const createdDate = new Date(user.created_at).toLocaleDateString('ja-JP');
+        
+        return `
+            <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:12px;">${user.name}</td>
+                <td style="padding:12px;">${user.email}</td>
+                <td style="padding:12px;">
+                    <span style="padding:4px 12px;background:${roleColor};color:white;border-radius:12px;font-size:0.85em;">${roleText}</span>
+                </td>
+                <td style="padding:12px;">${createdDate}</td>
+                <td style="padding:12px;text-align:center;">
+                    <button class="btn btn-small" onclick="editUser('${user.id}')">✏️ 編集</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteUser('${user.id}', '${user.email}')">🗑️ 削除</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.editUser = async function(userId) {
+    const { data, error } = await sb.from('users').select('*').eq('id', userId).single();
+    if (error) {
+        alert('ユーザー情報の取得に失敗しました');
+        return;
+    }
+    
+    document.getElementById('user-modal-title').textContent = 'ユーザー編集';
+    document.getElementById('user-name').value = data.name;
+    document.getElementById('user-email').value = data.email;
+    document.getElementById('user-password').value = data.password;
+    document.getElementById('user-role').value = data.role;
+    document.getElementById('user-form').dataset.mode = 'edit';
+    document.getElementById('user-form').dataset.userId = userId;
+    document.getElementById('user-modal').classList.add('active');
+};
+
+window.deleteUser = async function(userId, email) {
+    if (!confirm(`${email} を削除しますか？`)) return;
+    
+    const { error } = await sb.from('users').delete().eq('id', userId);
+    if (error) {
+        alert('削除に失敗しました: ' + error.message);
+        return;
+    }
+    
+    loadUsers();
+};
+
+// ユーザーフォーム送信
+document.addEventListener('DOMContentLoaded', function() {
+    const userForm = document.getElementById('user-form');
+    if (userForm) {
+        userForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                name: document.getElementById('user-name').value,
+                email: document.getElementById('user-email').value,
+                password: document.getElementById('user-password').value,
+                role: document.getElementById('user-role').value
+            };
+            
+            const mode = this.dataset.mode;
+            const userId = this.dataset.userId;
+            
+            if (mode === 'add') {
+                const { error } = await sb.from('users').insert([formData]);
+                if (error) {
+                    alert('登録に失敗しました: ' + error.message);
+                    return;
+                }
+            } else {
+                const { error } = await sb.from('users').update(formData).eq('id', userId);
+                if (error) {
+                    alert('更新に失敗しました: ' + error.message);
+                    return;
+                }
+            }
+            
+            document.getElementById('user-modal').classList.remove('active');
+            loadUsers();
+        });
+    }
+    
+    const closeUser = document.getElementById('close-user');
+    if (closeUser) {
+        closeUser.addEventListener('click', () => {
+            document.getElementById('user-modal').classList.remove('active');
+        });
+    }
+    
+    const userModal = document.getElementById('user-modal');
+    if (userModal) {
+        userModal.addEventListener('click', (e) => {
+            if (e.target.id === 'user-modal') {
+                document.getElementById('user-modal').classList.remove('active');
+            }
+        });
+    }
+});
     if (confirm('ログアウトしますか？')) {
         currentUser = null;
         sessionStorage.removeItem('currentUser');
