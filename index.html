@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HSDEC Korean Worker Management System</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
     <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;600;700&display=swap');
 
@@ -11,11 +15,7 @@ body {
     min-height: 100vh; 
     padding: 20px; 
 }
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Korean Worker Management System</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
+    
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
         .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
@@ -224,12 +224,19 @@ body {
     </div>
 
     <script>
-window.addEventListener('load', function() {
-    if (typeof window.supabase === 'undefined') {
-        console.error('Supabase library not loaded');
-        alert('システムの読み込みに失敗しました。ページを再読み込みしてください。');
-        return;
-    }
+window.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+        if (typeof window.supabase === 'undefined') {
+            console.error('Supabase library not loaded');
+            alert('システムの読み込みに失敗しました。ページを再読み込みしてください。');
+            return;
+        }
+        
+        initApp();
+    }, 100);
+});
+
+function initApp() {
     const sb = window.supabase.createClient('https://zgmqllufmqanixgwdjok.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpnbXFsbHVmbXFhbml4Z3dkam9rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjczMzk0MjAsImV4cCI6MjA4MjkxNTQyMH0.xg-5T7DfcW2enMAXvudNOMPbvvm1WSwRHGZ_Vpdyrrw');
     const translations = {
         ja: {
@@ -908,6 +915,7 @@ return `<div class="Worker-card ${isSelected ? 'selected' : ''}" onclick="${sele
     document.getElementById('lang-lo').addEventListener('click', () => setLang('lo'));
     
     load();
+    }
 });
     </script>
 </body>
