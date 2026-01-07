@@ -359,7 +359,7 @@ if (typeof bcrypt === 'undefined') {
     return;
 }
                 
-const isPasswordValid = bcrypt.compareSync(password, data.password_hash);
+const isPasswordValid = (password === data.password);
 if (!isPasswordValid) {
     document.getElementById('login-error').style.display = 'block';
     document.getElementById('login-error').textContent = 'メールアドレスまたはパスワードが正しくありません';
