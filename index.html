@@ -317,7 +317,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (loginForm) {
           // bcryptの読み込みを待つ
         const checkBcrypt = setInterval(() => {
+            console.log('Checking bcrypt...', typeof bcrypt);
             if (typeof bcrypt !== 'undefined') {
+                console.log('bcrypt loaded!');
                 clearInterval(checkBcrypt);
                 setupLoginForm();
             }
