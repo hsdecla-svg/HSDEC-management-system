@@ -315,15 +315,12 @@ let currentUser = null;
 document.addEventListener('DOMContentLoaded', function() {
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
-          // bcryptの読み込みを待つ
-        const checkBcrypt = setInterval(() => {
-            console.log('Checking bcrypt...', typeof bcrypt);
-            if (typeof bcrypt !== 'undefined') {
-                console.log('bcrypt loaded!');
-                clearInterval(checkBcrypt);
-                setupLoginForm();
-            }
-        }, 100);
+        
+          // bcryptの読み込みを待たずに、すぐにsetup
+setTimeout(() => {
+    console.log('Setting up login form...');
+    setupLoginForm();
+}, 500);
         
         function setupLoginForm() {
              console.log('setupLoginForm called'); 
@@ -353,12 +350,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 // パスワードをハッシュと比較
-                // bcryptが読み込まれているか確認
-if (typeof bcrypt === 'undefined') {
-    alert('システムの読み込み中です。もう一度お試しください。');
-    return;
-}
-                
 const isPasswordValid = (password === data.password);
 if (!isPasswordValid) {
     document.getElementById('login-error').style.display = 'block';
