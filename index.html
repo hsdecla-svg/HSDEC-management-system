@@ -20,84 +20,103 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // ★★★ ここをご自身のものに書き換えてください ★★★
         const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // --- 翻訳データ ---
         const translations = {
-            ja: { title: "HSDEC 管理システム", login: "ログイン", email: "メールアドレス", password: "パスワード", logout: "ログアウト", welcome: "ようこそ" },
-            en: { title: "HSDEC System", login: "Login", email: "Email", password: "Password", logout: "Logout", welcome: "Welcome" },
-            lo: { title: "ລະບົບການຈັດການ HSDEC", login: "ເຂົ້າສູ່ລະບົບ", email: "ອີເມວ", password: "ລະຫັດຜ່ານ", logout: "ອອກຈາກລະບົບ", welcome: "ຍິນດີຕ້ອນຮັບ" },
-            ko: { title: "HSDEC 관리 시스템", login: "로그인", email: "이메일", password: "비밀번호", logout: "로그아웃", welcome: "환영합니다" }
+            ja: { title: "HSDEC 管理", login: "ログイン", logout: "ログアウト", add: "新規登録", name: "名前", age: "年齢", gender: "性別", phone: "電話番号", save: "保存", close: "閉じる", list: "労働者一覧" },
+            en: { title: "HSDEC Mgmt", login: "Login", logout: "Logout", add: "Add New", name: "Name", age: "Age", gender: "Gender", phone: "Phone", save: "Save", close: "Close", list: "Worker List" },
+            lo: { title: "ການຈັດການ HSDEC", login: "ເຂົ້າສູ່ລະບົບ", logout: "ອອກຈາກລະບົບ", add: "ເພີ່ມໃໝ່", name: "ຊື່", age: "ອາຍຸ", gender: "ເພດ", phone: "ເບີໂທ", save: "ບັນທຶກ", close: "ປິດ", list: "ລາຍຊື່ຄົນງານ" },
+            ko: { title: "HSDEC 관리", login: "로그인", logout: "로그아웃", add: "신규등록", name: "이름", age: "연령", gender: "성별", phone: "전화번호", save: "저장", close: "닫기", list: "근로자 명단" }
         };
 
         function App() {
             const [lang, setLang] = useState('ja');
             const [user, setUser] = useState(null);
-            const [email, setEmail] = useState('');
-            const [password, setPassword] = useState('');
+            const [workers, setWorkers] = useState([]);
+            const [showModal, setShowModal] = useState(false);
+            const [newWorker, setNewWorker] = useState({ name: '', age: '', gender: '', phone: '' });
             const t = translations[lang];
 
             useEffect(() => {
-                // ログイン状態の監視
                 supabaseClient.auth.getSession().then(({ data: { session } }) => {
                     setUser(session?.user ?? null);
+                    if (session) fetchWorkers();
                 });
-                const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-                    setUser(session?.user ?? null);
-                });
-                return () => subscription.unsubscribe();
             }, []);
 
-            const handleLogin = async (e) => {
-                e.preventDefault();
-                const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) alert(error.message);
-            };
-
-            const handleLogout = () => supabaseClient.auth.signOut();
-
-            if (!user) {
-                return (
-                    <div class="min-h-screen flex items-center justify-center p-4">
-                        <div class="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-                            <div class="flex justify-end space-x-2 mb-6 text-xs">
-                                {['ja', 'en', 'lo', 'ko'].map(l => (
-                                    <button key={l} onClick={() => setLang(l)} class={`px-2 py-1 rounded ${lang === l ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>{l.toUpperCase()}</button>
-                                ))}
-                            </div>
-                            <h1 class="text-2xl font-bold text-center text-blue-900 mb-8">{t.title}</h1>
-                            <form onSubmit={handleLogin} class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">{t.email}</label>
-                                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required />
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">{t.password}</label>
-                                    <input type="password" value={password} onChange={e => setPassword(e.target.value)} class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required />
-                                </div>
-                                <button type="submit" class="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">{t.login}</button>
-                            </form>
-                        </div>
-                    </div>
-                );
+            async function fetchWorkers() {
+                const { data } = await supabaseClient.from('workers').select('*').order('created_at', { ascending: false });
+                setWorkers(data || []);
             }
+
+            async function handleAddWorker(e) {
+                e.preventDefault();
+                const { error } = await supabaseClient.from('workers').insert([newWorker]);
+                if (!error) {
+                    setShowModal(false);
+                    setNewWorker({ name: '', age: '', gender: '', phone: '' });
+                    fetchWorkers();
+                }
+            }
+
+            if (!user) return <div class="p-10 text-center">Please Login...</div>; // 簡易ログインチェック
 
             return (
                 <div class="min-h-screen">
-                    <nav class="bg-blue-900 text-white p-4 flex justify-between items-center">
-                        <span class="font-bold">{t.title}</span>
+                    <nav class="bg-blue-900 text-white p-4 flex justify-between items-center shadow-md">
+                        <span class="font-bold text-xl tracking-wider">{t.title}</span>
                         <div class="flex items-center space-x-4">
-                            <span class="text-sm">{t.welcome}, {user.email}</span>
-                            <button onClick={handleLogout} class="bg-blue-700 px-3 py-1 rounded text-sm hover:bg-red-600 transition">{t.logout}</button>
+                            <div class="flex bg-blue-800 rounded p-1">
+                                {['ja', 'en', 'lo', 'ko'].map(l => (
+                                    <button key={l} onClick={() => setLang(l)} class={`px-2 py-1 text-xs rounded ${lang === l ? 'bg-white text-blue-900' : 'text-white'}`}>{l.toUpperCase()}</button>
+                                ))}
+                            </div>
+                            <button onClick={() => supabaseClient.auth.signOut()} class="text-sm bg-red-500 px-3 py-1 rounded">{t.logout}</button>
                         </div>
                     </nav>
-                    <div class="p-8">
-                        <h2 class="text-xl font-bold">Phase 1: Success!</h2>
-                        <p class="text-gray-600 mt-2">ログインに成功しました。次はここに労働者リスト(項目1-4)を作成していきます。</p>
-                    </div>
+
+                    <main class="p-6 max-w-5xl mx-auto">
+                        <div class="flex justify-between items-center mb-6">
+                            <h2 class="text-2xl font-bold text-gray-800">{t.list}</h2>
+                            <button onClick={() => setShowModal(true)} class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700">+ {t.add}</button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {workers.map(w => (
+                                <div key={w.id} class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                                    <div class="text-lg font-bold text-blue-900">{w.name}</div>
+                                    <div class="text-gray-500 text-sm">{t.age}: {w.age} / {t.gender}: {w.gender}</div>
+                                    <div class="mt-2 text-blue-600 font-mono">{w.phone}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </main>
+
+                    {showModal && (
+                        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+                            <div class="bg-white rounded-2xl p-6 w-full max-w-md">
+                                <h3 class="text-xl font-bold mb-4">{t.add}</h3>
+                                <form onSubmit={handleAddWorker} class="space-y-4">
+                                    <input type="text" placeholder={t.name} class="w-full border p-2 rounded" value={newWorker.name} onChange={e => setNewWorker({...newWorker, name: e.target.value})} required />
+                                    <div class="flex space-x-2">
+                                        <input type="number" placeholder={t.age} class="w-1/2 border p-2 rounded" value={newWorker.age} onChange={e => setNewWorker({...newWorker, age: e.target.value})} />
+                                        <select class="w-1/2 border p-2 rounded" value={newWorker.gender} onChange={e => setNewWorker({...newWorker, gender: e.target.value})}>
+                                            <option value="">{t.gender}</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                        </select>
+                                    </div>
+                                    <input type="text" placeholder={t.phone} class="w-full border p-2 rounded" value={newWorker.phone} onChange={e => setNewWorker({...newWorker, phone: e.target.value})} />
+                                    <div class="flex space-x-2 pt-4">
+                                        <button type="button" onClick={() => setShowModal(false)} class="w-1/2 bg-gray-300 py-2 rounded-lg">{t.close}</button>
+                                        <button type="submit" class="w-1/2 bg-blue-600 text-white py-2 rounded-lg font-bold">{t.save}</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
