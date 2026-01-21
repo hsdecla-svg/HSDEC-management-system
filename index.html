@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HSDEC Staff System</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // ★★★ ここをご自身のものに書き換えてください ★★★
+        const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
+        
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function App() {
+            const [workers, setWorkers] = useState([]);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                fetchWorkers();
+            }, []);
+
+            async function fetchWorkers() {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from('workers') // Supabaseのテーブル名
+                        .select('*');
+                    if (error) throw error;
+                    setWorkers(data);
+                } catch (error) {
+                    console.error('Error:', error);
+                } finally {
+                    setLoading(false);
+                }
+            }
+
+            return (
+                <div className="p-4 max-w-4xl mx-auto">
+                    <h1 className="text-2xl font-bold text-blue-900 mb-6">HSDEC 外出先名簿システム</h1>
+                    
+                    {loading ? (
+                        <p>名簿を読み込み中...</p>
+                    ) : (
+                        <div className="grid gap-4">
+                            {workers.map(worker => (
+                                <div key={worker.id} className="bg-white p-4 rounded shadow">
+                                    <div className="font-bold text-lg">{worker.name}</div>
+                                    <div className="text-gray-600 text-sm">部署: {worker.department}</div>
+                                    <div className="text-blue-600">📞 {worker.phone}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
