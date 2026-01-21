@@ -2,158 +2,76 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Management System</title>
+    <title>HSDEC Debug Mode</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap');
-        body { font-family: 'Noto Sans JP', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; }
-    </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-100">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState } = React;
 
-        const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
+        // ★★★ ここを最新のSupabase情報に書き換えてください ★★★
+        const SUPABASE_URL = 'https://YOUR_PROJECT_URL.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+        
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const translations = {
-            ja: { title: "HSDEC 管理", login: "ログイン", logout: "ログアウト", add: "新規登録", name: "名前", age: "年齢", gender: "性別", phone: "電話番号", save: "保存", close: "閉じる", list: "労働者一覧", email: "メール", password: "パスワード" },
-            en: { title: "HSDEC Mgmt", login: "Login", logout: "Logout", add: "Add New", name: "Name", age: "Age", gender: "Gender", phone: "Phone", save: "Save", close: "Close", list: "Worker List", email: "Email", password: "Password" },
-            lo: { title: "ການຈັດການ HSDEC", login: "ເຂົ້າສູ່ລະບົບ", logout: "ອອກຈາກລະບົບ", add: "ເພີ່ມໃໝ່", name: "ຊື່", age: "ອາຍຸ", gender: "ເພດ", phone: "ເບີໂທ", save: "ບັນທຶກ", close: "ປິດ", list: "ລາຍຊື່ຄົນງານ", email: "ອີເມວ", password: "ລະຫັດຜ່ານ" },
-            ko: { title: "HSDEC 管理", login: "로그인", logout: "로그아웃", add: "신규등록", name: "이름", age: "연령", gender: "성별", phone: "전화번호", save: "저장", close: "닫기", list: "근로자 명단", email: "이메일", password: "비밀번호" }
-        };
-
         function App() {
-            const [lang, setLang] = useState('ja');
-            const [user, setUser] = useState(null);
-            const [workers, setWorkers] = useState([]);
-            const [showModal, setShowModal] = useState(false);
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
-            const [newWorker, setNewWorker] = useState({ name: '', age: '', gender: '', phone: '' });
-            const t = translations[lang];
-
-            useEffect(() => {
-                supabaseClient.auth.getSession().then(({ data: { session } }) => {
-                    if (session) {
-                        setUser(session.user);
-                        fetchWorkers();
-                    }
-                });
-                const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-                    setUser(session?.user ?? null);
-                    if (session) fetchWorkers();
-                });
-                return () => subscription.unsubscribe();
-            }, []);
-
-            async function fetchWorkers() {
-                const { data } = await supabaseClient.from('workers').select('*').order('created_at', { ascending: false });
-                setWorkers(data || []);
-            }
+            const [msg, setMsg] = useState('');
 
             const handleLogin = async (e) => {
                 e.preventDefault();
-                const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) alert("Login Error: " + error.message);
+                setMsg("認証中...");
+                
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: email.trim(), // 前後のスペースを削除
+                    password: password
+                });
+
+                if (error) {
+                    // エラーを詳しく表示
+                    setMsg(`❌失敗: ${error.message} (ステータス: ${error.status})`);
+                } else {
+                    setMsg("✅ ログイン成功！画面を切り替えます...");
+                    // 成功したら少し待って再読み込み
+                    setTimeout(() => location.reload(), 1000);
+                }
             };
 
-            async function handleAddWorker(e) {
-                e.preventDefault();
-                const { error } = await supabaseClient.from('workers').insert([newWorker]);
-                if (!error) {
-                    setShowModal(false);
-                    setNewWorker({ name: '', age: '', gender: '', phone: '' });
-                    fetchWorkers();
-                } else {
-                    alert("Save Error: " + error.message);
-                }
-            }
-
-            // --- ログインしていない時はログイン画面を表示 ---
-            if (!user) {
-                return (
-                    <div class="min-h-screen flex items-center justify-center bg-blue-50 p-4">
-                        <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-                            <h1 class="text-2xl font-bold text-center text-blue-900 mb-8 font-serif">HSDEC SYSTEM</h1>
-                            <form onSubmit={handleLogin} class="space-y-4">
-                                <input type="email" placeholder={t.email} class="w-full border p-3 rounded-lg" value={email} onChange={e => setEmail(e.target.value)} required />
-                                <input type="password" placeholder={t.password} class="w-full border p-3 rounded-lg" value={password} onChange={e => setPassword(e.target.value)} required />
-                                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">{t.login}</button>
-                            </form>
-                            <div class="flex justify-center space-x-2 mt-6">
-                                {['ja', 'en', 'lo', 'ko'].map(l => (
-                                    <button key={l} onClick={() => setLang(l)} class={`text-xs px-2 py-1 rounded ${lang === l ? 'bg-blue-200 text-blue-800' : 'bg-gray-100'}`}>{l.toUpperCase()}</button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                );
-            }
-
-            // --- ログイン後の名簿画面 ---
             return (
-                <div class="min-h-screen">
-                    <nav class="bg-blue-900 text-white p-4 flex justify-between items-center shadow-md">
-                        <span class="font-bold text-xl tracking-wider">HSDEC</span>
-                        <div class="flex items-center space-x-4">
-                            <div class="hidden sm:flex bg-blue-800 rounded p-1">
-                                {['ja', 'en', 'lo', 'ko'].map(l => (
-                                    <button key={l} onClick={() => setLang(l)} class={`px-2 py-1 text-xs rounded ${lang === l ? 'bg-white text-blue-900' : 'text-white'}`}>{l.toUpperCase()}</button>
-                                ))}
-                            </div>
-                            <button onClick={() => supabaseClient.auth.signOut()} class="text-sm bg-red-500 px-3 py-1 rounded hover:bg-red-600 transition">{t.logout}</button>
-                        </div>
-                    </nav>
-
-                    <main class="p-6 max-w-5xl mx-auto">
-                        <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-2xl font-bold text-gray-800">{t.list}</h2>
-                            <button onClick={() => setShowModal(true)} class="bg-green-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-green-700 shadow-md">+ {t.add}</button>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {workers.length === 0 ? <p class="text-gray-400">No data found.</p> : workers.map(w => (
-                                <div key={w.id} class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition">
-                                    <div class="text-lg font-bold text-blue-900">{w.name}</div>
-                                    <div class="text-gray-500 text-sm">{t.age}: {w.age} / {t.gender}: {w.gender}</div>
-                                    <div class="mt-2 text-blue-600 font-mono font-semibold">{w.phone}</div>
-                                </div>
-                            ))}
-                        </div>
-                    </main>
-
-                    {showModal && (
-                        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                            <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
-                                <h3 class="text-xl font-bold mb-4 text-gray-800">{t.add}</h3>
-                                <form onSubmit={handleAddWorker} class="space-y-4">
-                                    <input type="text" placeholder={t.name} class="w-full border p-2.5 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={newWorker.name} onChange={e => setNewWorker({...newWorker, name: e.target.value})} required />
-                                    <div class="flex space-x-2">
-                                        <input type="number" placeholder={t.age} class="w-1/2 border p-2.5 rounded-lg" value={newWorker.age} onChange={e => setNewWorker({...newWorker, age: e.target.value})} />
-                                        <select class="w-1/2 border p-2.5 rounded-lg" value={newWorker.gender} onChange={e => setNewWorker({...newWorker, gender: e.target.value})}>
-                                            <option value="">{t.gender}</option>
-                                            <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
-                                        </select>
-                                    </div>
-                                    <input type="text" placeholder={t.phone} class="w-full border p-2.5 rounded-lg" value={newWorker.phone} onChange={e => setNewWorker({...newWorker, phone: e.target.value})} />
-                                    <div class="flex space-x-2 pt-4">
-                                        <button type="button" onClick={() => setShowModal(false)} class="w-1/2 bg-gray-100 py-2.5 rounded-lg text-gray-600 font-bold">{t.close}</button>
-                                        <button type="submit" class="w-1/2 bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 shadow-lg">{t.save}</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
+                <div className="flex flex-col items-center justify-center min-h-screen p-4">
+                    <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
+                        <h1 className="text-xl font-bold mb-4">HSDEC ログインテスト</h1>
+                        <form onSubmit={handleLogin} className="space-y-4">
+                            <input 
+                                type="email" 
+                                placeholder="Email" 
+                                className="w-full border p-2 rounded"
+                                onChange={e => setEmail(e.target.value)}
+                                required 
+                            />
+                            <input 
+                                type="password" 
+                                placeholder="Password" 
+                                className="w-full border p-2 rounded"
+                                onChange={e => setPassword(e.target.value)}
+                                required 
+                            />
+                            <button className="w-full bg-blue-500 text-white py-2 rounded">テストログイン</button>
+                        </form>
+                        <p className="mt-4 text-sm text-red-500 font-bold bg-red-50 p-2 rounded whitespace-pre-wrap">{msg}</p>
+                    </div>
+                    <div className="mt-8 text-xs text-gray-400">
+                        URL: {SUPABASE_URL}<br/>
+                        Key: {SUPABASE_ANON_KEY.substring(0, 20)}...
+                    </div>
                 </div>
             );
         }
