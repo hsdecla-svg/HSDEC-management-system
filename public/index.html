@@ -1,35 +1,38 @@
-import React, { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HSDEC Management System</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
 
-const supabase = createClient('https://zgmqllufmqanixgwdjok.supabase.co', 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz');
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // --- ここにあなたのSupabase情報を入れてください ---
+        const SUPABASE_URL = 'https://YOUR_PROJECT_URL.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-export default function App() {
-  const [workers, setWorkers] = useState<any[]>([]);
-  const [name, setName] = useState('');
+        function App() {
+            // ここに元のApp.tsxのロジックを入れます
+            return (
+                <div class="p-8">
+                    <h1 class="text-2xl font-bold text-blue-900">HSDEC Management System</h1>
+                    <p class="mt-4">システムを起動しています...</p>
+                </div>
+            );
+        }
 
-  const fetchWorkers = async () => {
-    const { data } = await supabase.from('workers').select('*').order('created_at', { ascending: false });
-    if (data) setWorkers(data);
-  };
-
-  useEffect(() => { fetchWorkers(); }, []);
-
-  const handleSave = async () => {
-    if (!name) return alert('名前を入れてください');
-    await supabase.from('workers').insert([{ name_eng: name, status: '新規受付' }]);
-    setName('');
-    fetchWorkers();
-  };
-
-  return (
-    <div style={{ padding: '20px', textAlign: 'center', fontFamily: 'sans-serif' }}>
-      <h1>🇱🇦 HSDEC System</h1>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Worker Name" style={{ padding: '10px' }} />
-      <button onClick={handleSave} style={{ padding: '10px', marginLeft: '5px', backgroundColor: '#ed8936', color: 'white', border: 'none' }}>登録</button>
-      <ul style={{ textAlign: 'left', maxWidth: '300px', margin: '20px auto' }}>
-        {workers.map(w => <li key={w.id}>{w.name_eng}</li>)}
-      </ul>
-    </div>
-  );
-}
-
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
