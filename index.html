@@ -3,14 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Management System</title>
+    <title>HSDEC Global Worker Platform</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap');
+        body { font-family: 'Noto Sans JP', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; }
+        .active-tab { background-color: #1e40af; color: white; }
+    </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-100">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -20,73 +25,117 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        function App() {
-            const [user, setUser] = useState(null);
-            const [email, setEmail] = useState('');
-            const [password, setPassword] = useState('');
-            const [loading, setLoading] = useState(true);
+        const translations = {
+            ja: { dashboard: "名簿一覧", register: "新規登録", edit: "詳細・編集", basic: "1.基本", docs: "2.書類", interview: "3-4.面接/選抜", dispatch: "5.派遣後", company: "6.会社評価", logout: "ログアウト" },
+            lo: { dashboard: "ລາຍຊື່", register: "ລົງທະບຽນໃໝ່", edit: "ລາຍລະອຽດ", basic: "1.ຂໍ້ມູນ", docs: "2.ເອກະສານ", interview: "3-4.ສຳພາດ", dispatch: "5.ຫຼັງການສົ່ງ", company: "6.ການປະເມີນ", logout: "ອອກ" },
+            ko: { dashboard: "명단", register: "신규등록", edit: "상세/편집", basic: "1.기본", docs: "2.서류", interview: "3-4.면접/선발", dispatch: "5.파견후", company: "6.업체평가", logout: "로그아웃" }
+        };
 
-            // 1. 起動時にログイン状態をチェック
+        function App() {
+            const [lang, setLang] = useState('ja');
+            const [user, setUser] = useState(null);
+            const [view, setView] = useState('list'); // list or detail
+            const [workers, setWorkers] = useState([]);
+            const [selectedWorker, setSelectedWorker] = useState(null);
+            const [tab, setTab] = useState('basic');
+            const t = translations[lang];
+
             useEffect(() => {
                 supabaseClient.auth.getSession().then(({ data: { session } }) => {
                     setUser(session?.user ?? null);
-                    setLoading(false);
+                    if (session) fetchWorkers();
                 });
-
-                // 2. ログイン状態の変化（ログイン/ログアウト）をリアルタイムで検知
-                const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-                    setUser(session?.user ?? null);
-                });
-
-                return () => subscription.unsubscribe();
             }, []);
 
-            const handleLogin = async (e) => {
-                e.preventDefault();
-                const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) {
-                    alert("ログイン失敗: " + error.message);
-                } else {
-                    // ログイン成功したら React の setUser が走って自動で画面が切り替わります
-                    console.log("ログイン成功");
-                }
-            };
-
-            if (loading) return <div class="p-10 text-center">読み込み中...</div>;
-
-            // --- ログインしていない場合 ---
-            if (!user) {
-                return (
-                    <div class="min-h-screen flex items-center justify-center bg-blue-50 p-4">
-                        <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-                            <h1 class="text-2xl font-bold text-center text-blue-900 mb-8">HSDEC LOGIN</h1>
-                            <form onSubmit={handleLogin} class="space-y-4">
-                                <input type="email" placeholder="メールアドレス" class="w-full border p-3 rounded-lg" value={email} onChange={e => setEmail(e.target.value)} required />
-                                <input type="password" placeholder="パスワード" class="w-full border p-3 rounded-lg" value={password} onChange={e => setPassword(e.target.value)} required />
-                                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">ログイン</button>
-                            </form>
-                        </div>
-                    </div>
-                );
+            async function fetchWorkers() {
+                const { data } = await supabaseClient.from('workers').select('*').order('created_at', { ascending: false });
+                setWorkers(data || []);
             }
 
-            // --- ログインに成功している場合（管理画面） ---
+            if (!user) return <LoginForm lang={lang} setLang={setLang} supabase={supabaseClient} />;
+
             return (
                 <div class="min-h-screen flex flex-col md:flex-row">
-                    <aside class="w-full md:w-64 bg-blue-900 text-white p-6">
-                        <h1 class="text-xl font-bold mb-10">HSDEC GLOBAL</h1>
+                    {/* サイドバー */}
+                    <aside class="w-full md:w-64 bg-slate-900 text-white p-6 shadow-xl">
+                        <h1 class="text-xl font-bold mb-8 border-b border-slate-700 pb-4">HSDEC PLATFORM</h1>
                         <nav class="space-y-4">
-                            <div class="p-3 bg-blue-800 rounded">📂 ダッシュボード</div>
-                            <button onClick={() => supabaseClient.auth.signOut()} class="w-full bg-red-600 p-2 rounded text-sm mt-10">ログアウト</button>
+                            <button onClick={() => setView('list')} class={`w-full text-left p-3 rounded-lg ${view === 'list' ? 'bg-blue-700' : 'hover:bg-slate-800'}`}>📁 {t.dashboard}</button>
+                            <button onClick={() => { setSelectedWorker(null); setView('detail'); setTab('basic'); }} class={`w-full text-left p-3 rounded-lg ${view === 'detail' && !selectedWorker ? 'bg-blue-700' : 'hover:bg-slate-800'}`}>➕ {t.register}</button>
+                            <div class="pt-8 flex justify-between">
+                                {['ja', 'lo', 'ko'].map(l => (
+                                    <button key={l} onClick={() => setLang(l)} class={`text-xs px-2 py-1 rounded ${lang === l ? 'bg-white text-slate-900 font-bold' : 'text-slate-400'}`}>{l.toUpperCase()}</button>
+                                ))}
+                            </div>
+                            <button onClick={() => supabaseClient.auth.signOut()} class="w-full text-left p-3 text-red-400 mt-10">🚪 {t.logout}</button>
                         </nav>
                     </aside>
-                    <main class="flex-grow p-8 bg-gray-50 text-gray-800">
-                        <h2 class="text-3xl font-extrabold mb-4">管理画面へようこそ！</h2>
-                        <p class="text-green-600 font-bold">✅ ログイン状態が正常に反映されました。</p>
-                        <div class="mt-10 p-10 border-2 border-dashed border-gray-300 rounded-xl text-center text-gray-400">
-                            ここに労働者の名簿データが表示されます
-                        </div>
+
+                    {/* メインエリア */}
+                    <main class="flex-grow p-4 md:p-8 overflow-auto bg-slate-50">
+                        {view === 'list' ? (
+                            <div class="max-w-6xl mx-auto">
+                                <h2 class="text-2xl font-bold mb-6 text-slate-800">{t.dashboard}</h2>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {workers.map(w => (
+                                        <div key={w.id} onClick={() => { setSelectedWorker(w); setView('detail'); }} class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md cursor-pointer transition">
+                                            <div class="flex justify-between items-start">
+                                                <div class="font-bold text-lg text-slate-900">{w.name}</div>
+                                                <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold">LV. {w.role_level || '1'}</span>
+                                            </div>
+                                            <p class="text-slate-500 text-sm mt-1">{w.phone || 'No Phone'}</p>
+                                            <div class="mt-4 flex space-x-2">
+                                                <div class="text-[10px] bg-slate-100 p-1 rounded">🇰🇷 TOPIK: {w.topik_level || '-'}</div>
+                                                <div class="text-[10px] bg-green-50 p-1 rounded text-green-700">★ SCORE: {w.total_score || '0'}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-lg overflow-hidden border border-slate-200">
+                                {/* 詳細・編集用タブメニュー */}
+                                <div class="flex bg-slate-100 border-b overflow-x-auto">
+                                    {['basic', 'docs', 'interview', 'dispatch', 'company'].map(item => (
+                                        <button key={item} onClick={() => setTab(item)} class={`px-4 py-4 text-xs font-bold whitespace-nowrap ${tab === item ? 'bg-white text-blue-700 border-t-4 border-blue-700' : 'text-slate-500'}`}>
+                                            {t[item]}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div class="p-8">
+                                    {tab === 'basic' && <div class="space-y-4">
+                                        <h3 class="font-bold text-lg border-l-4 border-blue-600 pl-3">基本情報入力</h3>
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <input type="text" placeholder="名前 (Name)" class="border p-3 rounded-xl bg-slate-50" defaultValue={selectedWorker?.name} />
+                                            <input type="text" placeholder="電話番号" class="border p-3 rounded-xl bg-slate-50" defaultValue={selectedWorker?.phone} />
+                                        </div>
+                                    </div>}
+                                    <div class="mt-10 flex justify-end space-x-4">
+                                        <button onClick={() => setView('list')} class="px-6 py-2 rounded-xl bg-slate-200 font-bold">戻る</button>
+                                        <button class="px-6 py-2 rounded-xl bg-blue-600 text-white font-bold shadow-lg hover:bg-blue-700">データを保存</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </main>
+                </div>
+            );
+        }
+
+        function LoginForm({ lang, setLang, supabase }) {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            return (
+                <div class="min-h-screen flex items-center justify-center bg-slate-900 p-4">
+                    <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10">
+                        <h1 class="text-3xl font-black text-center text-slate-900 mb-2">HSDEC</h1>
+                        <p class="text-center text-slate-400 mb-8 text-sm">Global Worker Management System</p>
+                        <form onSubmit={async (e) => { e.preventDefault(); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) alert(error.message); }} class="space-y-4">
+                            <input type="email" placeholder="Email" class="w-full border p-4 rounded-2xl bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500" value={email} onChange={e => setEmail(e.target.value)} required />
+                            <input type="password" placeholder="Password" class="w-full border p-4 rounded-2xl bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500" value={password} onChange={e => setPassword(e.target.value)} required />
+                            <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-blue-700 transition">LOGIN</button>
+                        </form>
+                    </div>
                 </div>
             );
         }
