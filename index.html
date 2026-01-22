@@ -43,16 +43,14 @@
 
             // データを取得する関数を独立させ、どこからでも呼べるようにする
             const fetchWorkers = async () => {
-                console.log("Fetching workers...");
                 const { data, error } = await supabaseClient
                     .from('workers')
                     .select('*')
-                    .order('created_at', { ascending: false });
                 
                 if (error) {
-                    console.error("Fetch error:", error);
+                    alert("Fetch Error: " + error.message);
                 } else {
-                    console.log("Fetched data:", data);
+                    console.log("Data found:", data);
                     setWorkers(data || []);
                 }
             };
