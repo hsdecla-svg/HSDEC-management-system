@@ -65,8 +65,15 @@
 
             const fetchWorkers = async () => {
                 setLoading(true);
-                const { data } = await supabaseClient.from('workers').select('*').order('created_at', { ascending: false });
-                setWorkers(data || []);
+                const { data, error } = await supabaseClient
+                    .from('workers')
+                    .select('*');
+                if (error) {
+                    console.error("Fetch Error:", error);
+                } else {
+                    // データが空の項目があっても、エラーにせずそのまま表示させる
+                    setWorkers(data || []);
+                }
                 setLoading(false);
             };
 
