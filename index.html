@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Global Platform - FULL v10.1</title>
+    <title>HSDEC Global PRO v10.2</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+Lao:wght@400;700&display=swap');
-        body { font-family: 'Inter', 'Noto Sans Lao', sans-serif; background-color: #f8fafc; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+KR:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; background-color: #f8fafc; }
         .form-input { border: 2px solid #e2e8f0; padding: 0.8rem; border-radius: 0.8rem; width: 100%; outline: none; transition: 0.2s; font-size: 14px; background: #fff; }
         .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
         .label-text { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
         .tab-btn { padding: 12px 20px; font-weight: 800; font-size: 11px; transition: 0.3s; border-bottom: 3px solid transparent; white-space: nowrap; text-transform: uppercase; }
         .tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; background: #fff; }
-        .doc-check { display: flex; items-center: center; gap: 8px; font-size: 11px; font-weight: 700; color: #475569; padding: 6px 12px; background: #f1f5f9; border-radius: 10px; cursor: pointer; }
+        .doc-check { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: #475569; padding: 6px 12px; background: #f1f5f9; border-radius: 10px; cursor: pointer; transition: 0.2s; }
         .doc-check.done { background: #dcfce7; color: #166534; }
     </style>
 </head>
@@ -32,8 +32,10 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const i18n = {
-            en: { dash: "Dashboard", new: "New Entry", save: "Save", back: "Back", basic: "Basic Info", docs: "Documents", detail: "Details", batch: "Batch No", name: "Full Name", pass: "Passport", newcomer: "Newcomer", reentry: "Re-entry" },
-            jp: { dash: "管理", new: "新規", save: "保存", back: "戻る", basic: "基本情報", docs: "書類", detail: "詳細", batch: "期生", name: "氏名", pass: "旅券", newcomer: "新規", reentry: "再入国" }
+            en: { dash: "Dashboard", new: "New Entry", save: "Save", back: "Back", basic: "Basic Info", docs: "Documents", detail: "Details", batch: "Batch No", name: "Full Name", pass: "Passport", newcomer: "Newcomer", reentry: "Re-entry", status: "Status Table", cards: "Cards" },
+            jp: { dash: "管理台帳", new: "新規登録", save: "保存", back: "戻る", basic: "基本情報", docs: "書類確認", detail: "詳細", batch: "期生", name: "氏名", pass: "旅券", newcomer: "新規", reentry: "再入国", status: "一覧表", cards: "カード" },
+            lao: { dash: "ແຜງຄວບຄຸມ", new: "ເພີ່ມໃຫມ່", save: "ບັນທຶກ", back: "ກັບຄືນ", basic: "ຂໍ້ມູນພື້ນຖານ", docs: "ເອກະສານ", detail: "ລາຍລະອຽດ", batch: "ຮຸ່ນທີ", name: "ຊື່ເຕັມ", pass: "ເລກພາສປອດ", newcomer: "ໃຫມ່", reentry: "ກັບຄືນໃຫມ່", status: "ຕາຕະລາງ", cards: "ບັດ" },
+            kr: { dash: "대시보드", new: "신규등록", save: "저장", back: "뒤로", basic: "기본정보", docs: "서류관리", detail: "상세정보", batch: "기수", name: "성명", pass: "여권번호", newcomer: "신규", reentry: "재입국", status: "리스트", cards: "카드" }
         };
 
         function App() {
@@ -115,14 +117,14 @@
             return (
                 <div class="min-h-screen flex flex-col md:flex-row">
                     <aside class="w-full md:w-64 bg-slate-900 text-white p-6 shadow-2xl z-10">
-                        <div class="text-2xl font-black text-blue-400 mb-10 italic">HSDEC GLOBAL</div>
+                        <div class="text-2xl font-black text-blue-400 mb-10 italic tracking-tighter">HSDEC GLOBAL</div>
                         <nav class="space-y-2 mb-10">
-                            <button onClick={() => setView('list')} class={`w-full text-left p-4 rounded-xl font-bold ${view === 'list' ? 'bg-blue-600' : 'text-slate-400'}`}>📂 {t.dash}</button>
-                            <button onClick={() => { setFormData(initialForm); setView('edit'); }} class={`w-full text-left p-4 rounded-xl font-bold ${view === 'edit' ? 'bg-blue-600' : 'text-slate-400'}`}>➕ {t.new}</button>
+                            <button onClick={() => setView('list')} class={`w-full text-left p-4 rounded-xl font-bold transition ${view === 'list' ? 'bg-blue-600' : 'text-slate-400 hover:text-white'}`}>📂 {t.dash}</button>
+                            <button onClick={() => { setFormData(initialForm); setView('edit'); }} class={`w-full text-left p-4 rounded-xl font-bold transition ${view === 'edit' ? 'bg-blue-600' : 'text-slate-400 hover:text-white'}`}>➕ {t.new}</button>
                         </nav>
-                        <div class="flex gap-2 pt-6 border-t border-slate-800">
-                            {['en', 'jp'].map(l => (
-                                <button key={l} onClick={() => setLang(l)} class={`flex-grow py-2 rounded-lg text-[10px] font-bold border ${lang === l ? 'bg-blue-600 border-blue-600' : 'border-slate-700 text-slate-500'}`}>{l.toUpperCase()}</button>
+                        <div class="grid grid-cols-2 gap-2 pt-6 border-t border-slate-800">
+                            {Object.keys(i18n).map(l => (
+                                <button key={l} onClick={() => setLang(l)} class={`py-2 rounded-lg text-[10px] font-bold border transition ${lang === l ? 'bg-blue-600 border-blue-600' : 'border-slate-700 text-slate-500 hover:border-slate-500'}`}>{l.toUpperCase()}</button>
                             ))}
                         </div>
                     </aside>
@@ -130,15 +132,15 @@
                     <main class="flex-grow p-6 md:p-10">
                         {view === 'list' ? (
                             <div class="max-w-6xl mx-auto">
-                                <div class="flex justify-between items-center mb-8">
-                                    <h2 class="text-3xl font-black text-slate-800">{t.dash}</h2>
-                                    <div class="bg-slate-200 p-1 rounded-xl">
-                                        <button onClick={() => setDashTab('all')} class={`px-4 py-2 rounded-lg text-xs font-black transition ${dashTab === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>Cards</button>
-                                        <button onClick={() => setDashTab('docs')} class={`px-4 py-2 rounded-lg text-xs font-black transition ${dashTab === 'docs' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>Status Table</button>
+                                <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                                    <h2 class="text-3xl font-black text-slate-800 tracking-tight">{t.dash}</h2>
+                                    <div class="bg-slate-200 p-1 rounded-xl flex">
+                                        <button onClick={() => setDashTab('all')} class={`px-4 py-2 rounded-lg text-xs font-black transition ${dashTab === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>{t.cards}</button>
+                                        <button onClick={() => setDashTab('docs')} class={`px-4 py-2 rounded-lg text-xs font-black transition ${dashTab === 'docs' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>{t.status}</button>
                                     </div>
                                 </div>
                                 {dashTab === 'all' ? (
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in">
                                         {workers.map(w => (
                                             <div key={w.id} onClick={() => { setFormData(w); setView('edit'); }} class="bg-white p-6 rounded-[2.5rem] shadow-sm hover:shadow-xl border-2 border-transparent hover:border-blue-400 cursor-pointer transition-all">
                                                 <div class="flex justify-between items-start mb-4">
@@ -151,7 +153,7 @@
                                         ))}
                                     </div>
                                 ) : (
-                                    <div class="bg-white rounded-[2rem] shadow-sm overflow-hidden">
+                                    <div class="bg-white rounded-[2rem] shadow-sm overflow-hidden animate-in slide-in-from-bottom-4">
                                         <table class="w-full text-left">
                                             <thead class="bg-slate-50 border-b">
                                                 <tr>
@@ -163,8 +165,8 @@
                                             </thead>
                                             <tbody class="divide-y divide-slate-50">
                                                 {workers.map(w => (
-                                                    <tr key={w.id} onClick={() => { setFormData(w); setView('edit'); }} class="hover:bg-blue-50 cursor-pointer">
-                                                        <td class="p-4 font-bold text-sm">{w.name}</td>
+                                                    <tr key={w.id} onClick={() => { setFormData(w); setView('edit'); }} class="hover:bg-blue-50 cursor-pointer transition">
+                                                        <td class="p-4 font-bold text-sm text-slate-800">{w.name}</td>
                                                         <td class="p-4 text-center">{w.has_passport ? '✅' : '🔴'}</td>
                                                         <td class="p-4 text-center">{w.has_contract ? '✅' : '🔴'}</td>
                                                         <td class="p-4 text-center">{w.has_health_check ? '✅' : '🔴'}</td>
@@ -177,14 +179,14 @@
                             </div>
                         ) : (
                             <div class="max-w-4xl mx-auto bg-white rounded-[3rem] shadow-2xl overflow-hidden">
-                                <div class="flex bg-slate-50 border-b">
+                                <div class="flex bg-slate-50 border-b overflow-x-auto">
                                     {['basic', 'docs', 'detail'].map(id => (
                                         <button key={id} onClick={() => setActiveTab(id)} class={`tab-btn ${activeTab === id ? 'active' : 'text-slate-400'}`}>{t[id]}</button>
                                     ))}
                                 </div>
                                 <form onSubmit={handleSave} class="p-10">
                                     {activeTab === 'basic' && (
-                                        <div class="space-y-8">
+                                        <div class="space-y-8 animate-in fade-in">
                                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div class="md:col-span-2"><label class="label-text">{t.name}</label><input type="text" class="form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required /></div>
                                                 <div><label class="label-text">{t.batch}</label>
@@ -198,10 +200,10 @@
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div class="p-6 bg-slate-50 rounded-2xl">
-                                                <label class="label-text mb-4">Submission Status</label>
+                                            <div class="p-6 bg-slate-50 rounded-[2rem]">
+                                                <label class="label-text mb-4 tracking-widest text-blue-600">Document Submission Checks</label>
                                                 <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                                    {[{k:'has_passport', l:'Passport'}, {k:'has_contract', l:'Contract'}, {k:'has_health_check', l:'Health'}].map(d => (
+                                                    {[{k:'has_passport', l:'Passport'}, {k:'has_contract', l:'Contract'}, {k:'has_health_check', l:'Health'}, {k:'has_agri_cert', l:'Agri Cert'}, {k:'has_training_cert', l:'Training Cert'}].map(d => (
                                                         <div key={d.k} onClick={() => setFormData({...formData, [d.k]: !formData[d.k]})} class={`doc-check ${formData[d.k] ? 'done' : ''}`}>
                                                             {formData[d.k] ? '✅' : '⭕'} {d.l}
                                                         </div>
@@ -212,23 +214,24 @@
                                     )}
 
                                     {activeTab === 'docs' && (
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in">
                                             {['passport_url', 'contract_url'].map(field => (
                                                 <div key={field} class="space-y-4">
-                                                    <label class="label-text text-blue-600">{field.replace('_', ' ').toUpperCase()}</label>
-                                                    <div class="aspect-[3/4] bg-slate-100 rounded-3xl border-2 border-dashed flex items-center justify-center overflow-hidden">
-                                                        {formData[field] ? <img src={formData[field]} class="w-full h-full object-cover" /> : <span class="text-slate-400 text-[10px] font-black uppercase">No Image</span>}
+                                                    <label class="label-text text-blue-600 font-black">{field.replace('_url', '').toUpperCase()} SCAN</label>
+                                                    <div class="aspect-[3/4] bg-slate-100 rounded-[2.5rem] border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden">
+                                                        {formData[field] ? <img src={formData[field]} class="w-full h-full object-cover" /> : <span class="text-slate-400 text-[10px] font-black uppercase tracking-widest">No Image</span>}
                                                     </div>
-                                                    <input type="file" accept="image/*" onChange={(e) => handleUpload(e, field)} class="text-xs w-full" disabled={uploading} />
+                                                    <input type="file" accept="image/*" onChange={(e) => handleUpload(e, field)} class="text-xs w-full cursor-pointer" disabled={uploading} />
                                                 </div>
                                             ))}
                                         </div>
                                     )}
-                                    {uploading && <p class="text-blue-500 font-bold mt-4 animate-pulse">Compressing & Uploading...</p>}
 
-                                    <div class="mt-12 flex justify-between border-t pt-8">
-                                        <button type="button" onClick={() => setView('list')} class="text-slate-400 font-bold">← {t.back}</button>
-                                        <button type="submit" class="bg-blue-600 text-white px-12 py-4 rounded-2xl font-black text-xs uppercase shadow-xl shadow-blue-500/20">SAVE</button>
+                                    {uploading && <div class="mt-4 p-4 bg-blue-50 text-blue-600 text-xs font-bold rounded-xl animate-pulse text-center uppercase tracking-widest">Optimizing & Uploading to Storage...</div>}
+
+                                    <div class="mt-12 flex justify-between border-t border-slate-100 pt-8">
+                                        <button type="button" onClick={() => setView('list')} class="text-slate-400 font-bold hover:text-slate-600 transition">← {t.back}</button>
+                                        <button type="submit" class="bg-blue-600 text-white px-14 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-700 active:scale-95 transition">SAVE DATA</button>
                                     </div>
                                 </form>
                             </div>
@@ -240,14 +243,14 @@
 
         function LoginForm({ supabase }) {
             const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
-            const handleLogin = async (e) => { e.preventDefault(); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) alert(error.message); };
+            const handleLogin = async (e) => { e.preventDefault(); const { error } = await supabaseClient.auth.signInWithPassword({ email, password }); if (error) alert(error.message); };
             return (
-                <div class="min-h-screen flex items-center justify-center bg-slate-950 p-6 text-center">
-                    <form onSubmit={handleLogin} class="bg-white p-12 rounded-[3rem] shadow-2xl w-full max-w-sm">
-                        <h2 class="text-3xl font-black mb-10 italic">HSDEC LOGIN</h2>
+                <div class="min-h-screen flex items-center justify-center bg-slate-950 p-6">
+                    <form onSubmit={handleLogin} class="bg-white p-12 rounded-[3.5rem] shadow-2xl w-full max-w-sm text-center">
+                        <h2 class="text-3xl font-black mb-10 tracking-tighter italic">HSDEC LOGIN</h2>
                         <input type="email" placeholder="Email" class="form-input mb-4" onChange={e => setEmail(e.target.value)} required />
                         <input type="password" placeholder="Password" class="form-input mb-8" onChange={e => setPassword(e.target.value)} required />
-                        <button class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black">LOGIN</button>
+                        <button class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-blue-500/30">LOGIN</button>
                     </form>
                 </div>
             );
