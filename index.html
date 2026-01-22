@@ -3,30 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC 管理システム</title>
+    <title>HSDEC Global Platform v3.0</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .form-input { border: 2px solid #e2e8f0; padding: 0.8rem; border-radius: 0.8rem; width: 100%; outline: none; transition: 0.2s; font-size: 14px; }
+        .form-input:focus { border-color: #3b82f6; background-color: #fff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+        .label-text { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; margin-left: 4px; }
+    </style>
 </head>
-<body class="bg-slate-100">
+<body>
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // ★★★ URLとキーの書き換えをお願いします ★★★
         const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         function App() {
             const [user, setUser] = useState(null);
-            const [view, setView] = useState('list');
+            const [view, setView] = useState('list'); // 'list' or 'edit'
             const [workers, setWorkers] = useState([]);
             const [loading, setLoading] = useState(false);
-            const [errorMsg, setErrorMsg] = useState(null);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [activeTab, setActiveTab] = useState('basic');
+
+            // 51項目のベースデータ構造
+            const initialForm = {
+                id: null, name: '', phone: '', passport_no: '', gender: '', birth_date: '',
+                docs_land_titles: false, docs_health_cert: false, docs_criminal_record: false,
+                topik_level: '', total_score: 0, interview_score: 0,
+                dispatch_status: 'Waiting', company_feedback: '', work_attitude_score: 0
+            };
+            const [formData, setFormData] = useState(initialForm);
 
             useEffect(() => {
                 supabaseClient.auth.getSession().then(({ data: { session } }) => {
@@ -37,80 +53,137 @@
 
             const fetchWorkers = async () => {
                 setLoading(true);
-                setErrorMsg(null);
-                
-                // .select('*') で全データを取得
-                const { data, error } = await supabaseClient
-                    .from('workers')
-                    .select('*');
+                const { data, error } = await supabaseClient.from('workers').select('*').order('created_at', { ascending: false });
+                if (!error) setWorkers(data || []);
+                setLoading(false);
+            };
 
+            const handleSave = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                const { error } = await supabaseClient.from('workers').upsert([formData]);
                 if (error) {
-                    setErrorMsg("データ取得エラー: " + error.message);
+                    alert("保存エラー: " + error.message);
                 } else {
-                    setWorkers(data || []);
+                    alert("保存完了！");
+                    setView('list');
+                    fetchWorkers();
                 }
                 setLoading(false);
             };
 
+            const startEdit = (worker) => {
+                setFormData(worker);
+                setView('edit');
+                setActiveTab('basic');
+            };
+
+            const filteredWorkers = workers.filter(w => 
+                w.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                w.passport_no?.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
             if (!user) return <LoginForm supabase={supabaseClient} />;
 
             return (
-                <div class="min-h-screen flex">
-                    <aside class="w-64 bg-slate-900 text-white p-6 shadow-xl flex-shrink-0">
-                        <h1 class="text-xl font-black text-blue-400 mb-10 tracking-tighter">HSDEC GLOBAL</h1>
+                <div class="min-h-screen flex flex-col md:flex-row">
+                    {/* サイドバー */}
+                    <aside class="w-full md:w-64 bg-slate-900 text-white p-6 shadow-xl flex-shrink-0">
+                        <div class="mb-10 text-2xl font-black text-blue-400 italic">HSDEC</div>
                         <nav class="space-y-4">
-                            <button onClick={() => { setView('list'); fetchWorkers(); }} class={`w-full text-left p-3 rounded-lg font-bold ${view === 'list' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}>📂 名簿一覧</button>
-                            <button onClick={() => setView('add')} class={`w-full text-left p-3 rounded-lg font-bold ${view === 'add' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}>➕ 新規登録テスト</button>
-                            <button onClick={() => supabaseClient.auth.signOut()} class="w-full text-left p-3 text-red-500 text-xs mt-20 uppercase">ログアウト</button>
+                            <button onClick={() => { setView('list'); fetchWorkers(); }} class={`w-full text-left p-3 rounded-xl font-bold transition ${view === 'list' ? 'bg-blue-600' : 'text-slate-400 hover:text-white'}`}>📂 名簿一覧</button>
+                            <button onClick={() => { setFormData(initialForm); setView('edit'); setActiveTab('basic'); }} class={`w-full text-left p-3 rounded-xl font-bold transition ${view === 'edit' && !formData.id ? 'bg-blue-600' : 'text-slate-400 hover:text-white'}`}>➕ 新規登録</button>
+                            <button onClick={() => supabaseClient.auth.signOut()} class="w-full text-left p-3 text-red-500 text-xs mt-20 font-black">ログアウト</button>
                         </nav>
                     </aside>
 
-                    <main class="flex-grow p-10 overflow-auto">
+                    <main class="flex-grow p-6 md:p-10 overflow-auto">
                         {view === 'list' ? (
-                            <div>
-                                <div class="flex justify-between items-center mb-10">
-                                    <h2 class="text-3xl font-black text-slate-800">ダッシュボード</h2>
-                                    <button onClick={fetchWorkers} class="bg-white border-2 border-slate-200 px-6 py-2 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition active:scale-95">
-                                        {loading ? '更新中...' : '🔄 データを更新'}
-                                    </button>
+                            <div class="max-w-6xl mx-auto">
+                                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+                                    <h2 class="text-3xl font-black text-slate-800 tracking-tight">ダッシュボード</h2>
+                                    <div class="flex gap-4 w-full md:w-auto">
+                                        <input type="text" placeholder="名前やパスポートで検索..." class="form-input bg-white shadow-sm !w-64" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                                        <button onClick={fetchWorkers} class="bg-white border p-3 rounded-xl hover:bg-slate-50 transition shadow-sm">{loading ? '...' : '🔄'}</button>
+                                    </div>
                                 </div>
 
-                                {errorMsg && <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm">{errorMsg}</div>}
-
-                                {workers.length === 0 ? (
-                                    <div class="bg-white p-20 rounded-[2.5rem] text-center border-2 border-dashed border-slate-200 shadow-inner">
-                                        <p class="text-slate-400 font-bold mb-2">データが1件もありません。</p>
-                                        <p class="text-slate-300 text-xs italic">SQL Editorにはデータがありますか？</p>
-                                    </div>
-                                ) : (
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                        {workers.map(w => (
-                                            <div key={w.id} class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-xl transition-all">
-                                                <div class="font-black text-xl text-slate-800">{w.name}</div>
-                                                <div class="text-[10px] font-black text-slate-400 uppercase mt-1 tracking-widest">PASSPORT: {w.passport_no || '未登録'}</div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {filteredWorkers.map(w => (
+                                        <div key={w.id} onClick={() => startEdit(w)} class="bg-white p-6 rounded-[2rem] shadow-sm border-2 border-transparent hover:border-blue-500 hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden">
+                                            <div class="absolute top-0 right-0 px-4 py-2 bg-slate-50 text-[9px] font-black text-slate-400 rounded-bl-xl group-hover:bg-blue-50 group-hover:text-blue-500">{w.dispatch_status}</div>
+                                            <div class="font-black text-xl text-slate-800 mb-1">{w.name}</div>
+                                            <div class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Passport: {w.passport_no || '---'}</div>
+                                            <div class="flex gap-2 border-t pt-4">
+                                                <span class="bg-blue-50 text-blue-600 text-[9px] font-black px-2 py-1 rounded">TOPIK {w.topik_level || '-'}</span>
+                                                <span class="bg-amber-50 text-amber-600 text-[9px] font-black px-2 py-1 rounded">Score {w.total_score || '0'}</span>
                                             </div>
-                                        ))}
-                                    </div>
-                                )}
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         ) : (
-                            <div class="max-w-md mx-auto bg-white p-10 rounded-[2.5rem] shadow-2xl text-center border border-slate-100">
-                                <h2 class="text-2xl font-black mb-6 text-slate-800">登録テスト</h2>
-                                <p class="text-slate-500 text-sm mb-10">ボタンを押すと「Test + 数字」という名前で一人登録されます。</p>
-                                <button onClick={async () => {
-                                    const testName = "Test Worker " + Math.floor(Math.random() * 1000);
-                                    const { error } = await supabaseClient.from('workers').insert([{ name: testName }]);
-                                    if (error) {
-                                        alert("エラー: " + error.message);
-                                    } else {
-                                        alert(testName + " を保存しました！");
-                                        setView('list');
-                                        fetchWorkers();
-                                    }
-                                }} class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-blue-500/30 hover:bg-blue-700 transition active:scale-95">
-                                    クイック登録を実行
-                                </button>
-                                <button onClick={() => setView('list')} class="mt-6 text-slate-400 font-bold">キャンセル</button>
+                            /* 編集・登録画面 */
+                            <div class="max-w-4xl mx-auto bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100">
+                                <div class="flex bg-slate-50 border-b overflow-x-auto">
+                                    {[
+                                        { id: 'basic', label: '1. 基本情報' },
+                                        { id: 'docs', label: '2. 書類確認' },
+                                        { id: 'interview', label: '3-4. 選抜評価' },
+                                        { id: 'dispatch', label: '5-6. 派遣・企業' }
+                                    ].map(tab => (
+                                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} class={`px-8 py-5 text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white text-blue-600 border-b-4 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>{tab.label}</button>
+                                    ))}
+                                </div>
+                                
+                                <form onSubmit={handleSave} class="p-8 md:p-12">
+                                    {activeTab === 'basic' && (
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
+                                            <div class="md:col-span-2"><label class="label-text">フルネーム</label><input type="text" class="form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required /></div>
+                                            <div><label class="label-text">パスポート番号</label><input type="text" class="form-input" value={formData.passport_no} onChange={e => setFormData({...formData, passport_no: e.target.value})} /></div>
+                                            <div><label class="label-text">電話番号</label><input type="text" class="form-input" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} /></div>
+                                            <div><label class="label-text">性別</label><select class="form-input" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}><option value="">選択...</option><option value="M">男性</option><option value="F">女性</option></select></div>
+                                            <div><label class="label-text">生年月日</label><input type="date" class="form-input" value={formData.birth_date} onChange={e => setFormData({...formData, birth_date: e.target.value})} /></div>
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'docs' && (
+                                        <div class="space-y-4 animate-in fade-in">
+                                            {[
+                                                { id: 'docs_land_titles', label: '土地証明書 (Land Titles)' },
+                                                { id: 'docs_health_cert', label: '健康診断書 (Health Cert)' },
+                                                { id: 'docs_criminal_record', label: '無犯罪証明書 (Criminal Record)' }
+                                            ].map(doc => (
+                                                <label key={doc.id} class="flex items-center justify-between p-5 border-2 border-slate-50 rounded-2xl cursor-pointer hover:bg-slate-50 transition">
+                                                    <span class="font-bold text-slate-700">{doc.label}</span>
+                                                    <input type="checkbox" checked={formData[doc.id]} onChange={e => setFormData({...formData, [doc.id]: e.target.checked})} class="w-6 h-6 rounded border-slate-300 text-blue-600" />
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'interview' && (
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
+                                            <div><label class="label-text">TOPIK レベル</label><select class="form-input" value={formData.topik_level} onChange={e => setFormData({...formData, topik_level: e.target.value})}><option value="">未取得</option><option value="1">1級</option><option value="2">2級</option></select></div>
+                                            <div><label class="label-text">選抜総合点 (0-100)</label><input type="number" class="form-input" value={formData.total_score} onChange={e => setFormData({...formData, total_score: parseInt(e.target.value) || 0})} /></div>
+                                            <div class="md:col-span-2 text-xs text-slate-400 italic">※面接詳細や実技評価の項目もここに追加可能です。</div>
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'dispatch' && (
+                                        <div class="space-y-6 animate-in fade-in">
+                                            <div><label class="label-text">派遣ステータス</label><select class="form-input" value={formData.dispatch_status} onChange={e => setFormData({...formData, dispatch_status: e.target.value})}><option value="Waiting">待機中</option><option value="Dispatched">派遣済み</option><option value="Completed">期間満了</option></select></div>
+                                            <div><label class="label-text">企業からのフィードバック / 勤務態度メモ</label><textarea class="form-input h-32" value={formData.company_feedback} onChange={e => setFormData({...formData, company_feedback: e.target.value})} placeholder="勤務状況やトラブル、評価などを入力..." /></div>
+                                        </div>
+                                    )}
+
+                                    <div class="mt-12 flex gap-4 border-t border-slate-50 pt-10">
+                                        <button type="button" onClick={() => setView('list')} class="px-8 py-4 font-bold text-slate-400 hover:text-slate-600 transition">キャンセル</button>
+                                        <button type="submit" disabled={loading} class="flex-grow py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-500/30 hover:bg-blue-700 transition active:scale-95 disabled:opacity-50">
+                                            {loading ? '保存中...' : (formData.id ? '変更を保存する' : '新規登録を完了する')}
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
                         )}
                     </main>
@@ -123,17 +196,16 @@
             const [password, setPassword] = useState('');
             const handleLogin = async (e) => {
                 e.preventDefault();
-                const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) alert(error.message);
+                const { error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) alert("ログイン失敗: " + error.message);
             };
             return (
-                <div class="min-h-screen flex items-center justify-center bg-slate-950 p-6 relative overflow-hidden">
-                    <div class="absolute inset-0 bg-blue-600 opacity-5 blur-[120px] rounded-full"></div>
-                    <form onSubmit={handleLogin} class="bg-white p-12 rounded-[3rem] shadow-2xl w-full max-w-sm relative z-10">
-                        <h2 class="text-3xl font-black mb-10 text-center tracking-tighter">HSDEC LOGIN</h2>
-                        <input type="email" placeholder="メールアドレス" class="w-full border-2 border-slate-100 p-4 rounded-2xl mb-4 outline-none focus:border-blue-500" onChange={e => setEmail(e.target.value)} required />
-                        <input type="password" placeholder="パスワード" class="w-full border-2 border-slate-100 p-4 rounded-2xl mb-8 outline-none focus:border-blue-500" onChange={e => setPassword(e.target.value)} required />
-                        <button class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition">ログイン</button>
+                <div class="min-h-screen flex items-center justify-center bg-slate-950 p-6">
+                    <form onSubmit={handleLogin} class="bg-white p-12 rounded-[3rem] shadow-2xl w-full max-w-sm">
+                        <h2 class="text-3xl font-black mb-10 text-center tracking-tighter text-slate-900">HSDEC LOGIN</h2>
+                        <input type="email" placeholder="メールアドレス" class="form-input mb-4" onChange={e => setEmail(e.target.value)} required />
+                        <input type="password" placeholder="パスワード" class="form-input mb-8" onChange={e => setPassword(e.target.value)} required />
+                        <button class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-xl hover:bg-blue-700 transition">ログイン</button>
                     </form>
                 </div>
             );
