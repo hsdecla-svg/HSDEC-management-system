@@ -35,13 +35,33 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const i18n = {
-            en: { dash: "Dashboard", new: "New Entry", save: "Save All", back: "Back", basic: "Basic", personal: "Personal", family_edu: "Family/Edu", work_skill: "Work/Skill", docs: "Docs", status: "Doc Status", cards: "Workers" },
-            jp: { dash: "管理台帳", new: "新規登録", save: "全保存", back: "戻る", basic: "基本", personal: "個人", family_edu: "家族・学歴", work_skill: "仕事・能力", docs: "書類", status: "提出状況", cards: "名簿一覧" },
-            lao: { dash: "ແຜງຄວບຄຸມ", new: "ເພີ່ມໃຫມ່", save: "ບັນທຶກ", back: "ກັບຄືນ", basic: "ພື້ນຖານ", personal: "ສ່ວນຕົວ", family_edu: "ຄອບຄົວ", work_skill: "ທັກສະ", docs: "ເອກະສານ", status: "ສະຖານະ", cards: "ລາຍຊື່" },
-            kr: { dash: "대시보드", new: "신규등록", save: "저장", back: "뒤로", basic: "기본", personal: "인적", family_edu: "가족/학력", work_skill: "경력/기술", docs: "서류", status: "제출현황", cards: "전체명단" }
+            en: { dash: "Dashboard", new: "New Entry", save: "Save All", back: "Back", basic: "Basic", personal: "Personal", docs: "Docs", status: "Status", cards: "Workers", finance: "Finance", amount: "Amount", currency: "Currency", total_lak: "LAK Total", expense: "Item" },
+            jp: { dash: "管理台帳", new: "新規登録", save: "全保存", back: "戻る", basic: "基本", personal: "個人", docs: "書類", status: "状況", cards: "名簿", finance: "会計", amount: "金額", currency: "通貨", total_lak: "キープ合計", expense: "項目" },
+            lao: { dash: "ແຜງຄວບຄຸມ", new: "ເພີ່ມໃຫມ່", save: "ບັນທຶກ", back: "ກັບຄືນ", basic: "ພື້ນຖານ", personal: "ສ່ວນຕົວ", docs: "ເອກະສານ", status: "ສະຖານະ", cards: "ລາຍຊື່", finance: "ການເງິນ", amount: "ຈຳນວນ", currency: "ສະກຸນເງິນ", total_lak: "ລວມເປັນກີບ", expense: "ລາຍການ" },
+            kr: { dash: "대시보드", new: "신규등록", save: "저장", back: "뒤로", basic: "기본", personal: "인적", docs: "서류", status: "현황", cards: "명단", finance: "회계", amount: "금액", currency: "통화", total_lak: "킵 합계", expense: "항목" }
         };
 
         function App() {
+            const [rates, setRates] = useState({ USD: 22000, THB: 650 }); // BCELレート用
+            // レート自動取得（BCELに近いレートを取得）
+            useEffect(() => {
+                fetch('https://api.exchangerate-api.com/v4/latest/USD')
+                    .then(res => res.json())
+                    .then(data => {
+                        setRates({
+                            USD: data.rates.LAK || 22000,
+                            THB: (data.rates.LAK / data.rates.THB) || 650
+                        });
+                    });
+            }, []);  
+
+            // 通貨や金額が変わるたびにLAK換算額を計算
+            useEffect(() => {
+                let amt = parseFloat(financeForm.amount) || 0;
+                if (financeForm.currency === 'USD') amt *= rates.USD;
+                if (financeForm.currency === 'THB') amt *= rates.THB;
+                setFinanceForm(prev => ({ ...prev, lak_amount: Math.round(amt) }));
+            }, [financeForm.amount, financeForm.currency, rates]);
             const [mode, setMode] = useState('worker'); // 'worker' or 'finance'
             const [lang, setLang] = useState('en');
             const [view, setView] = useState('list');
@@ -246,34 +266,59 @@
                                     </div>
                                 ) : (
                                     <div class="max-w-2xl mx-auto bg-white p-10 rounded-[3rem] shadow-2xl animate-in slide-in-from-bottom-4">
-                                        <h3 class="text-xl font-black mb-8 text-emerald-600 italic">Record New Transaction</h3>
-                                        <form onSubmit={saveFinance} class="space-y-6">
-                                            <div class="grid grid-cols-2 gap-4">
-                                                <div><label class="label-text">Date</label><input type="date" class="form-input" value={financeForm.date} onChange={e => setFinanceForm({...financeForm, date: e.target.value})} required /></div>
-                                                <div><label class="label-text">Category</label>
-                                                    <select class="form-input" value={financeForm.category} onChange={e => setFinanceForm({...financeForm, category: e.target.value})}>
-                                                        <option value="Gas">Gasoline</option><option value="Food">Food</option><option value="Tools">Tools</option><option value="Other">Other</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div><label class="label-text">Description</label><input type="text" class="form-input" value={financeForm.item} onChange={e => setFinanceForm({...financeForm, item: e.target.value})} required /></div>
-                                            <div><label class="label-text">Amount ($)</label><input type="number" step="0.01" class="form-input text-2xl font-black text-emerald-600" value={financeForm.amount} onChange={e => setFinanceForm({...financeForm, amount: e.target.value})} required /></div>
-                                            <div><label class="label-text">Receipt Scan</label>
-                                                <input type="file" onChange={async (e) => { const url = await compressAndUpload(e.target.files[0]); setFinanceForm({...financeForm, receipt_url: url}); }} class="text-xs" />
-                                            </div>
-                                            <div class="flex justify-between items-center pt-8">
-                                                <button type="button" onClick={() => setView('list')} class="text-slate-400 font-bold uppercase text-xs">Cancel</button>
-                                                <button type="submit" class="bg-emerald-600 text-white px-10 py-4 rounded-2xl font-black shadow-xl" disabled={uploading}>{uploading ? 'PROCESSING...' : 'LOG DATA'}</button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
+        <h3 class="text-xl font-black mb-8 text-emerald-600 italic">Record New Transaction</h3>
+        
+        {/* ★ここに追加：レート表示パネル */}
+        <div class="bg-blue-50 p-4 rounded-2xl mb-6 flex justify-around text-center border border-blue-100">
+            <div><p class="text-[9px] font-black text-blue-400">USD/LAK</p><p class="font-mono font-bold">₭ {rates.USD.toLocaleString()}</p></div>
+            <div class="border-l border-blue-100"></div>
+            <div><p class="text-[9px] font-black text-blue-400">THB/LAK</p><p class="font-mono font-bold">₭ {rates.THB.toLocaleString()}</p></div>
+        </div>
+
+        <form onSubmit={saveFinance} class="space-y-6">
+            <div class="grid grid-cols-2 gap-4">
+                {/* ★金額入力 */}
+                <div>
+                    <label class="label-text">{t.amount}</label>
+                    <input type="number" class="form-input text-xl font-black" value={financeForm.amount} onChange={e => setFinanceForm({...financeForm, amount: e.target.value})} required />
                 </div>
-            );
-        }
+                {/* ★通貨選択 */}
+                <div>
+                    <label class="label-text">{t.currency}</label>
+                    <select class="form-input font-bold" value={financeForm.currency} onChange={e => setFinanceForm({...financeForm, currency: e.target.value})}>
+                        <option value="LAK">LAK (₭)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="THB">THB (฿)</option>
+                    </select>
+                </div>
+            </div>
+
+            {/* ★自動計算されたキープ総額の表示エリア */}
+            <div class="bg-emerald-600 p-6 rounded-[2rem] text-white shadow-xl shadow-emerald-200">
+                <label class="text-[10px] font-black opacity-70 uppercase">{t.total_lak}</label>
+                <p class="text-3xl font-black">₭ {financeForm.lak_amount.toLocaleString()}</p>
+            </div>
+
+            <div><label class="label-text">{t.expense}</label><input type="text" class="form-input" value={financeForm.item} onChange={e => setFinanceForm({...financeForm, item: e.target.value})} required /></div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="label-text">Date</label><input type="date" class="form-input" value={financeForm.date} onChange={e => setFinanceForm({...financeForm, date: e.target.value})} required /></div>
+                <div><label class="label-text">Category</label>
+                    <select class="form-input" value={financeForm.category} onChange={e => setFinanceForm({...financeForm, category: e.target.value})}>
+                        <option value="Gas">Gasoline</option><option value="Food">Food</option><option value="Tools">Tools</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center pt-8">
+                <button type="button" onClick={() => setView('list')} class="text-slate-400 font-bold uppercase text-xs">{t.back}</button>
+                <button type="submit" class="bg-emerald-600 text-white px-10 py-4 rounded-2xl font-black shadow-xl" disabled={uploading}>
+                    {uploading ? 'PROCESSING...' : 'LOG DATA'}
+                </button>
+            </div>
+        </form>
+    </div>
+)
 
         function LoginForm({ supabase }) {
             const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
