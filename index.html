@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Global Hub</title>
+    <title>HSDEC Global Hub v15.0</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -11,7 +11,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+KR:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        body { font-family: 'Inter', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; background-color: #f8fafc; overflow-x: hidden; }
         .form-input { border: 2px solid #e2e8f0; padding: 0.8rem; border-radius: 0.8rem; width: 100%; outline: none; transition: 0.2s; font-size: 14px; background: #fff; }
         .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
         .label-text { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
@@ -21,7 +21,6 @@
         .nav-sidebar-btn.active { color: #3b82f6; background: rgba(59, 130, 246, 0.1); border-radius: 1rem; }
         .doc-check { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; color: #475569; padding: 8px 12px; background: #f1f5f9; border-radius: 12px; cursor: pointer; }
         .doc-check.done { background: #dcfce7; color: #166534; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
@@ -35,34 +34,14 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const i18n = {
-            en: { dash: "Dashboard", new: "New Entry", save: "Save All", back: "Back", basic: "Basic", personal: "Personal", docs: "Docs", status: "Status", cards: "Workers", finance: "Finance", amount: "Amount", currency: "Currency", total_lak: "LAK Total", expense: "Item" },
-            jp: { dash: "管理台帳", new: "新規登録", save: "全保存", back: "戻る", basic: "基本", personal: "個人", docs: "書類", status: "状況", cards: "名簿", finance: "会計", amount: "金額", currency: "通貨", total_lak: "キープ合計", expense: "項目" },
-            lao: { dash: "ແຜງຄວບຄຸມ", new: "ເພີ່ມໃຫມ່", save: "ບັນທຶກ", back: "ກັບຄືນ", basic: "ພື້ນຖານ", personal: "ສ່ວນຕົວ", docs: "ເອກະສານ", status: "ສະຖານະ", cards: "ລາຍຊື່", finance: "ການເງິນ", amount: "ຈຳນວນ", currency: "ສະກຸນເງິນ", total_lak: "ລວມເປັນກີບ", expense: "ລາຍການ" },
-            kr: { dash: "대시보드", new: "신규등록", save: "저장", back: "뒤로", basic: "기본", personal: "인적", docs: "서류", status: "현황", cards: "명단", finance: "회계", amount: "금액", currency: "통화", total_lak: "킵 합계", expense: "항목" }
+            en: { dash: "Dashboard", new: "New Entry", save: "Save All", back: "Back", basic: "Basic", personal: "Personal", docs: "Docs", status: "Status", cards: "Workers", finance: "Finance", amount: "Amount", currency: "Currency", total_lak: "LAK Total", expense: "Item", rate: "Today's Rate" },
+            jp: { dash: "管理台帳", new: "新規登録", save: "全保存", back: "戻る", basic: "基本", personal: "個人", docs: "書類", status: "状況", cards: "名簿", finance: "会計", amount: "金額", currency: "通貨", total_lak: "キープ合計", expense: "項目", rate: "本日のレート" },
+            lao: { dash: "ແຜງຄວບຄຸມ", new: "ເພີ່ມໃຫມ່", save: "ບັນທຶກ", back: "ກັບຄືນ", basic: "ພື້ນຖານ", personal: "ສ່ວນຕົວ", docs: "ເອກະສານ", status: "ສະຖານະ", cards: "ລາຍຊື່", finance: "ການເງິນ", amount: "ຈຳນວນ", currency: "ສະກຸນເງິນ", total_lak: "ລວມເປັນກີບ", expense: "ລາຍການ", rate: "ອັດຕາແລກປ່ຽນ" },
+            kr: { dash: "대시보드", new: "신규등록", save: "저장", back: "뒤로", basic: "기본", personal: "인적", docs: "서류", status: "현황", cards: "명단", finance: "회계", amount: "금액", currency: "통화", total_lak: "킵 합계", expense: "항목", rate: "오늘의 환율" }
         };
 
         function App() {
-            const [rates, setRates] = useState({ USD: 22000, THB: 650 }); // BCELレート用
-            // レート自動取得（BCELに近いレートを取得）
-            useEffect(() => {
-                fetch('https://api.exchangerate-api.com/v4/latest/USD')
-                    .then(res => res.json())
-                    .then(data => {
-                        setRates({
-                            USD: data.rates.LAK || 22000,
-                            THB: (data.rates.LAK / data.rates.THB) || 650
-                        });
-                    });
-            }, []);  
-
-            // 通貨や金額が変わるたびにLAK換算額を計算
-            useEffect(() => {
-                let amt = parseFloat(financeForm.amount) || 0;
-                if (financeForm.currency === 'USD') amt *= rates.USD;
-                if (financeForm.currency === 'THB') amt *= rates.THB;
-                setFinanceForm(prev => ({ ...prev, lak_amount: Math.round(amt) }));
-            }, [financeForm.amount, financeForm.currency, rates]);
-            const [mode, setMode] = useState('worker'); // 'worker' or 'finance'
+            const [mode, setMode] = useState('worker');
             const [lang, setLang] = useState('en');
             const [view, setView] = useState('list');
             const [dashTab, setDashTab] = useState('all'); 
@@ -71,18 +50,34 @@
             const [financeLogs, setFinanceLogs] = useState([]);
             const [uploading, setUploading] = useState(false);
             const [user, setUser] = useState(null);
+            const [rates, setRates] = useState({ USD: 22000, THB: 650 });
             const t = i18n[lang] || i18n.en;
 
-            // Form States
-            const [workerForm, setWorkerForm] = useState({ name: '', batch_no: '1', entry_type: 'New', has_passport: false });
-            const [financeForm, setFinanceForm] = useState({ item: '', amount: '', category: 'General', date: new Date().toISOString().split('T')[0] });
+            const [workerForm, setWorkerForm] = useState({ name: '', batch_no: '1', entry_type: 'New' });
+            const [financeForm, setFinanceForm] = useState({ item: '', amount: '', currency: 'LAK', lak_amount: 0, category: 'General', date: new Date().toISOString().split('T')[0] });
 
             useEffect(() => {
                 supabaseClient.auth.getSession().then(({ data: { session } }) => {
                     setUser(session?.user ?? null);
-                    if (session) { fetchData(); }
+                    if (session) { fetchData(); fetchRates(); }
                 });
             }, []);
+
+            // 通貨計算ロジック
+            useEffect(() => {
+                let amt = parseFloat(financeForm.amount) || 0;
+                if (financeForm.currency === 'USD') amt *= rates.USD;
+                if (financeForm.currency === 'THB') amt *= rates.THB;
+                setFinanceForm(prev => ({ ...prev, lak_amount: Math.round(amt) }));
+            }, [financeForm.amount, financeForm.currency, rates]);
+
+            const fetchRates = async () => {
+                try {
+                    const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+                    const data = await res.json();
+                    setRates({ USD: data.rates.LAK || 22000, THB: (data.rates.LAK / data.rates.THB) || 650 });
+                } catch (e) { console.error("Rate Error"); }
+            };
 
             const fetchData = async () => {
                 const { data: w } = await supabaseClient.from('workers').select('*').order('created_at', { ascending: false });
@@ -111,8 +106,7 @@
                                 const fileName = `${Date.now()}.jpg`;
                                 await supabaseClient.storage.from('worker-docs').upload(fileName, blob);
                                 const { data: { publicUrl } } = supabaseClient.storage.from('worker-docs').getPublicUrl(fileName);
-                                setUploading(false);
-                                resolve(publicUrl);
+                                setUploading(false); resolve(publicUrl);
                             }, 'image/jpeg', 0.6);
                         };
                     };
@@ -129,16 +123,15 @@
                 e.preventDefault();
                 await supabaseClient.from('finance_logs').insert([financeForm]);
                 setView('list'); fetchData();
-                setFinanceForm({ item: '', amount: '', category: 'General', date: new Date().toISOString().split('T')[0] });
+                setFinanceForm({ item: '', amount: '', currency: 'LAK', lak_amount: 0, category: 'General', date: new Date().toISOString().split('T')[0] });
             };
 
             if (!user) return <LoginForm supabase={supabaseClient} />;
 
             return (
                 <div class="flex h-screen w-screen bg-slate-50">
-                    {/* 左端切替バー */}
-                    <nav class="w-16 md:w-20 bg-slate-900 flex flex-col items-center py-6 gap-6 z-50">
-                        <div class="text-blue-400 font-black italic text-xl mb-4">H.</div>
+                    <nav class="w-16 md:w-20 bg-slate-900 flex flex-col items-center py-6 gap-6 z-50 shrink-0">
+                        <div class="text-blue-400 font-black italic text-xl mb-4 uppercase">H.</div>
                         <button onClick={() => {setMode('worker'); setView('list');}} class={`p-3 md:p-4 nav-sidebar-btn ${mode === 'worker' ? 'active text-blue-400' : 'text-slate-500'}`}>
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                         </button>
@@ -152,7 +145,6 @@
                         </div>
                     </nav>
 
-                    {/* メインエリア */}
                     <div class="flex-grow overflow-y-auto">
                         {mode === 'worker' ? (
                             <div class="p-6 md:p-10 max-w-6xl mx-auto">
@@ -161,38 +153,33 @@
                                         <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
                                             <h2 class="text-3xl font-black text-slate-800 tracking-tight">{t.dash}</h2>
                                             <div class="flex gap-4 items-center">
-                                                <div class="bg-slate-200 p-1 rounded-xl flex shadow-inner">
-                                                    <button onClick={() => setDashTab('all')} class={`px-4 py-2 rounded-lg text-xs font-black ${dashTab === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>{t.cards}</button>
-                                                    <button onClick={() => setDashTab('docs')} class={`px-4 py-2 rounded-lg text-xs font-black ${dashTab === 'docs' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>{t.status}</button>
+                                                <div class="bg-slate-200 p-1 rounded-xl flex">
+                                                    <button onClick={() => setDashTab('all')} class={`px-4 py-2 rounded-lg text-xs font-black ${dashTab === 'all' ? 'bg-white text-blue-600' : 'text-slate-500'}`}>{t.cards}</button>
+                                                    <button onClick={() => setDashTab('docs')} class={`px-4 py-2 rounded-lg text-xs font-black ${dashTab === 'docs' ? 'bg-white text-blue-600' : 'text-slate-500'}`}>{t.status}</button>
                                                 </div>
                                                 <button onClick={() => {setWorkerForm({name:'', batch_no:'1', entry_type:'New'}); setView('edit');}} class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/30">+ {t.new}</button>
                                             </div>
                                         </div>
                                         {dashTab === 'all' ? (
-                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in">
+                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in">
                                                 {workers.map(w => (
-                                                    <div key={w.id} onClick={() => {setWorkerForm(w); setView('edit');}} class="bg-white p-6 rounded-[2.5rem] shadow-sm hover:shadow-xl border-2 border-transparent hover:border-blue-400 cursor-pointer transition-all group">
-                                                        <div class="flex justify-between items-start mb-4">
-                                                            <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-xl group-hover:bg-blue-50">👤</div>
-                                                            <span class="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded">Batch {w.batch_no}</span>
-                                                        </div>
+                                                    <div key={w.id} onClick={() => {setWorkerForm(w); setView('edit');}} class="bg-white p-6 rounded-[2rem] shadow-sm border-2 border-transparent hover:border-blue-400 cursor-pointer transition-all">
                                                         <div class="font-black text-lg text-slate-800">{w.name}</div>
                                                         <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{w.province || '--'} / {w.entry_type}</div>
                                                     </div>
                                                 ))}
                                             </div>
                                         ) : (
-                                            <div class="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100 animate-in slide-in-from-bottom-4">
+                                            <div class="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100">
                                                 <table class="w-full text-left">
-                                                    <thead class="bg-slate-50 border-b border-slate-100">
-                                                        <tr><th class="p-5 text-[10px] font-black text-slate-400 uppercase">Worker</th><th class="p-5 text-[10px] font-black text-slate-400 uppercase text-center">Pass</th><th class="p-5 text-[10px] font-black text-slate-400 uppercase text-center">Contr</th><th class="p-5 text-[10px] font-black text-slate-400 uppercase text-center">Health</th></tr>
+                                                    <thead class="bg-slate-50 border-b">
+                                                        <tr><th class="p-5 text-[10px] font-black text-slate-400 uppercase">Worker</th><th class="p-5 text-[10px] font-black text-slate-400 uppercase text-center">Pass</th><th class="p-5 text-[10px] font-black text-slate-400 uppercase text-center">Contr</th></tr>
                                                     </thead>
                                                     <tbody class="divide-y divide-slate-50">{workers.map(w => (
-                                                        <tr key={w.id} onClick={() => {setWorkerForm(w); setView('edit');}} class="hover:bg-blue-50 cursor-pointer transition">
-                                                            <td class="p-5 font-bold text-sm text-slate-800">{w.name}</td>
+                                                        <tr key={w.id} onClick={() => {setWorkerForm(w); setView('edit');}} class="hover:bg-blue-50 cursor-pointer">
+                                                            <td class="p-5 font-bold text-sm">{w.name}</td>
                                                             <td class="p-5 text-center">{w.has_passport ? '✅' : '🔴'}</td>
                                                             <td class="p-5 text-center">{w.has_contract ? '✅' : '🔴'}</td>
-                                                            <td class="p-5 text-center">{w.has_health_check ? '✅' : '🔴'}</td>
                                                         </tr>
                                                     ))}</tbody>
                                                 </table>
@@ -200,18 +187,18 @@
                                         )}
                                     </>
                                 ) : (
-                                    <div class="max-w-4xl mx-auto bg-white rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95">
+                                    <div class="max-w-4xl mx-auto bg-white rounded-[3rem] shadow-2xl overflow-hidden">
                                         <div class="flex bg-slate-50 border-b overflow-x-auto scrollbar-hide">
-                                            {['basic', 'personal', 'family_edu', 'work_skill', 'docs'].map(id => (
+                                            {['basic', 'personal', 'docs'].map(id => (
                                                 <button key={id} onClick={() => setActiveTab(id)} class={`tab-btn ${activeTab === id ? 'active' : 'text-slate-400'}`}>{t[id]}</button>
                                             ))}
                                         </div>
                                         <form onSubmit={saveWorker} class="p-8">
                                             {activeTab === 'basic' && (
-                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in">
-                                                    <div class="md:col-span-2"><label class="label-text">Name</label><input type="text" class="form-input" value={workerForm.name} onChange={e => setWorkerForm({...workerForm, name: e.target.value})} required /></div>
-                                                    <div class="md:col-span-2 p-6 bg-slate-50 rounded-[2rem] grid grid-cols-2 md:grid-cols-3 gap-3">
-                                                        {[{k:'has_passport',l:'Passport'},{k:'has_contract',l:'Contract'},{k:'has_health_check',l:'Health'},{k:'has_agri_cert',l:'Agri'}].map(d => (
+                                                <div class="space-y-6 animate-in fade-in">
+                                                    <div><label class="label-text">Name</label><input type="text" class="form-input" value={workerForm.name} onChange={e => setWorkerForm({...workerForm, name: e.target.value})} required /></div>
+                                                    <div class="grid grid-cols-2 gap-4">
+                                                        {[{k:'has_passport',l:'Passport'},{k:'has_contract',l:'Contract'},{k:'has_health_check',l:'Health'}].map(d => (
                                                             <div key={d.k} onClick={() => setWorkerForm({...workerForm,[d.k]:!workerForm[d.k]})} class={`doc-check ${workerForm[d.k]?'done':''}`}>{workerForm[d.k]?'✅':'⭕'} {d.l}</div>
                                                         ))}
                                                     </div>
@@ -222,8 +209,8 @@
                                                     {['passport_url', 'contract_url'].map(f => (
                                                         <div key={f} class="space-y-4">
                                                             <label class="label-text text-blue-600 font-black">{f.replace('_',' ').toUpperCase()}</label>
-                                                            <div class="aspect-[3/4] bg-slate-100 rounded-[2rem] border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden">
-                                                                {workerForm[f] ? <img src={workerForm[f]} class="w-full h-full object-cover" /> : <span class="text-slate-300 text-[10px] font-black uppercase">No File</span>}
+                                                            <div class="aspect-[3/4] bg-slate-100 rounded-[2rem] border-2 border-dashed border-slate-300 flex items-center justify-center">
+                                                                {workerForm[f] ? <img src={workerForm[f]} class="w-full h-full object-cover" /> : <span class="text-slate-300 text-[10px] font-black uppercase tracking-widest">No File</span>}
                                                             </div>
                                                             <input type="file" onChange={async (e) => { const url = await compressAndUpload(e.target.files[0]); setWorkerForm({...workerForm, [f]: url}); }} class="text-xs" />
                                                         </div>
@@ -231,8 +218,8 @@
                                                 </div>
                                             )}
                                             <div class="mt-12 flex justify-between border-t pt-8">
-                                                <button type="button" onClick={() => setView('list')} class="text-slate-400 font-bold uppercase text-[11px] tracking-widest">← Back</button>
-                                                <button type="submit" class="bg-blue-600 text-white px-12 py-4 rounded-2xl font-black shadow-xl shadow-blue-500/20 uppercase text-xs">Save Worker</button>
+                                                <button type="button" onClick={() => setView('list')} class="text-slate-400 font-bold uppercase text-[11px]">← Back</button>
+                                                <button type="submit" class="bg-blue-600 text-white px-12 py-4 rounded-2xl font-black shadow-xl">SAVE</button>
                                             </div>
                                         </form>
                                     </div>
@@ -243,82 +230,69 @@
                                 {view === 'list' ? (
                                     <div class="animate-in fade-in">
                                         <div class="flex justify-between items-center mb-8">
-                                            <h2 class="text-3xl font-black text-slate-800 italic">Finance Tracker</h2>
-                                            <button onClick={() => setView('edit')} class="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-emerald-500/30">+ Add Log</button>
+                                            <h2 class="text-3xl font-black text-slate-800 italic">{t.finance}</h2>
+                                            <button onClick={() => setView('edit')} class="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-emerald-500/30">+ Log</button>
                                         </div>
                                         <div class="bg-white p-8 rounded-[2.5rem] shadow-sm mb-8 flex justify-between items-center border border-emerald-50">
-                                            <div><p class="label-text">Total Expenditures</p><p class="text-4xl font-black text-slate-800 tracking-tighter">${financeLogs.reduce((sum, l) => sum + Number(l.amount), 0).toLocaleString()}</p></div>
+                                            <div><p class="label-text">Total Expenses (₭)</p><p class="text-4xl font-black text-slate-800 tracking-tighter">₭ {financeLogs.reduce((sum, l) => sum + Number(l.lak_amount || 0), 0).toLocaleString()}</p></div>
                                             <div class="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center text-2xl">💰</div>
                                         </div>
                                         <div class="bg-white rounded-[2rem] shadow-sm overflow-hidden border border-slate-100">
                                             <table class="w-full text-left">
-                                                <thead class="bg-slate-50 border-b"><tr class="text-[10px] font-black text-slate-400 uppercase"><th class="p-5">Date</th><th class="p-5">Item</th><th class="p-5 text-right">Amount</th><th class="p-5 text-center">Receipt</th></tr></thead>
-                                                <tbody class="divide-y divide-slate-50 text-sm">{financeLogs.map(l => (
-                                                    <tr key={l.id} class="hover:bg-slate-50">
-                                                        <td class="p-5 text-slate-400 font-mono text-xs">{l.date}</td>
-                                                        <td class="p-5 font-bold">{l.item} <span class="block text-[9px] text-slate-300">{l.category}</span></td>
-                                                        <td class="p-5 text-right font-black text-emerald-600">${Number(l.amount).toLocaleString()}</td>
-                                                        <td class="p-5 text-center">{l.receipt_url && <a href={l.receipt_url} target="_blank" class="text-blue-500 font-bold underline text-xs">VIEW</a>}</td>
-                                                    </tr>
-                                                ))}</tbody>
+                                                <thead class="bg-slate-50 border-b">
+                                                    <tr class="text-[10px] font-black text-slate-400 uppercase"><th class="p-5">Date</th><th class="p-5">Item</th><th class="p-5 text-right">LAK Amount</th></tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-slate-50 text-sm">
+                                                    {financeLogs.map(l => (
+                                                        <tr key={l.id} class="hover:bg-slate-50">
+                                                            <td class="p-5 text-slate-400 font-mono text-xs">{l.date}</td>
+                                                            <td class="p-5 font-bold">{l.item} <span class="block text-[9px] text-slate-300">{l.currency}: {Number(l.amount).toLocaleString()}</span></td>
+                                                            <td class="p-5 text-right font-black text-emerald-600">₭ {Number(l.lak_amount || 0).toLocaleString()}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
                                             </table>
                                         </div>
                                     </div>
                                 ) : (
                                     <div class="max-w-2xl mx-auto bg-white p-10 rounded-[3rem] shadow-2xl animate-in slide-in-from-bottom-4">
-        <h3 class="text-xl font-black mb-8 text-emerald-600 italic">Record New Transaction</h3>
-        
-        {/* ★ここに追加：レート表示パネル */}
-        <div class="bg-blue-50 p-4 rounded-2xl mb-6 flex justify-around text-center border border-blue-100">
-            <div><p class="text-[9px] font-black text-blue-400">USD/LAK</p><p class="font-mono font-bold">₭ {rates.USD.toLocaleString()}</p></div>
-            <div class="border-l border-blue-100"></div>
-            <div><p class="text-[9px] font-black text-blue-400">THB/LAK</p><p class="font-mono font-bold">₭ {rates.THB.toLocaleString()}</p></div>
-        </div>
-
-        <form onSubmit={saveFinance} class="space-y-6">
-            <div class="grid grid-cols-2 gap-4">
-                {/* ★金額入力 */}
-                <div>
-                    <label class="label-text">{t.amount}</label>
-                    <input type="number" class="form-input text-xl font-black" value={financeForm.amount} onChange={e => setFinanceForm({...financeForm, amount: e.target.value})} required />
+                                        <h3 class="text-xl font-black mb-8 text-emerald-600 italic">Financial Record</h3>
+                                        <div class="bg-blue-50 p-4 rounded-2xl mb-6 flex justify-around text-center border border-blue-100">
+                                            <div><p class="text-[9px] font-black text-blue-400 uppercase">USD Rate</p><p class="font-mono font-bold">₭ {rates.USD.toLocaleString()}</p></div>
+                                            <div class="border-l border-blue-100"></div>
+                                            <div><p class="text-[9px] font-black text-blue-400 uppercase">THB Rate</p><p class="font-mono font-bold">₭ {rates.THB.toLocaleString()}</p></div>
+                                        </div>
+                                        <form onSubmit={saveFinance} class="space-y-6">
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div><label class="label-text">{t.amount}</label><input type="number" class="form-input text-xl font-black" value={financeForm.amount} onChange={e => setFinanceForm({...financeForm, amount: e.target.value})} required /></div>
+                                                <div><label class="label-text">{t.currency}</label>
+                                                    <select class="form-input font-bold" value={financeForm.currency} onChange={e => setFinanceForm({...financeForm, currency: e.target.value})}>
+                                                        <option value="LAK">LAK (₭)</option><option value="USD">USD ($)</option><option value="THB">THB (฿)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div class="bg-emerald-600 p-6 rounded-[2rem] text-white shadow-xl shadow-emerald-200">
+                                                <label class="text-[10px] font-black opacity-70 uppercase">{t.total_lak}</label>
+                                                <p class="text-3xl font-black">₭ {financeForm.lak_amount.toLocaleString()}</p>
+                                            </div>
+                                            <div><label class="label-text">{t.expense}</label><input type="text" class="form-input" value={financeForm.item} onChange={e => setFinanceForm({...financeForm, item: e.target.value})} required /></div>
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div><label class="label-text">Date</label><input type="date" class="form-input" value={financeForm.date} onChange={e => setFinanceForm({...financeForm, date: e.target.value})} required /></div>
+                                                <div><label class="label-text">Category</label><select class="form-input" value={financeForm.category} onChange={e => setFinanceForm({...financeForm, category: e.target.value})}><option value="Gas">Gas</option><option value="Food">Food</option><option value="Tools">Tools</option></select></div>
+                                            </div>
+                                            <div class="flex justify-between items-center pt-8">
+                                                <button type="button" onClick={() => setView('list')} class="text-slate-400 font-bold uppercase text-xs">{t.back}</button>
+                                                <button type="submit" class="bg-emerald-600 text-white px-10 py-4 rounded-2xl font-black shadow-xl" disabled={uploading}>{uploading ? 'WAIT...' : 'SAVE LOG'}</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
-                {/* ★通貨選択 */}
-                <div>
-                    <label class="label-text">{t.currency}</label>
-                    <select class="form-input font-bold" value={financeForm.currency} onChange={e => setFinanceForm({...financeForm, currency: e.target.value})}>
-                        <option value="LAK">LAK (₭)</option>
-                        <option value="USD">USD ($)</option>
-                        <option value="THB">THB (฿)</option>
-                    </select>
-                </div>
-            </div>
-
-            {/* ★自動計算されたキープ総額の表示エリア */}
-            <div class="bg-emerald-600 p-6 rounded-[2rem] text-white shadow-xl shadow-emerald-200">
-                <label class="text-[10px] font-black opacity-70 uppercase">{t.total_lak}</label>
-                <p class="text-3xl font-black">₭ {financeForm.lak_amount.toLocaleString()}</p>
-            </div>
-
-            <div><label class="label-text">{t.expense}</label><input type="text" class="form-input" value={financeForm.item} onChange={e => setFinanceForm({...financeForm, item: e.target.value})} required /></div>
-            
-            <div class="grid grid-cols-2 gap-4">
-                <div><label class="label-text">Date</label><input type="date" class="form-input" value={financeForm.date} onChange={e => setFinanceForm({...financeForm, date: e.target.value})} required /></div>
-                <div><label class="label-text">Category</label>
-                    <select class="form-input" value={financeForm.category} onChange={e => setFinanceForm({...financeForm, category: e.target.value})}>
-                        <option value="Gas">Gasoline</option><option value="Food">Food</option><option value="Tools">Tools</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="flex justify-between items-center pt-8">
-                <button type="button" onClick={() => setView('list')} class="text-slate-400 font-bold uppercase text-xs">{t.back}</button>
-                <button type="submit" class="bg-emerald-600 text-white px-10 py-4 rounded-2xl font-black shadow-xl" disabled={uploading}>
-                    {uploading ? 'PROCESSING...' : 'LOG DATA'}
-                </button>
-            </div>
-        </form>
-    </div>
-)
+            );
+        }
 
         function LoginForm({ supabase }) {
             const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
@@ -326,10 +300,10 @@
             return (
                 <div class="min-h-screen flex items-center justify-center bg-slate-950 p-6">
                     <form onSubmit={handleLogin} class="bg-white p-12 rounded-[3.5rem] shadow-2xl w-full max-w-sm text-center">
-                        <h2 class="text-2xl font-black mb-8 italic">HSDEC HUB</h2>
+                        <h2 class="text-2xl font-black mb-10 italic text-slate-800 uppercase tracking-tighter">HSDEC PORTAL</h2>
                         <input type="email" placeholder="Email" class="form-input mb-4" onChange={e => setEmail(e.target.value)} required />
                         <input type="password" placeholder="Password" class="form-input mb-8" onChange={e => setPassword(e.target.value)} required />
-                        <button class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-xl">LOGIN TO PORTAL</button>
+                        <button class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black shadow-xl shadow-blue-500/30">LOGIN</button>
                     </form>
                 </div>
             );
