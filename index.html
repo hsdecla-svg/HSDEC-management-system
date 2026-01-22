@@ -3,21 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Global Hub v20.0</title>
+    <title>HSDEC Global Hub v22.0 - Complete Edition</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+Lao:wght@400;700&display=swap');
-        body { font-family: 'Inter', 'Noto Sans Lao', sans-serif; background-color: #f8fafc; }
-        .form-input { border: 2px solid #e2e8f0; padding: 0.8rem; border-radius: 1rem; width: 100%; outline: none; transition: 0.2s; background: #fff; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+KR:wght@400;700;900&display=swap');
+        
+        body { 
+            font-family: 'Inter', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; 
+            background-color: #f8fafc; 
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* Scannable UI Elements */
+        .form-input { border: 2px solid #e2e8f0; padding: 0.8rem; border-radius: 1rem; width: 100%; outline: none; transition: 0.2s; background: #fff; font-weight: 600; }
         .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
-        .label-text { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 6px; display: block; }
-        .nav-btn.active { color: #3b82f6; background: rgba(59, 130, 246, 0.1); border-radius: 1.2rem; }
-        .doc-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
+        .label-text { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.05em; }
+        
+        .nav-btn { transition: 0.3s; color: #64748b; border-radius: 1.2rem; }
+        .nav-btn.active { color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        
+        .batch-card { 
+            background: white;
+            padding: 2.5rem;
+            border-radius: 3rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            text-align: center;
+            border: 2px solid transparent;
+        }
+        .batch-card:hover { 
+            transform: translateY(-8px);
+            border-color: #3b82f6;
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+        }
+
+        .doc-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .status-ready { background-color: #10b981; } /* Emerald-500 */
+        .status-missing { background-color: #fb7185; } /* Rose-400 */
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
@@ -26,30 +58,36 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // --- Supabase Config (YOUR URL & KEY) ---
+        // --- 1. CONFIGURATION ---
         const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const i18n = {
-            en: { dash: "Workers", finance: "Finance", new: "New", import: "Import", export: "Export", total: "Monthly Total" },
-            jp: { dash: "労働者管理", finance: "会計管理", new: "新規追加", import: "Excel読込", export: "Excel出力", total: "月間合計" },
-            lao: { dash: "ລາຍຊື່ຄົນງານ", finance: "ການເງິນ", new: "ເພີ່ມໃຫມ່", import: "ນຳເຂົ້າ", export: "ສົ່ງອອກ", total: "ລວມເດືອນນີ້" }
+            en: { dash: "Workers", finance: "Finance", new: "New Entry", import: "Excel Import", export: "Excel Export", total: "Monthly Total", batch: "Batch", all: "Back to Groups", ready: "Ready", missing: "Missing", name: "Full Name", docs: "Documents" },
+            jp: { dash: "労働者管理", finance: "会計管理", new: "新規追加", import: "読込", export: "出力", total: "月間合計", batch: "期生", all: "グループ一覧へ", ready: "完了", missing: "不足", name: "氏名", docs: "書類状況" },
+            lao: { dash: "ລາຍຊື່ຄົນງານ", finance: "ການເງິນ", new: "ເພີ່ມໃຫມ່", import: "ນຳເຂົ້າ", export: "ສົ່ງອອກ", total: "ລວມເດືອນນີ້", batch: "ລຸ້ນທີ", all: "ກັບຄືນ", ready: "ຄົບ", missing: "ຍັງ", name: "ຊື່ແທ້", docs: "ເອກະສານ" },
+            kr: { dash: "근로자 관리", finance: "회계 관리", new: "신규 등록", import: "엑셀 가져오기", export: "엑셀 내보내기", total: "월간 합계", batch: "기수", all: "그룹 목록", ready: "완료", missing: "미비", name: "성명", docs: "서류 현황" }
         };
 
         function App() {
-            const [mode, setMode] = useState('worker');
+            const [mode, setMode] = useState('worker'); // 'worker' or 'finance'
             const [lang, setLang] = useState('en');
-            const [view, setView] = useState('list');
+            const [view, setView] = useState('batch-list'); // 'batch-list', 'worker-list', 'finance-list', 'edit-finance'
+            const [selectedBatch, setSelectedBatch] = useState(null);
+            
             const [workers, setWorkers] = useState([]);
             const [financeLogs, setFinanceLogs] = useState([]);
             const [rates, setRates] = useState({ USD: 22000, THB: 650 });
-            const [finFilter, setFinFilter] = useState({ month: new Date().toISOString().slice(0, 7), category: 'All' });
+            const [finFilter, setFinFilter] = useState({ month: new Date().toISOString().slice(0, 7) });
             const [user, setUser] = useState(null);
+            
             const t = i18n[lang];
 
+            // Form States
             const [financeForm, setFinanceForm] = useState({ item: '', amount: '', currency: 'LAK', lak_amount: 0, category: 'General', date: new Date().toISOString().split('T')[0] });
 
+            // --- 2. INITIALIZATION ---
             useEffect(() => {
                 supabaseClient.auth.getSession().then(({ data: { session } }) => {
                     setUser(session?.user ?? null);
@@ -57,7 +95,25 @@
                 });
             }, []);
 
-            // 会計計算
+            // --- 3. DATA FETCHING ---
+            const fetchData = async () => {
+                const { data: w } = await supabaseClient.from('workers').select('*').order('name');
+                const { data: f } = await supabaseClient.from('finance_logs').select('*').order('date', { ascending: false });
+                setWorkers(w || []);
+                setFinanceLogs(f || []);
+            };
+
+            const fetchRates = async () => {
+                try {
+                    const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+                    const data = await res.json();
+                    setRates({ USD: data.rates.LAK || 22000, THB: (data.rates.LAK / data.rates.THB) || 650 });
+                } catch (e) { console.error("Currency API Error"); }
+            };
+
+            // --- 4. LOGIC & CALCULATIONS ---
+            const batchNumbers = [...new Set(workers.map(w => w.batch_no))].sort((a, b) => a - b);
+            
             useEffect(() => {
                 let amt = parseFloat(financeForm.amount) || 0;
                 if (financeForm.currency === 'USD') amt *= rates.USD;
@@ -65,31 +121,18 @@
                 setFinanceForm(prev => ({ ...prev, lak_amount: Math.round(amt) }));
             }, [financeForm.amount, financeForm.currency, rates]);
 
-            const fetchRates = async () => {
-                try {
-                    const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-                    const data = await res.json();
-                    setRates({ USD: data.rates.LAK || 22000, THB: (data.rates.LAK / data.rates.THB) || 650 });
-                } catch (e) { console.error("Rate fail"); }
+            const filteredFinance = financeLogs.filter(log => log.date?.startsWith(finFilter.month));
+            const monthlyTotal = filteredFinance.reduce((s, l) => s + Number(l.lak_amount || 0), 0);
+
+            // --- 5. EXCEL OPERATIONS ---
+            const handleExport = () => {
+                const ws = XLSX.utils.json_to_sheet(filteredFinance);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Finance");
+                XLSX.writeFile(wb, `HSDEC_Finance_${finFilter.month}.xlsx`);
             };
 
-            const fetchData = async () => {
-                const { data: w } = await supabaseClient.from('workers').select('*').order('created_at', { ascending: false });
-                const { data: f } = await supabaseClient.from('finance_logs').select('*').order('date', { ascending: false });
-                setWorkers(w || []);
-                setFinanceLogs(f || []);
-            };
-
-            // Excel Export (会計用)
-            const exportFinance = () => {
-                const worksheet = XLSX.utils.json_to_sheet(filteredFinance);
-                const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, "Finance");
-                XLSX.writeFile(workbook, `Finance_${finFilter.month}.xlsx`);
-            };
-
-            // Excel Import (会計用)
-            const importFinance = (e) => {
+            const handleImport = (e) => {
                 const file = e.target.files[0];
                 const reader = new FileReader();
                 reader.onload = async (evt) => {
@@ -101,86 +144,145 @@
                 reader.readAsBinaryString(file);
             };
 
-            const filteredFinance = financeLogs.filter(log => {
-                return log.date?.startsWith(finFilter.month) && (finFilter.category === 'All' || log.category === finFilter.category);
-            });
-
             if (!user) return <LoginForm supabase={supabaseClient} />;
 
             return (
-                <div class="flex h-screen w-screen bg-slate-50">
-                    {/* サイドメニュー */}
-                    <nav class="w-20 bg-slate-900 flex flex-col items-center py-10 gap-10 shrink-0">
-                        <div class="text-blue-400 font-black italic text-2xl">H.</div>
-                        <button onClick={() => setMode('worker')} class={`p-4 nav-btn ${mode === 'worker' ? 'active text-blue-400' : 'text-slate-500'}`}>
+                <div class="flex h-screen w-screen bg-slate-50 overflow-hidden">
+                    {/* SIDEBAR */}
+                    <nav class="w-20 bg-slate-950 flex flex-col items-center py-10 gap-10 shrink-0">
+                        <div class="text-blue-500 font-black italic text-3xl tracking-tighter">H.</div>
+                        <button onClick={() => {setMode('worker'); setView('batch-list');}} class={`p-4 nav-btn ${mode === 'worker' ? 'active' : ''}`}>
                             <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                         </button>
-                        <button onClick={() => setMode('finance')} class={`p-4 nav-btn ${mode === 'finance' ? 'active text-emerald-400' : 'text-slate-500'}`}>
+                        <button onClick={() => {setMode('finance'); setView('finance-list');}} class={`p-4 nav-btn ${mode === 'finance' ? 'active text-emerald-500' : ''}`}>
                             <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </button>
-                        <div class="mt-auto space-y-4">
-                            {['en','jp','lao'].map(l => (
-                                <button key={l} onClick={() => setLang(l)} class={`block text-[10px] font-black p-1 uppercase ${lang === l ? 'text-white border-b' : 'text-slate-600'}`}>{l}</button>
+                        
+                        <div class="mt-auto flex flex-col gap-4">
+                            {['en','jp','lao','kr'].map(l => (
+                                <button key={l} onClick={() => setLang(l)} class={`text-[10px] font-black uppercase p-1 ${lang === l ? 'text-white border-b-2' : 'text-slate-600'}`}>{l}</button>
                             ))}
                         </div>
                     </nav>
 
-                    <main class="flex-grow overflow-y-auto p-6 md:p-12">
-                        {mode === 'worker' ? (
-                            <div class="max-w-6xl mx-auto">
-                                <h2 class="text-4xl font-black text-slate-800 mb-10 tracking-tight uppercase">{t.dash}</h2>
-                                <div class="bg-white rounded-[2.5rem] shadow-sm overflow-hidden border border-slate-100">
-                                    <table class="w-full text-left font-bold text-sm text-slate-600">
-                                        <thead class="bg-slate-50 border-b"><tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest"><th class="p-8">Name</th><th class="p-8">Batch</th><th class="p-8">Passport</th><th class="p-8">Contract</th><th class="p-8">Health</th></tr></thead>
-                                        <tbody class="divide-y divide-slate-50">
-                                            {workers.map(w => (
-                                                <tr key={w.id} class="hover:bg-slate-50 transition">
-                                                    <td class="p-8 text-slate-900 font-black">{w.name}</td>
-                                                    <td class="p-8"><span class="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs">#{w.batch_no}</span></td>
-                                                    <td class="p-8"> <span class={`doc-dot ${w.has_passport ? 'bg-emerald-500' : 'bg-rose-400'}`}></span> {w.has_passport ? 'Ready' : 'Missing'}</td>
-                                                    <td class="p-8"> <span class={`doc-dot ${w.has_contract ? 'bg-emerald-500' : 'bg-rose-400'}`}></span> {w.has_contract ? 'Ready' : 'Missing'}</td>
-                                                    <td class="p-8"> <span class={`doc-dot ${w.has_health_check ? 'bg-emerald-500' : 'bg-rose-400'}`}></span> {w.has_health_check ? 'Done' : 'Pending'}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                    {/* MAIN CONTENT */}
+                    <main class="flex-grow overflow-y-auto p-6 md:p-12 scrollbar-hide">
+                        
+                        {/* --- WORKER MODE --- */}
+                        {mode === 'worker' && (
+                            <div class="max-w-6xl mx-auto animate-in fade-in duration-500">
+                                <h2 class="text-4xl font-black text-slate-900 mb-12 tracking-tight uppercase italic">{t.dash}</h2>
+                                
+                                {view === 'batch-list' ? (
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                        {batchNumbers.map(b => (
+                                            <div key={b} onClick={() => {setSelectedBatch(b); setView('worker-list');}} class="batch-card">
+                                                <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl font-black mx-auto mb-6"># {b}</div>
+                                                <h3 class="text-2xl font-black text-slate-800 tracking-tight">{t.batch} {b}</h3>
+                                                <p class="text-slate-400 font-bold mt-2 uppercase text-xs tracking-widest">{workers.filter(w=>w.batch_no == b).length} Members</p>
+                                            </div>
+                                        ))}
+                                        {/* Placeholder for future batch */}
+                                        <div class="border-4 border-dashed border-slate-200 rounded-[3rem] p-10 flex flex-col items-center justify-center text-slate-300">
+                                            <p class="font-black text-sm uppercase">Waiting for Batch {batchNumbers.length + 1}</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div class="animate-in slide-in-from-right-8 duration-300">
+                                        <button onClick={() => setView('batch-list')} class="mb-8 text-blue-600 font-black text-xs uppercase flex items-center gap-2 hover:translate-x-[-4px] transition">
+                                            ← {t.all}
+                                        </button>
+                                        <div class="flex items-end gap-4 mb-8">
+                                            <h3 class="text-3xl font-black text-slate-900 italic uppercase underline decoration-blue-500 decoration-8 underline-offset-8">{t.batch} {selectedBatch}</h3>
+                                        </div>
+                                        
+                                        <div class="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+                                            <table class="w-full text-left">
+                                                <thead class="bg-slate-50 border-b">
+                                                    <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                        <th class="p-8">{t.name}</th>
+                                                        <th class="p-8">Passport</th>
+                                                        <th class="p-8">Contract</th>
+                                                        <th class="p-8">Health</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-slate-50 font-bold text-slate-700">
+                                                    {workers.filter(w => w.batch_no == selectedBatch).map(w => (
+                                                        <tr key={w.id} class="hover:bg-blue-50/30 transition">
+                                                            <td class="p-8 text-slate-900 font-black">{w.name}</td>
+                                                            <td class="p-8 text-xs">
+                                                                <span class={`doc-dot ${w.has_passport ? 'status-ready' : 'status-missing'}`}></span>
+                                                                {w.has_passport ? t.ready : t.missing}
+                                                            </td>
+                                                            <td class="p-8 text-xs">
+                                                                <span class={`doc-dot ${w.has_contract ? 'status-ready' : 'status-missing'}`}></span>
+                                                                {w.has_contract ? t.ready : t.missing}
+                                                            </td>
+                                                            <td class="p-8 text-xs">
+                                                                <span class={`doc-dot ${w.has_health_check ? 'status-ready' : 'status-missing'}`}></span>
+                                                                {w.has_health_check ? t.ready : t.missing}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                        ) : (
-                            /* 会計管理 (Finance) */
-                            <div class="max-w-5xl mx-auto">
-                                <div class="flex justify-between items-center mb-10">
-                                    <h2 class="text-4xl font-black text-slate-800 italic uppercase">{t.finance}</h2>
-                                    <div class="flex gap-4">
-                                        <label class="bg-white px-5 py-3 rounded-xl shadow-sm border border-slate-200 text-xs font-bold cursor-pointer hover:bg-slate-50">
-                                            📥 {t.import} <input type="file" class="hidden" accept=".xlsx" onChange={importFinance} />
+                        )}
+
+                        {/* --- FINANCE MODE --- */}
+                        {mode === 'finance' && (
+                            <div class="max-w-5xl mx-auto animate-in fade-in duration-500">
+                                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+                                    <h2 class="text-4xl font-black text-slate-900 italic uppercase tracking-tighter">{t.finance}</h2>
+                                    <div class="flex gap-3">
+                                        <label class="bg-white px-6 py-3 rounded-2xl shadow-sm border border-slate-200 text-[10px] font-black cursor-pointer hover:bg-slate-50 transition flex items-center gap-2">
+                                            📥 {t.import} <input type="file" class="hidden" accept=".xlsx" onChange={handleImport} />
                                         </label>
-                                        <button onClick={exportFinance} class="bg-white px-5 py-3 rounded-xl shadow-sm border border-slate-200 text-xs font-bold hover:bg-slate-50">📤 {t.export}</button>
-                                        <button onClick={() => setView('edit')} class="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold shadow-xl shadow-emerald-200">+ {t.new}</button>
+                                        <button onClick={handleExport} class="bg-white px-6 py-3 rounded-2xl shadow-sm border border-slate-200 text-[10px] font-black hover:bg-slate-50 transition flex items-center gap-2">
+                                            📤 {t.export}
+                                        </button>
+                                        <button onClick={() => setView('edit-finance')} class="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-black shadow-xl shadow-emerald-200 hover:scale-105 transition">
+                                            + {t.new}
+                                        </button>
                                     </div>
                                 </div>
 
-                                {view === 'list' ? (
+                                {view === 'finance-list' ? (
                                     <>
-                                        {/* 合計金額パネル */}
-                                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10 bg-white p-10 rounded-[3.5rem] shadow-sm items-end border border-emerald-50">
-                                            <div class="md:col-span-1"><label class="label-text">Month</label><input type="month" class="form-input font-bold" value={finFilter.month} onChange={e => setFinFilter({...finFilter, month: e.target.value})} /></div>
-                                            <div class="md:col-span-1"><label class="label-text">Category</label><select class="form-input font-bold" value={finFilter.category} onChange={e => setFinFilter({...finFilter, category: e.target.value})}><option value="All">All Categories</option><option value="Gas">Gasoline</option><option value="Food">Food</option><option value="Salary">Salary</option></select></div>
-                                            <div class="md:col-span-2 text-right">
-                                                <p class="text-xs font-black text-emerald-500 uppercase tracking-widest mb-1">{t.total}</p>
-                                                <p class="text-5xl font-black text-slate-900 tracking-tighter italic">₭ {filteredFinance.reduce((s,l)=>s+Number(l.lak_amount||0),0).toLocaleString()}</p>
+                                        <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10 bg-white p-12 rounded-[4rem] shadow-sm items-end border border-slate-100">
+                                            <div>
+                                                <label class="label-text">Select Month</label>
+                                                <input type="month" class="form-input" value={finFilter.month} onChange={e => setFinFilter({...finFilter, month: e.target.value})} />
+                                            </div>
+                                            <div class="md:col-span-3 text-right">
+                                                <p class="text-xs font-black text-emerald-500 uppercase tracking-widest mb-1">{t.total} ({finFilter.month})</p>
+                                                <p class="text-6xl font-black text-slate-950 tracking-tighter italic">₭ {monthlyTotal.toLocaleString()}</p>
                                             </div>
                                         </div>
-                                        {/* 会計テーブル */}
-                                        <div class="bg-white rounded-[3rem] shadow-sm overflow-hidden border border-slate-100">
-                                            <table class="w-full text-left font-bold text-sm text-slate-600">
-                                                <thead class="bg-slate-50 border-b"><tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest"><th class="p-8">Date</th><th class="p-8">Item</th><th class="p-8 text-right">LAK Amount</th></tr></thead>
-                                                <tbody class="divide-y divide-slate-50">
+
+                                        <div class="bg-white rounded-[3rem] shadow-sm border border-slate-100 overflow-hidden">
+                                            <table class="w-full text-left">
+                                                <thead class="bg-slate-50 border-b">
+                                                    <tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                        <th class="p-8">Date</th>
+                                                        <th class="p-8">Details</th>
+                                                        <th class="p-8 text-right">Amount (LAK)</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-slate-50 font-bold">
                                                     {filteredFinance.map(l => (
                                                         <tr key={l.id} class="hover:bg-emerald-50/40 transition">
-                                                            <td class="p-8 font-mono text-xs">{l.date}</td>
-                                                            <td class="p-8"><div>{l.item}</div><span class="text-[9px] text-slate-400 uppercase">{l.category} | {l.currency} {l.amount}</span></td>
-                                                            <td class="p-8 text-right text-emerald-600 text-xl font-black tracking-tighter">₭ {Number(l.lak_amount).toLocaleString()}</td>
+                                                            <td class="p-8 font-mono text-xs text-slate-400">{l.date}</td>
+                                                            <td class="p-8 text-slate-800">
+                                                                <div class="text-lg">{l.item}</div>
+                                                                <div class="text-[10px] text-slate-400 uppercase">{l.category} • Original: {l.currency} {l.amount}</div>
+                                                            </td>
+                                                            <td class="p-8 text-right text-emerald-600 text-2xl font-black italic tracking-tighter">
+                                                                ₭ {Number(l.lak_amount).toLocaleString()}
+                                                            </td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -188,21 +290,49 @@
                                         </div>
                                     </>
                                 ) : (
-                                    <div class="max-w-2xl mx-auto bg-white p-12 rounded-[4rem] shadow-2xl">
-                                        <h3 class="text-2xl font-black mb-10 text-emerald-600 italic text-center uppercase tracking-widest">Finance Entry</h3>
-                                        <form onSubmit={async (e)=>{e.preventDefault(); await supabaseClient.from('finance_logs').insert([financeForm]); setView('list'); fetchData();}} class="space-y-8">
+                                    <div class="max-w-2xl mx-auto bg-white p-14 rounded-[5rem] shadow-2xl animate-in zoom-in-95">
+                                        <h3 class="text-2xl font-black mb-10 text-emerald-600 italic text-center uppercase tracking-widest">Record Transaction</h3>
+                                        <form onSubmit={async (e)=>{e.preventDefault(); await supabaseClient.from('finance_logs').insert([financeForm]); setView('finance-list'); fetchData();}} class="space-y-8">
                                             <div class="grid grid-cols-2 gap-6">
-                                                <div><label class="label-text">Amount</label><input type="number" step="0.01" class="form-input text-2xl font-black" value={financeForm.amount} onChange={e=>setFinanceForm({...financeForm, amount:e.target.value})} required /></div>
-                                                <div><label class="label-text">Currency</label><select class="form-input font-bold" value={financeForm.currency} onChange={e=>setFinanceForm({...financeForm, currency:e.target.value})}><option value="LAK">LAK</option><option value="USD">USD</option><option value="THB">THB</option></select></div>
+                                                <div>
+                                                    <label class="label-text">Input Amount</label>
+                                                    <input type="number" step="0.01" class="form-input text-2xl font-black" value={financeForm.amount} onChange={e=>setFinanceForm({...financeForm, amount:e.target.value})} required />
+                                                </div>
+                                                <div>
+                                                    <label class="label-text">Currency</label>
+                                                    <select class="form-input font-bold" value={financeForm.currency} onChange={e=>setFinanceForm({...financeForm, currency:e.target.value})}>
+                                                        <option value="LAK">LAK (₭)</option>
+                                                        <option value="USD">USD ($)</option>
+                                                        <option value="THB">THB (฿)</option>
+                                                    </select>
+                                                </div>
                                             </div>
-                                            <div class="bg-emerald-600 p-8 rounded-[3rem] text-white shadow-2xl text-center">
-                                                <p class="text-xs font-black opacity-80 uppercase tracking-widest mb-1">Equivalent KIP</p>
-                                                <p class="text-4xl font-black italic">₭ {financeForm.lak_amount.toLocaleString()}</p>
+                                            
+                                            <div class="bg-slate-900 p-10 rounded-[3rem] text-white shadow-2xl text-center relative overflow-hidden">
+                                                <div class="absolute top-0 right-0 p-4 opacity-10 font-black text-6xl italic">LAK</div>
+                                                <p class="text-[10px] font-black opacity-60 uppercase tracking-[0.3em] mb-2">Final KIP Total</p>
+                                                <p class="text-5xl font-black italic tracking-tighter text-emerald-400">₭ {financeForm.lak_amount.toLocaleString()}</p>
                                             </div>
-                                            <div><label class="label-text">Item</label><input type="text" class="form-input font-bold" value={financeForm.item} onChange={e=>setFinanceForm({...financeForm, item:e.target.value})} required /></div>
-                                            <div class="flex justify-between items-center border-t pt-8">
-                                                <button type="button" onClick={()=>setView('list')} class="text-slate-400 font-black text-xs uppercase underline">Cancel</button>
-                                                <button type="submit" class="bg-emerald-600 text-white px-12 py-4 rounded-2xl font-black shadow-xl uppercase text-xs">Save</button>
+
+                                            <div><label class="label-text">Item / Description</label><input type="text" class="form-input text-lg" value={financeForm.item} onChange={e=>setFinanceForm({...financeForm, item:e.target.value})} required /></div>
+                                            
+                                            <div class="grid grid-cols-2 gap-6">
+                                                <div><label class="label-text">Date</label><input type="date" class="form-input" value={financeForm.date} onChange={e=>setFinanceForm({...financeForm, date:e.target.value})} required /></div>
+                                                <div>
+                                                    <label class="label-text">Category</label>
+                                                    <select class="form-input" value={financeForm.category} onChange={e=>setFinanceForm({...financeForm, category:e.target.value})}>
+                                                        <option value="General">General</option>
+                                                        <option value="Gas">Gasoline</option>
+                                                        <option value="Food">Food / Water</option>
+                                                        <option value="Salary">Salary</option>
+                                                        <option value="Tools">Tools / Maintenance</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="flex justify-between items-center pt-10 border-t mt-4">
+                                                <button type="button" onClick={()=>setView('finance-list')} class="text-slate-400 font-black text-xs uppercase underline tracking-widest">Cancel</button>
+                                                <button type="submit" class="bg-emerald-600 text-white px-16 py-5 rounded-3xl font-black shadow-xl shadow-emerald-200 uppercase text-sm tracking-widest hover:scale-105 transition">Save Record</button>
                                             </div>
                                         </form>
                                     </div>
@@ -216,14 +346,21 @@
 
         function LoginForm({ supabase }) {
             const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
-            const handleLogin = async (e) => { e.preventDefault(); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) alert(error.message); };
+            const handleLogin = async (e) => { 
+                e.preventDefault(); 
+                const { error } = await supabase.auth.signInWithPassword({ email, password }); 
+                if (error) alert(error.message); 
+            };
             return (
-                <div class="min-h-screen flex items-center justify-center bg-slate-950 p-6">
-                    <form onSubmit={handleLogin} class="bg-white p-14 rounded-[4rem] shadow-2xl w-full max-w-sm text-center">
-                        <h2 class="text-2xl font-black mb-10 text-slate-800 uppercase tracking-tighter">HSDEC HUB</h2>
-                        <input type="email" placeholder="Email" class="form-input mb-4 text-center font-bold" onChange={e => setEmail(e.target.value)} required />
-                        <input type="password" placeholder="Password" class="form-input mb-10 text-center font-bold" onChange={e => setPassword(e.target.value)} required />
-                        <button class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black shadow-xl">LOGIN</button>
+                <div class="min-h-screen flex items-center justify-center bg-slate-950 p-6 italic">
+                    <form onSubmit={handleLogin} class="bg-white p-16 rounded-[5rem] shadow-2xl w-full max-w-md text-center border-t-8 border-blue-600">
+                        <h2 class="text-3xl font-black mb-2 text-slate-900 uppercase tracking-tighter italic">HSDEC HUB</h2>
+                        <p class="text-slate-400 font-bold mb-12 text-[10px] uppercase tracking-[0.4em]">Administrative Portal</p>
+                        <div class="space-y-4 mb-12">
+                            <input type="email" placeholder="ADMIN EMAIL" class="form-input text-center text-sm" onChange={e => setEmail(e.target.value)} required />
+                            <input type="password" placeholder="PASSWORD" class="form-input text-center text-sm" onChange={e => setPassword(e.target.value)} required />
+                        </div>
+                        <button class="w-full bg-slate-900 text-white py-6 rounded-3xl font-black shadow-2xl hover:bg-blue-600 transition duration-500">SIGN IN</button>
                     </form>
                 </div>
             );
