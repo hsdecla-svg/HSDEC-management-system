@@ -53,8 +53,20 @@
 
             const fetchWorkers = async () => {
                 setLoading(true);
-                const { data, error } = await supabaseClient.from('workers').select('*').order('created_at', { ascending: false });
-                if (!error) setWorkers(data || []);
+                // 全データを取得し、作成日順に並べる
+                const { data, error } = await supabaseClient
+                    .from('workers')
+                    .select('*');
+
+                if (error) {
+                    console.error("Fetch Error:", error);
+                    // エラー内容を画面に表示して原因を突き止める
+                    alert("データ読み込みエラー: " + error.message);
+                } else {
+                    // 取得したデータをコンソールで確認（デバッグ用）
+                    console.log("取得データ:", data);
+                    setWorkers(data || []);
+                }
                 setLoading(false);
             };
 
