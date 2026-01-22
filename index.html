@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,12 +10,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap');
-        body { font-family: 'Noto Sans JP', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; }
-        .active-tab { background-color: #1e40af; color: white; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+KR:wght@400;700&display=swap');
+        body { font-family: 'Inter', 'Noto Sans JP', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; }
     </style>
 </head>
-<body class="bg-gray-100">
+<body class="bg-slate-50 text-slate-900">
     <div id="root"></div>
 
     <script type="text/babel">
@@ -25,16 +24,18 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // All labels are now in English by default, with translations provided for other languages
         const translations = {
-            ja: { dashboard: "名簿一覧", register: "新規登録", edit: "詳細・編集", basic: "1.基本", docs: "2.書類", interview: "3-4.面接/選抜", dispatch: "5.派遣後", company: "6.会社評価", logout: "ログアウト" },
-            lo: { dashboard: "ລາຍຊື່", register: "ລົງທະບຽນໃໝ່", edit: "ລາຍລະອຽດ", basic: "1.ຂໍ້ມູນ", docs: "2.ເອກະສານ", interview: "3-4.ສຳພາດ", dispatch: "5.ຫຼັງການສົ່ງ", company: "6.ການປະເມີນ", logout: "ອອກ" },
-            ko: { dashboard: "명단", register: "신규등록", edit: "상세/편집", basic: "1.기본", docs: "2.서류", interview: "3-4.면접/선발", dispatch: "5.파견후", company: "6.업체평가", logout: "로그아웃" }
+            en: { dashboard: "Dashboard", register: "Register", edit: "Details", basic: "1. Basic Info", docs: "2. Documents", interview: "3-4. Process", dispatch: "5. Status", company: "6. Evaluation", logout: "Logout", save: "Save Data", back: "Back", name: "Full Name", phone: "Phone Number" },
+            ja: { dashboard: "ダッシュボード", register: "新規登録", edit: "詳細", basic: "1. 基本情報", docs: "2. 書類管理", interview: "3-4. 選抜プロセス", dispatch: "5. 派遣後状況", company: "6. 会社評価", logout: "ログアウト", save: "保存", back: "戻る", name: "氏名", phone: "電話番号" },
+            lo: { dashboard: "ແຜງຄວບຄຸມ", register: "ລົງທະບຽນ", edit: "ລາຍລະອຽດ", basic: "1. ຂໍ້ມູນພື້ນຖານ", docs: "2. ເອກະສານ", interview: "3-4. ການຄັດເລືອກ", dispatch: "5. ສະຖານະ", company: "6. ການປະເມີນ", logout: "ອອກຈາກລະບົບ", save: "ບັນທຶກ", back: "ກັບຄືນ", name: "ຊື່ເຕັມ", phone: "ເບີໂທລະສັບ" },
+            ko: { dashboard: "대시보드", register: "신규등록", edit: "상세보기", basic: "1. 기본정보", docs: "2. 서류관리", interview: "3-4. 선발과정", dispatch: "5. 파견후상태", company: "6. 업체평가", logout: "로그아웃", save: "저장", back: "뒤로", name: "성함", phone: "전화번호" }
         };
 
         function App() {
-            const [lang, setLang] = useState('ja');
+            const [lang, setLang] = useState('en'); // Default language set to English
             const [user, setUser] = useState(null);
-            const [view, setView] = useState('list'); // list or detail
+            const [view, setView] = useState('list');
             const [workers, setWorkers] = useState([]);
             const [selectedWorker, setSelectedWorker] = useState(null);
             const [tab, setTab] = useState('basic');
@@ -56,63 +57,93 @@
 
             return (
                 <div class="min-h-screen flex flex-col md:flex-row">
-                    {/* サイドバー */}
-                    <aside class="w-full md:w-64 bg-slate-900 text-white p-6 shadow-xl">
-                        <h1 class="text-xl font-bold mb-8 border-b border-slate-700 pb-4">HSDEC PLATFORM</h1>
-                        <nav class="space-y-4">
-                            <button onClick={() => setView('list')} class={`w-full text-left p-3 rounded-lg ${view === 'list' ? 'bg-blue-700' : 'hover:bg-slate-800'}`}>📁 {t.dashboard}</button>
-                            <button onClick={() => { setSelectedWorker(null); setView('detail'); setTab('basic'); }} class={`w-full text-left p-3 rounded-lg ${view === 'detail' && !selectedWorker ? 'bg-blue-700' : 'hover:bg-slate-800'}`}>➕ {t.register}</button>
-                            <div class="pt-8 flex justify-between">
-                                {['ja', 'lo', 'ko'].map(l => (
-                                    <button key={l} onClick={() => setLang(l)} class={`text-xs px-2 py-1 rounded ${lang === l ? 'bg-white text-slate-900 font-bold' : 'text-slate-400'}`}>{l.toUpperCase()}</button>
+                    {/* Sidebar */}
+                    <aside class="w-full md:w-72 bg-slate-900 text-white p-6 shadow-2xl flex-shrink-0">
+                        <div class="mb-10">
+                            <h1 class="text-2xl font-black tracking-tighter text-blue-400">HSDEC GLOBAL</h1>
+                            <p class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Management Platform</p>
+                        </div>
+                        
+                        <nav class="space-y-2">
+                            <button onClick={() => setView('list')} class={`w-full text-left p-4 rounded-xl font-bold transition-all ${view === 'list' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-400'}`}>
+                                <span class="mr-3">📂</span> {t.dashboard}
+                            </button>
+                            <button onClick={() => { setSelectedWorker(null); setView('detail'); setTab('basic'); }} class={`w-full text-left p-4 rounded-xl font-bold transition-all ${view === 'detail' && !selectedWorker ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-400'}`}>
+                                <span class="mr-3">➕</span> {t.register}
+                            </button>
+                        </nav>
+
+                        <div class="mt-20 border-t border-slate-800 pt-6">
+                            <p class="text-[10px] text-slate-500 font-bold mb-3 uppercase">Select Language</p>
+                            <div class="grid grid-cols-2 gap-2">
+                                {['en', 'ja', 'lo', 'ko'].map(l => (
+                                    <button key={l} onClick={() => setLang(l)} class={`px-2 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${lang === l ? 'bg-white text-slate-900' : 'bg-slate-800 text-slate-500 hover:text-white'}`}>
+                                        {l === 'en' ? 'English' : l === 'ja' ? 'Japanese' : l === 'lo' ? 'Lao' : 'Korean'}
+                                    </button>
                                 ))}
                             </div>
-                            <button onClick={() => supabaseClient.auth.signOut()} class="w-full text-left p-3 text-red-400 mt-10">🚪 {t.logout}</button>
-                        </nav>
+                            <button onClick={() => supabaseClient.auth.signOut()} class="w-full text-left p-4 text-red-500 font-bold mt-8 hover:bg-red-950/30 rounded-xl transition-all">
+                                🚪 {t.logout}
+                            </button>
+                        </div>
                     </aside>
 
-                    {/* メインエリア */}
-                    <main class="flex-grow p-4 md:p-8 overflow-auto bg-slate-50">
+                    {/* Main Content Area */}
+                    <main class="flex-grow p-4 md:p-10 overflow-auto">
                         {view === 'list' ? (
                             <div class="max-w-6xl mx-auto">
-                                <h2 class="text-2xl font-bold mb-6 text-slate-800">{t.dashboard}</h2>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <header class="mb-10 flex justify-between items-end">
+                                    <div>
+                                        <h2 class="text-4xl font-black text-slate-900 tracking-tight">{t.dashboard}</h2>
+                                        <p class="text-slate-500 font-medium">Monitoring {workers.length} registered workers</p>
+                                    </div>
+                                </header>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                                     {workers.map(w => (
-                                        <div key={w.id} onClick={() => { setSelectedWorker(w); setView('detail'); }} class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md cursor-pointer transition">
-                                            <div class="flex justify-between items-start">
-                                                <div class="font-bold text-lg text-slate-900">{w.name}</div>
-                                                <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold">LV. {w.role_level || '1'}</span>
+                                        <div key={w.id} onClick={() => { setSelectedWorker(w); setView('detail'); }} class="group bg-white p-6 rounded-3xl shadow-sm border border-slate-200 hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/5 transition-all cursor-pointer relative overflow-hidden">
+                                            <div class="flex justify-between items-start mb-4">
+                                                <div class="bg-slate-100 w-12 h-12 rounded-2xl flex items-center justify-center text-xl group-hover:bg-blue-50 transition-colors">👤</div>
+                                                <span class="text-[10px] bg-slate-100 text-slate-500 px-3 py-1 rounded-full font-black uppercase">Level 1</span>
                                             </div>
-                                            <p class="text-slate-500 text-sm mt-1">{w.phone || 'No Phone'}</p>
-                                            <div class="mt-4 flex space-x-2">
-                                                <div class="text-[10px] bg-slate-100 p-1 rounded">🇰🇷 TOPIK: {w.topik_level || '-'}</div>
-                                                <div class="text-[10px] bg-green-50 p-1 rounded text-green-700">★ SCORE: {w.total_score || '0'}</div>
+                                            <div class="font-black text-xl text-slate-900 mb-1">{w.name}</div>
+                                            <p class="text-slate-400 text-sm font-medium mb-4">{w.phone || 'No Contact Info'}</p>
+                                            <div class="flex space-x-2 border-t border-slate-50 pt-4">
+                                                <span class="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded-md uppercase">TOPIK: {w.topik_level || 'N/A'}</span>
+                                                <span class="text-[9px] font-black bg-green-50 text-green-600 px-2 py-1 rounded-md uppercase">Score: {w.total_score || '0'}</span>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         ) : (
-                            <div class="max-w-4xl mx-auto bg-white rounded-3xl shadow-lg overflow-hidden border border-slate-200">
-                                {/* 詳細・編集用タブメニュー */}
-                                <div class="flex bg-slate-100 border-b overflow-x-auto">
+                            <div class="max-w-5xl mx-auto bg-white rounded-[2rem] shadow-2xl overflow-hidden border border-slate-200">
+                                <div class="flex bg-slate-50 border-b overflow-x-auto scrollbar-hide">
                                     {['basic', 'docs', 'interview', 'dispatch', 'company'].map(item => (
-                                        <button key={item} onClick={() => setTab(item)} class={`px-4 py-4 text-xs font-bold whitespace-nowrap ${tab === item ? 'bg-white text-blue-700 border-t-4 border-blue-700' : 'text-slate-500'}`}>
+                                        <button key={item} onClick={() => setTab(item)} class={`px-8 py-5 text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${tab === item ? 'bg-white text-blue-600 border-b-4 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
                                             {t[item]}
                                         </button>
                                     ))}
                                 </div>
-                                <div class="p-8">
-                                    {tab === 'basic' && <div class="space-y-4">
-                                        <h3 class="font-bold text-lg border-l-4 border-blue-600 pl-3">基本情報入力</h3>
-                                        <div class="grid grid-cols-2 gap-4">
-                                            <input type="text" placeholder="名前 (Name)" class="border p-3 rounded-xl bg-slate-50" defaultValue={selectedWorker?.name} />
-                                            <input type="text" placeholder="電話番号" class="border p-3 rounded-xl bg-slate-50" defaultValue={selectedWorker?.phone} />
+                                <div class="p-10 min-h-[500px]">
+                                    {tab === 'basic' && (
+                                        <div class="animate-in fade-in duration-500">
+                                            <h3 class="text-2xl font-black mb-8 text-slate-900">{t.basic}</h3>
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                <div class="space-y-2">
+                                                    <label class="text-[10px] font-black uppercase text-slate-400 ml-1">{t.name}</label>
+                                                    <input type="text" placeholder="Worker Full Name" class="w-full border-2 border-slate-100 p-4 rounded-2xl bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold" defaultValue={selectedWorker?.name} />
+                                                </div>
+                                                <div class="space-y-2">
+                                                    <label class="text-[10px] font-black uppercase text-slate-400 ml-1">{t.phone}</label>
+                                                    <input type="text" placeholder="+856 20..." class="w-full border-2 border-slate-100 p-4 rounded-2xl bg-slate-50 focus:border-blue-500 focus:bg-white outline-none transition-all font-bold" defaultValue={selectedWorker?.phone} />
+                                                </div>
+                                            </div>
                                         </div>
-                                    </div>}
-                                    <div class="mt-10 flex justify-end space-x-4">
-                                        <button onClick={() => setView('list')} class="px-6 py-2 rounded-xl bg-slate-200 font-bold">戻る</button>
-                                        <button class="px-6 py-2 rounded-xl bg-blue-600 text-white font-bold shadow-lg hover:bg-blue-700">データを保存</button>
+                                    )}
+                                    <div class="mt-20 flex justify-end space-x-4 border-t border-slate-50 pt-10">
+                                        <button onClick={() => setView('list')} class="px-10 py-4 rounded-2xl bg-slate-100 font-black text-[10px] uppercase tracking-widest text-slate-500 hover:bg-slate-200 transition-all">{t.back}</button>
+                                        <button class="px-10 py-4 rounded-2xl bg-blue-600 text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:bg-blue-700 transition-all">{t.save}</button>
                                     </div>
                                 </div>
                             </div>
@@ -126,14 +157,17 @@
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
             return (
-                <div class="min-h-screen flex items-center justify-center bg-slate-900 p-4">
-                    <div class="max-w-md w-full bg-white rounded-3xl shadow-2xl p-10">
-                        <h1 class="text-3xl font-black text-center text-slate-900 mb-2">HSDEC</h1>
-                        <p class="text-center text-slate-400 mb-8 text-sm">Global Worker Management System</p>
+                <div class="min-h-screen flex items-center justify-center bg-slate-950 p-6 relative overflow-hidden">
+                    <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:20px_20px]"></div>
+                    <div class="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl p-12 relative z-10">
+                        <div class="text-center mb-10">
+                            <h1 class="text-4xl font-black tracking-tighter text-slate-900 mb-1">HSDEC</h1>
+                            <p class="text-[10px] font-black text-blue-500 uppercase tracking-[0.3em]">Worker Management</p>
+                        </div>
                         <form onSubmit={async (e) => { e.preventDefault(); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) alert(error.message); }} class="space-y-4">
-                            <input type="email" placeholder="Email" class="w-full border p-4 rounded-2xl bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500" value={email} onChange={e => setEmail(e.target.value)} required />
-                            <input type="password" placeholder="Password" class="w-full border p-4 rounded-2xl bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500" value={password} onChange={e => setPassword(e.target.value)} required />
-                            <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-blue-700 transition">LOGIN</button>
+                            <input type="email" placeholder="Email Address" class="w-full border-2 border-slate-50 p-5 rounded-2xl bg-slate-50 outline-none focus:border-blue-500 focus:bg-white transition-all font-bold" value={email} onChange={e => setEmail(e.target.value)} required />
+                            <input type="password" placeholder="Password" class="w-full border-2 border-slate-50 p-5 rounded-2xl bg-slate-50 outline-none focus:border-blue-500 focus:bg-white transition-all font-bold" value={password} onChange={e => setPassword(e.target.value)} required />
+                            <button type="submit" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-blue-500/40 hover:bg-blue-700 transition-all active:scale-95">Sign In</button>
                         </form>
                     </div>
                 </div>
