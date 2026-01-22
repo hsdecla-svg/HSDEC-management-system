@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Global Platform v5.0</title>
+    <title>HSDEC Global Platform</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -14,10 +14,9 @@
         body { font-family: 'Inter', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; background-color: #f1f5f9; }
         .form-input { border: 2px solid #e2e8f0; padding: 0.8rem; border-radius: 0.8rem; width: 100%; outline: none; transition: 0.2s; font-size: 14px; background: #fff; }
         .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
-        .label-text { font-size: 11px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; margin-left: 4px; }
-        .tab-btn { padding: 12px 24px; font-weight: 800; font-size: 12px; transition: 0.3s; border-bottom: 3px solid transparent; white-space: nowrap; }
+        .label-text { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; margin-left: 4px; }
+        .tab-btn { padding: 12px 24px; font-weight: 800; font-size: 11px; transition: 0.3s; border-bottom: 3px solid transparent; white-space: nowrap; text-transform: uppercase; }
         .tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; background: #fff; }
-        .filter-tag { font-size: 10px; font-weight: 800; padding: 4px 12px; border-radius: 20px; background: #e2e8f0; color: #475569; }
     </style>
 </head>
 <body>
@@ -31,14 +30,14 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const i18n = {
-            jp: { dash: "ダッシュボード", new: "新規登録", search: "名前/住所/パスポート...", save: "保存", lang: "日本語", name: "氏名", pass: "パスポート", status: "状況", basic: "基本情報", village: "村", district: "市", province: "県", batch: "期生", re_entry: "入国区分" },
-            en: { dash: "Dashboard", new: "New Entry", search: "Search...", save: "Save", lang: "English", name: "Name", pass: "Passport", status: "Status", basic: "Basic Info", village: "Village", district: "District", province: "Province", batch: "Batch", re_entry: "Entry Type" },
-            lao: { dash: "ແຜງຄວບຄຸມ", new: "ລົງທະບຽນໃໝ່", search: "ຄົ້ນຫາ...", save: "ບັນທຶກ", lang: "ລາວ", name: "ຊື່ເຕັມ", pass: "ເລກໜັງສືຜ່ານແດນ", status: "ສະຖານະ", basic: "ຂໍ້ມູນພື້ນຖານ", village: "ບ້ານ", district: "ເມືອງ", province: "ແຂວງ", batch: "ຮຸ່ນທີ", re_entry: "ປະເພດການເຂົ້າເມືອງ" },
-            kr: { dash: "대시보드", new: "신규 등록", search: "검색...", save: "저장", lang: "한국어", name: "이름", pass: "여권", status: "상태", basic: "기본 정보", village: "마을", district: "시/구", province: "도/성", batch: "기수", re_entry: "입국 구분" }
+            en: { dash: "Dashboard", new: "New Entry", search: "Search Name, Address...", save: "Save Data", back: "Back", lang: "English", name: "Full Name", pass: "Passport No", status: "Status", basic: "Basic Info", village: "Village", district: "District", province: "Province", batch: "Batch No.", re_entry: "Entry Type", phone: "Phone", bday: "Birth Date", count: "Entry Count", new_v: "Newcomer", re_v: "Re-entry", all_b: "All Batches" },
+            jp: { dash: "名簿一覧", new: "新規登録", search: "名前・住所で検索...", save: "データを保存", back: "戻る", lang: "日本語", name: "氏名", pass: "パスポート番号", status: "派遣状況", basic: "基本情報", village: "村", district: "市", province: "県", batch: "第何期生", re_entry: "入国区分", phone: "電話番号", bday: "生年月日", count: "入国回数", new_v: "新規入国者", re_v: "再入国者", all_b: "すべての期生" },
+            lao: { dash: "ແຜງຄວບຄຸມ", new: "ລົງທະບຽນໃໝ່", search: "ຄົ້ນຫາຊື່, ທີ່ຢູ່...", save: "ບັນທຶກຂໍ້ມູນ", back: "ກັບຄືນ", lang: "ລາວ", name: "ຊື່ເຕັມ", pass: "ເລກໜັງສືຜ່ານແດນ", status: "ສະຖານະ", basic: "ຂໍ້ມູນພື້ນຖານ", village: "ບ້ານ", district: "ເມືອງ", province: "ແຂວງ", batch: "ຮຸ່ນທີ", re_entry: "ປະເພດການເຂົ້າເມືອງ", phone: "ເບີໂທລະສັບ", bday: "ວັນເດືອນປີເກີດ", count: "ຈຳນວນຄັ້ງທີ່ເຂົ້າ", new_v: "ເຂົ້າໃໝ່", re_v: "ກັບຄືນມາໃໝ່", all_b: "ທຸກຮຸ່ນ" },
+            kr: { dash: "대시보드", new: "신규 등록", search: "이름, 주소 검색...", save: "데이터 저장", back: "뒤로", lang: "한국어", name: "성명", pass: "여권 번호", status: "진행 상태", basic: "기본 정보", village: "마을(Village)", district: "시/구(District)", province: "도/성(Province)", batch: "기수", re_entry: "입국 구분", phone: "전화번호", bday: "생년월일", count: "입국 횟수", new_v: "신규 입국", re_v: "재입국", all_b: "모든 기수" }
         };
 
         function App() {
-            const [lang, setLang] = useState('jp');
+            const [lang, setLang] = useState('en'); // デフォルトは英語
             const [view, setView] = useState('list');
             const [workers, setWorkers] = useState([]);
             const [searchTerm, setSearchTerm] = useState('');
@@ -65,15 +64,8 @@
 
             const fetchWorkers = async () => {
                 setLoading(true);
-                const { data, error } = await supabaseClient
-                    .from('workers')
-                    .select('*');
-                if (error) {
-                    console.error("Fetch Error:", error);
-                } else {
-                    // データが空の項目があっても、エラーにせずそのまま表示させる
-                    setWorkers(data || []);
-                }
+                const { data } = await supabaseClient.from('workers').select('*').order('created_at', { ascending: false });
+                setWorkers(data || []);
                 setLoading(false);
             };
 
@@ -85,7 +77,7 @@
                 const { error } = await supabaseClient.from('workers').upsert([dataToSave]);
                 if (error) alert(error.message);
                 else {
-                    alert("Saved Successfully!");
+                    alert("Success!");
                     setView('list');
                     fetchWorkers();
                 }
@@ -93,7 +85,8 @@
             };
 
             const filteredWorkers = workers.filter(w => {
-                const matchSearch = (w.name + w.passport_no + w.village + w.district + w.province).toLowerCase().includes(searchTerm.toLowerCase());
+                const searchStr = (w.name || "") + (w.passport_no || "") + (w.village || "") + (w.district || "") + (w.province || "");
+                const matchSearch = searchStr.toLowerCase().includes(searchTerm.toLowerCase());
                 const matchBatch = filterBatch === 'All' || String(w.batch_no) === filterBatch;
                 return matchSearch && matchBatch;
             });
@@ -102,7 +95,7 @@
 
             return (
                 <div class="min-h-screen flex flex-col md:flex-row">
-                    <aside class="w-full md:w-64 bg-slate-900 text-white p-6 shadow-2xl flex-shrink-0">
+                    <aside class="w-full md:w-64 bg-slate-900 text-white p-6 flex-shrink-0 shadow-2xl z-10">
                         <div class="text-2xl font-black text-blue-400 mb-10 italic tracking-tighter">HSDEC GLOBAL</div>
                         <nav class="space-y-2 mb-10">
                             <button onClick={() => setView('list')} class={`w-full text-left p-4 rounded-xl font-bold transition ${view === 'list' ? 'bg-blue-600' : 'text-slate-400 hover:text-white'}`}>📂 {t.dash}</button>
@@ -110,12 +103,12 @@
                         </nav>
                         
                         <div class="pt-6 border-t border-slate-800">
+                            <label class="text-[9px] font-black text-slate-500 block mb-4 uppercase tracking-widest">Display Language</label>
                             <div class="grid grid-cols-2 gap-2">
                                 {Object.keys(i18n).map(l => (
                                     <button key={l} onClick={() => setLang(l)} class={`px-2 py-2 rounded-lg text-[10px] font-bold border ${lang === l ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-700 text-slate-500'}`}>{i18n[l].lang}</button>
                                 ))}
                             </div>
-                            <button onClick={() => supabaseClient.auth.signOut()} class="mt-10 text-red-500 text-[10px] font-black uppercase tracking-widest">Logout</button>
                         </div>
                     </aside>
 
@@ -125,12 +118,12 @@
                                 <div class="flex flex-col md:flex-row justify-between gap-4 mb-8 items-end">
                                     <div>
                                         <h2 class="text-3xl font-black text-slate-800 mb-2">{t.dash}</h2>
-                                        <p class="text-slate-400 text-xs font-bold uppercase">{filteredWorkers.length} Workers Found</p>
+                                        <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest">{filteredWorkers.length} {lang === 'en' ? 'Results' : '名を表示中'}</p>
                                     </div>
                                     <div class="flex flex-wrap gap-2 w-full md:w-auto">
-                                        <select class="form-input !w-32 shadow-sm" value={filterBatch} onChange={e => setFilterBatch(e.target.value)}>
-                                            <option value="All">All Batches</option>
-                                            {[...Array(20)].map((_, i) => <option key={i+1} value={i+1}>Batch {i+1}</option>)}
+                                        <select class="form-input !w-40 shadow-sm" value={filterBatch} onChange={e => setFilterBatch(e.target.value)}>
+                                            <option value="All">{t.all_b}</option>
+                                            {[...Array(20)].map((_, i) => <option key={i+1} value={i+1}>{t.batch} {i+1}</option>)}
                                         </select>
                                         <input type="text" placeholder={t.search} class="form-input bg-white shadow-sm md:w-64" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                                     </div>
@@ -139,12 +132,12 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {filteredWorkers.map(w => (
                                         <div key={w.id} onClick={() => { setFormData(w); setView('edit'); }} class="bg-white p-6 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all cursor-pointer border border-white hover:border-blue-400 relative group">
-                                            <div class="absolute top-6 right-6 filter-tag">Batch {w.batch_no}</div>
+                                            <div class="absolute top-6 right-6 text-[9px] font-black px-3 py-1 bg-slate-100 rounded-full text-slate-500">{t.batch} {w.batch_no}</div>
                                             <div class="font-black text-xl text-slate-800 mb-1 group-hover:text-blue-600">{w.name}</div>
                                             <div class="text-[10px] font-bold text-slate-400 mb-4">{w.province} / {w.district}</div>
                                             <div class="flex flex-wrap gap-2 pt-4 border-t border-slate-50">
-                                                <span class="text-[9px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded">{w.entry_type === 'Re' ? '再入国' : '新規'}</span>
-                                                <span class="text-[9px] font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded">TOPIK: {w.topik_level || '-'}</span>
+                                                <span class="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded uppercase">{w.entry_type === 'Re' ? t.re_v : t.new_v}</span>
+                                                <span class="text-[9px] font-black bg-slate-100 text-slate-500 px-2 py-1 rounded">TOPIK: {w.topik_level || '-'}</span>
                                             </div>
                                         </div>
                                     ))}
@@ -163,38 +156,38 @@
                                             <div class="md:col-span-2"><label class="label-text">{t.name}</label><input type="text" class="form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required /></div>
                                             <div><label class="label-text">{t.batch}</label>
                                                 <select class="form-input" value={formData.batch_no} onChange={e => setFormData({...formData, batch_no: e.target.value})}>
-                                                    {[...Array(20)].map((_, i) => <option key={i+1} value={i+1}>第 {i+1} 期生</option>)}
+                                                    {[...Array(20)].map((_, i) => <option key={i+1} value={i+1}>{t.batch} {i+1}</option>)}
                                                 </select>
                                             </div>
-                                            <div><label class="label-text">{t.province}</label><input type="text" class="form-input" value={formData.province} onChange={e => setFormData({...formData, province: e.target.value})} placeholder="県" /></div>
-                                            <div><label class="label-text">{t.district}</label><input type="text" class="form-input" value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} placeholder="市" /></div>
-                                            <div><label class="label-text">{t.village}</label><input type="text" class="form-input" value={formData.village} onChange={e => setFormData({...formData, village: e.target.value})} placeholder="村" /></div>
+                                            <div><label class="label-text">{t.province}</label><input type="text" class="form-input" value={formData.province} onChange={e => setFormData({...formData, province: e.target.value})} /></div>
+                                            <div><label class="label-text">{t.district}</label><input type="text" class="form-input" value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} /></div>
+                                            <div><label class="label-text">{t.village}</label><input type="text" class="form-input" value={formData.village} onChange={e => setFormData({...formData, village: e.target.value})} /></div>
                                             
                                             <div class="md:col-span-3 p-6 bg-slate-50 rounded-2xl grid grid-cols-2 gap-4">
                                                 <div><label class="label-text">{t.re_entry}</label>
                                                     <select class="form-input" value={formData.entry_type} onChange={e => setFormData({...formData, entry_type: e.target.value})}>
-                                                        <option value="New">新規入国者 (New)</option>
-                                                        <option value="Re">再入国者 (Re-entry)</option>
+                                                        <option value="New">{t.new_v}</option>
+                                                        <option value="Re">{t.re_v}</option>
                                                     </select>
                                                 </div>
-                                                <div><label class="label-text">入国回数</label><input type="number" class="form-input" value={formData.entry_count} onChange={e => setFormData({...formData, entry_count: e.target.value})} /></div>
+                                                <div><label class="label-text">{t.count}</label><input type="number" class="form-input" value={formData.entry_count} onChange={e => setFormData({...formData, entry_count: e.target.value})} /></div>
                                             </div>
                                             
                                             <div><label class="label-text">{t.pass}</label><input type="text" class="form-input" value={formData.passport_no} onChange={e => setFormData({...formData, passport_no: e.target.value})} /></div>
-                                            <div><label class="label-text">Phone</label><input type="text" class="form-input" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} /></div>
-                                            <div><label class="label-text">Birth Date</label><input type="date" class="form-input" value={formData.birth_date} onChange={e => setFormData({...formData, birth_date: e.target.value})} /></div>
+                                            <div><label class="label-text">{t.phone}</label><input type="text" class="form-input" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} /></div>
+                                            <div><label class="label-text">{t.bday}</label><input type="date" class="form-input" value={formData.birth_date} onChange={e => setFormData({...formData, birth_date: e.target.value})} /></div>
                                         </div>
                                     )}
-                                    {/* Dispatch & Other Tabs remain similar */}
+                                    {/* Dispatch/Docs etc Tabs */}
                                     {activeTab === 'dispatch' && (
                                         <div class="space-y-6">
                                             <div><label class="label-text">{t.status}</label><select class="form-input" value={formData.dispatch_status} onChange={e => setFormData({...formData, dispatch_status: e.target.value})}><option value="Waiting">Waiting</option><option value="Dispatched">Dispatched</option></select></div>
-                                            <div><label class="label-text">Memo</label><textarea class="form-input h-32" value={formData.company_feedback} onChange={e => setFormData({...formData, company_feedback: e.target.value})} /></div>
+                                            <div><label class="label-text">Memo / Feedback</label><textarea class="form-input h-32" value={formData.company_feedback} onChange={e => setFormData({...formData, company_feedback: e.target.value})} /></div>
                                         </div>
                                     )}
 
                                     <div class="mt-12 flex justify-between items-center pt-8 border-t border-slate-100">
-                                        <button type="button" onClick={() => setView('list')} class="text-slate-400 font-bold hover:text-slate-600 transition">← Back</button>
+                                        <button type="button" onClick={() => setView('list')} class="text-slate-400 font-bold hover:text-slate-600 transition">← {t.back}</button>
                                         <button type="submit" disabled={loading} class="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-500/30 hover:bg-blue-700 transition disabled:opacity-50">
                                             {loading ? '...' : t.save}
                                         </button>
