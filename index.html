@@ -2,76 +2,91 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>HSDEC Debug Mode</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HSDEC Management System</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-50">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useEffect } = React;
 
-        // ★★★ ここを最新のSupabase情報に書き換えてください ★★★
-        const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
-        
+        const SUPABASE_URL = 'https://YOUR_PROJECT_URL.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         function App() {
+            const [user, setUser] = useState(null);
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
-            const [msg, setMsg] = useState('');
+            const [loading, setLoading] = useState(true);
+
+            // 1. 起動時にログイン状態をチェック
+            useEffect(() => {
+                supabaseClient.auth.getSession().then(({ data: { session } }) => {
+                    setUser(session?.user ?? null);
+                    setLoading(false);
+                });
+
+                // 2. ログイン状態の変化（ログイン/ログアウト）をリアルタイムで検知
+                const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+                    setUser(session?.user ?? null);
+                });
+
+                return () => subscription.unsubscribe();
+            }, []);
 
             const handleLogin = async (e) => {
                 e.preventDefault();
-                setMsg("認証中...");
-                
-                const { data, error } = await supabaseClient.auth.signInWithPassword({
-                    email: email.trim(), // 前後のスペースを削除
-                    password: password
-                });
-
+                const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
                 if (error) {
-                    // エラーを詳しく表示
-                    setMsg(`❌失敗: ${error.message} (ステータス: ${error.status})`);
+                    alert("ログイン失敗: " + error.message);
                 } else {
-                    setMsg("✅ ログイン成功！画面を切り替えます...");
-                    // 成功したら少し待って再読み込み
-                    setTimeout(() => location.reload(), 1000);
+                    // ログイン成功したら React の setUser が走って自動で画面が切り替わります
+                    console.log("ログイン成功");
                 }
             };
 
+            if (loading) return <div class="p-10 text-center">読み込み中...</div>;
+
+            // --- ログインしていない場合 ---
+            if (!user) {
+                return (
+                    <div class="min-h-screen flex items-center justify-center bg-blue-50 p-4">
+                        <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+                            <h1 class="text-2xl font-bold text-center text-blue-900 mb-8">HSDEC LOGIN</h1>
+                            <form onSubmit={handleLogin} class="space-y-4">
+                                <input type="email" placeholder="メールアドレス" class="w-full border p-3 rounded-lg" value={email} onChange={e => setEmail(e.target.value)} required />
+                                <input type="password" placeholder="パスワード" class="w-full border p-3 rounded-lg" value={password} onChange={e => setPassword(e.target.value)} required />
+                                <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">ログイン</button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            // --- ログインに成功している場合（管理画面） ---
             return (
-                <div className="flex flex-col items-center justify-center min-h-screen p-4">
-                    <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
-                        <h1 className="text-xl font-bold mb-4">HSDEC ログインテスト</h1>
-                        <form onSubmit={handleLogin} className="space-y-4">
-                            <input 
-                                type="email" 
-                                placeholder="Email" 
-                                className="w-full border p-2 rounded"
-                                onChange={e => setEmail(e.target.value)}
-                                required 
-                            />
-                            <input 
-                                type="password" 
-                                placeholder="Password" 
-                                className="w-full border p-2 rounded"
-                                onChange={e => setPassword(e.target.value)}
-                                required 
-                            />
-                            <button className="w-full bg-blue-500 text-white py-2 rounded">テストログイン</button>
-                        </form>
-                        <p className="mt-4 text-sm text-red-500 font-bold bg-red-50 p-2 rounded whitespace-pre-wrap">{msg}</p>
-                    </div>
-                    <div className="mt-8 text-xs text-gray-400">
-                        URL: {SUPABASE_URL}<br/>
-                        Key: {SUPABASE_ANON_KEY.substring(0, 20)}...
-                    </div>
+                <div class="min-h-screen flex flex-col md:flex-row">
+                    <aside class="w-full md:w-64 bg-blue-900 text-white p-6">
+                        <h1 class="text-xl font-bold mb-10">HSDEC GLOBAL</h1>
+                        <nav class="space-y-4">
+                            <div class="p-3 bg-blue-800 rounded">📂 ダッシュボード</div>
+                            <button onClick={() => supabaseClient.auth.signOut()} class="w-full bg-red-600 p-2 rounded text-sm mt-10">ログアウト</button>
+                        </nav>
+                    </aside>
+                    <main class="flex-grow p-8 bg-gray-50 text-gray-800">
+                        <h2 class="text-3xl font-extrabold mb-4">管理画面へようこそ！</h2>
+                        <p class="text-green-600 font-bold">✅ ログイン状態が正常に反映されました。</p>
+                        <div class="mt-10 p-10 border-2 border-dashed border-gray-300 rounded-xl text-center text-gray-400">
+                            ここに労働者の名簿データが表示されます
+                        </div>
+                    </main>
                 </div>
             );
         }
