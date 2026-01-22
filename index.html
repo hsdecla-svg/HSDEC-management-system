@@ -26,12 +26,12 @@
         const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-          auth: {
-            persistSession: true, // セッションを維持する
-            autoRefreshToken: true, // トークンを自動更新する
-            detectSessionInUrl: true
-          }
-        });
+        auth: {
+    persistSession: true, // セッションを維持する
+    autoRefreshToken: true, // トークンを自動更新する
+    detectSessionInUrl: true
+  }
+});
 
         const translations = {
             en: { dashboard: "Dashboard", register: "New Worker", save: "Save Data", back: "Back", basic: "1. Basic", docs: "2. Documents", interview: "3-4. Selection", dispatch: "5. Dispatch", company: "6. Employer" },
