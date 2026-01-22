@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Management PRO v9.0</title>
+    <title>HSDEC Global Platform - FULL v10.1</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+Lao:wght@400;700&display=swap');
+        body { font-family: 'Inter', 'Noto Sans Lao', sans-serif; background-color: #f8fafc; }
         .form-input { border: 2px solid #e2e8f0; padding: 0.8rem; border-radius: 0.8rem; width: 100%; outline: none; transition: 0.2s; font-size: 14px; background: #fff; }
+        .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
         .label-text { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
         .tab-btn { padding: 12px 20px; font-weight: 800; font-size: 11px; transition: 0.3s; border-bottom: 3px solid transparent; white-space: nowrap; text-transform: uppercase; }
         .tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; background: #fff; }
-        .doc-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-        .dot-done { background-color: #22c55e; }
-        .dot-none { background-color: #ef4444; }
+        .doc-check { display: flex; items-center: center; gap: 8px; font-size: 11px; font-weight: 700; color: #475569; padding: 6px 12px; background: #f1f5f9; border-radius: 10px; cursor: pointer; }
+        .doc-check.done { background: #dcfce7; color: #166534; }
     </style>
 </head>
 <body>
@@ -32,25 +32,25 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const i18n = {
-            en: { dash: "Dashboard", doc_view: "Doc Status", all: "All Workers", search: "Search...", filter_doc: "Filter by Doc", save: "Save", back: "Back", basic: "Basic Info", docs: "Documents", batch: "Batch" },
-            jp: { dash: "管理", doc_view: "提出状況", all: "名簿一覧", search: "検索...", filter_doc: "提出物で絞り込み", save: "保存", back: "戻る", basic: "基本情報", docs: "書類", batch: "期生" }
+            en: { dash: "Dashboard", new: "New Entry", save: "Save", back: "Back", basic: "Basic Info", docs: "Documents", detail: "Details", batch: "Batch No", name: "Full Name", pass: "Passport", newcomer: "Newcomer", reentry: "Re-entry" },
+            jp: { dash: "管理", new: "新規", save: "保存", back: "戻る", basic: "基本情報", docs: "書類", detail: "詳細", batch: "期生", name: "氏名", pass: "旅券", newcomer: "新規", reentry: "再入国" }
         };
 
         function App() {
             const [lang, setLang] = useState('en');
             const [view, setView] = useState('list');
-            const [dashTab, setDashTab] = useState('all'); // 'all' or 'docs'
+            const [dashTab, setDashTab] = useState('all');
             const [workers, setWorkers] = useState([]);
-            const [searchTerm, setSearchTerm] = useState('');
-            const [filterBatch, setFilterBatch] = useState('All');
-            const [filterDoc, setFilterDoc] = useState('All');
             const [activeTab, setActiveTab] = useState('basic');
+            const [uploading, setUploading] = useState(false);
             const [user, setUser] = useState(null);
             const t = i18n[lang] || i18n.en;
 
             const initialForm = { 
                 id: null, name: '', phone: '', passport_no: '', village: '', district: '', province: '', 
-                batch_no: '1', entry_type: 'New', has_passport: false, has_health_check: false, has_contract: false, has_agri_cert: false, has_training_cert: false
+                batch_no: '1', entry_type: 'New', 
+                has_passport: false, has_health_check: false, has_contract: false, has_agri_cert: false, has_training_cert: false,
+                passport_url: '', contract_url: ''
             };
             const [formData, setFormData] = useState(initialForm);
 
@@ -66,22 +66,49 @@
                 setWorkers(data || []);
             };
 
+            const compressImage = (file) => {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.src = e.target.result;
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const MAX_WIDTH = 1200;
+                            let width = img.width;
+                            let height = img.height;
+                            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                            canvas.width = width; canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.7);
+                        };
+                    };
+                });
+            };
+
+            const handleUpload = async (e, fieldName) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setUploading(true);
+                try {
+                    const compressedBlob = await compressImage(file);
+                    const fileName = `${Date.now()}_${fieldName}.jpg`;
+                    const { error } = await supabaseClient.storage.from('worker-docs').upload(fileName, compressedBlob);
+                    if (error) throw error;
+                    const { data: { publicUrl } } = supabaseClient.storage.from('worker-docs').getPublicUrl(fileName);
+                    setFormData(prev => ({ ...prev, [fieldName]: publicUrl }));
+                } catch (err) { alert(err.message); }
+                finally { setUploading(false); }
+            };
+
             const handleSave = async (e) => {
                 e.preventDefault();
                 const { error } = await supabaseClient.from('workers').upsert([formData]);
                 if (error) alert(error.message);
                 else { setView('list'); fetchWorkers(); }
             };
-
-            const filteredWorkers = workers.filter(w => {
-                const matchSearch = (w.name + w.village + w.province).toLowerCase().includes(searchTerm.toLowerCase());
-                const matchBatch = filterBatch === 'All' || String(w.batch_no) === filterBatch;
-                let matchDoc = true;
-                if (filterDoc === 'Missing Passport') matchDoc = !w.has_passport;
-                if (filterDoc === 'Missing Health') matchDoc = !w.has_health_check;
-                if (filterDoc === 'Missing Contract') matchDoc = !w.has_contract;
-                return matchSearch && matchBatch && matchDoc;
-            });
 
             if (!user) return <LoginForm supabase={supabaseClient} />;
 
@@ -93,9 +120,9 @@
                             <button onClick={() => setView('list')} class={`w-full text-left p-4 rounded-xl font-bold ${view === 'list' ? 'bg-blue-600' : 'text-slate-400'}`}>📂 {t.dash}</button>
                             <button onClick={() => { setFormData(initialForm); setView('edit'); }} class={`w-full text-left p-4 rounded-xl font-bold ${view === 'edit' ? 'bg-blue-600' : 'text-slate-400'}`}>➕ {t.new}</button>
                         </nav>
-                        <div class="pt-6 border-t border-slate-800 grid grid-cols-2 gap-2">
+                        <div class="flex gap-2 pt-6 border-t border-slate-800">
                             {['en', 'jp'].map(l => (
-                                <button key={l} onClick={() => setLang(l)} class={`py-2 rounded-lg text-[10px] font-bold border ${lang === l ? 'bg-blue-600 border-blue-600' : 'border-slate-700 text-slate-500'}`}>{l.toUpperCase()}</button>
+                                <button key={l} onClick={() => setLang(l)} class={`flex-grow py-2 rounded-lg text-[10px] font-bold border ${lang === l ? 'bg-blue-600 border-blue-600' : 'border-slate-700 text-slate-500'}`}>{l.toUpperCase()}</button>
                             ))}
                         </div>
                     </aside>
@@ -103,68 +130,44 @@
                     <main class="flex-grow p-6 md:p-10">
                         {view === 'list' ? (
                             <div class="max-w-6xl mx-auto">
-                                <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
-                                    <div class="flex bg-slate-200 p-1 rounded-xl">
-                                        <button onClick={() => setDashTab('all')} class={`px-4 py-2 rounded-lg text-xs font-black transition ${dashTab === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>{t.all}</button>
-                                        <button onClick={() => setDashTab('docs')} class={`px-4 py-2 rounded-lg text-xs font-black transition ${dashTab === 'docs' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>{t.doc_view}</button>
-                                    </div>
-                                    <div class="flex flex-wrap gap-2">
-                                        <select class="form-input !w-32 !py-2 !text-[11px]" value={filterBatch} onChange={e => setFilterBatch(e.target.value)}>
-                                            <option value="All">All Batch</option>
-                                            {[...Array(20)].map((_, i) => <option key={i+1} value={String(i+1)}>Batch {i+1}</option>)}
-                                        </select>
-                                        <select class="form-input !w-40 !py-2 !text-[11px]" value={filterDoc} onChange={e => setFilterDoc(e.target.value)}>
-                                            <option value="All">No Doc Filter</option>
-                                            <option value="Missing Passport">Missing Passport</option>
-                                            <option value="Missing Health">Missing Health Check</option>
-                                            <option value="Missing Contract">Missing Contract</option>
-                                        </select>
-                                        <input type="text" placeholder={t.search} class="form-input md:w-48 !py-2 !text-[11px]" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                                <div class="flex justify-between items-center mb-8">
+                                    <h2 class="text-3xl font-black text-slate-800">{t.dash}</h2>
+                                    <div class="bg-slate-200 p-1 rounded-xl">
+                                        <button onClick={() => setDashTab('all')} class={`px-4 py-2 rounded-lg text-xs font-black transition ${dashTab === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>Cards</button>
+                                        <button onClick={() => setDashTab('docs')} class={`px-4 py-2 rounded-lg text-xs font-black transition ${dashTab === 'docs' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'}`}>Status Table</button>
                                     </div>
                                 </div>
-
                                 {dashTab === 'all' ? (
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in">
-                                        {filteredWorkers.map(w => (
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {workers.map(w => (
                                             <div key={w.id} onClick={() => { setFormData(w); setView('edit'); }} class="bg-white p-6 rounded-[2.5rem] shadow-sm hover:shadow-xl border-2 border-transparent hover:border-blue-400 cursor-pointer transition-all">
                                                 <div class="flex justify-between items-start mb-4">
-                                                    <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">👤</div>
-                                                    <div class="flex flex-col items-end gap-1">
-                                                        <span class="text-[8px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded">B{w.batch_no}</span>
-                                                        <div class="flex gap-1">
-                                                            <div class={`w-2 h-2 rounded-full ${w.has_passport ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                                                            <div class={`w-2 h-2 rounded-full ${w.has_contract ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                                                        </div>
-                                                    </div>
+                                                    <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-xl">👤</div>
+                                                    <div class="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded">Batch {w.batch_no}</div>
                                                 </div>
                                                 <div class="font-black text-lg text-slate-800">{w.name}</div>
-                                                <div class="text-[10px] font-bold text-slate-400">{w.province || '--'}</div>
+                                                <div class="text-[10px] font-bold text-slate-400 uppercase">{w.province || '--'} / {w.entry_type}</div>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div class="bg-white rounded-[2rem] shadow-sm overflow-hidden animate-in slide-in-from-bottom-4">
+                                    <div class="bg-white rounded-[2rem] shadow-sm overflow-hidden">
                                         <table class="w-full text-left">
                                             <thead class="bg-slate-50 border-b">
                                                 <tr>
                                                     <th class="p-4 text-[10px] font-black text-slate-400 uppercase">Worker</th>
                                                     <th class="p-4 text-[10px] font-black text-slate-400 uppercase text-center">Passport</th>
-                                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase text-center">Health</th>
                                                     <th class="p-4 text-[10px] font-black text-slate-400 uppercase text-center">Contract</th>
-                                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase text-center">Agri Cert</th>
+                                                    <th class="p-4 text-[10px] font-black text-slate-400 uppercase text-center">Health</th>
                                                 </tr>
                                             </thead>
                                             <tbody class="divide-y divide-slate-50">
-                                                {filteredWorkers.map(w => (
-                                                    <tr key={w.id} onClick={() => { setFormData(w); setView('edit'); }} class="hover:bg-blue-50 cursor-pointer transition">
-                                                        <td class="p-4">
-                                                            <div class="font-bold text-slate-800 text-sm">{w.name}</div>
-                                                            <div class="text-[9px] text-slate-400 font-black">BATCH {w.batch_no}</div>
-                                                        </td>
+                                                {workers.map(w => (
+                                                    <tr key={w.id} onClick={() => { setFormData(w); setView('edit'); }} class="hover:bg-blue-50 cursor-pointer">
+                                                        <td class="p-4 font-bold text-sm">{w.name}</td>
                                                         <td class="p-4 text-center">{w.has_passport ? '✅' : '🔴'}</td>
-                                                        <td class="p-4 text-center">{w.has_health_check ? '✅' : '🔴'}</td>
                                                         <td class="p-4 text-center">{w.has_contract ? '✅' : '🔴'}</td>
-                                                        <td class="p-4 text-center">{w.has_agri_cert ? '✅' : '🔴'}</td>
+                                                        <td class="p-4 text-center">{w.has_health_check ? '✅' : '🔴'}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -173,38 +176,59 @@
                                 )}
                             </div>
                         ) : (
-                            <div class="max-w-4xl mx-auto bg-white rounded-[2.5rem] shadow-2xl overflow-hidden">
+                            <div class="max-w-4xl mx-auto bg-white rounded-[3rem] shadow-2xl overflow-hidden">
                                 <div class="flex bg-slate-50 border-b">
-                                    {['basic', 'docs'].map(id => (
+                                    {['basic', 'docs', 'detail'].map(id => (
                                         <button key={id} onClick={() => setActiveTab(id)} class={`tab-btn ${activeTab === id ? 'active' : 'text-slate-400'}`}>{t[id]}</button>
                                     ))}
                                 </div>
-                                <form onSubmit={handleSave} class="p-8">
+                                <form onSubmit={handleSave} class="p-10">
                                     {activeTab === 'basic' && (
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div class="md:col-span-2"><label class="label-text">{t.name}</label><input type="text" class="form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required /></div>
-                                            <div><label class="label-text">Batch</label>
-                                                <select class="form-input" value={formData.batch_no} onChange={e => setFormData({...formData, batch_no: e.target.value})}>
-                                                    {[...Array(20)].map((_, i) => <option key={i+1} value={String(i+1)}>Batch {i+1}</option>)}
-                                                </select>
+                                        <div class="space-y-8">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div class="md:col-span-2"><label class="label-text">{t.name}</label><input type="text" class="form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required /></div>
+                                                <div><label class="label-text">{t.batch}</label>
+                                                    <select class="form-input" value={formData.batch_no} onChange={e => setFormData({...formData, batch_no: e.target.value})}>
+                                                        {[...Array(20)].map((_, i) => <option key={i+1} value={String(i+1)}>Batch {i+1}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div><label class="label-text">Type</label>
+                                                    <select class="form-input" value={formData.entry_type} onChange={e => setFormData({...formData, entry_type: e.target.value})}>
+                                                        <option value="New">{t.newcomer}</option><option value="Re">{t.reentry}</option>
+                                                    </select>
+                                                </div>
                                             </div>
-                                            <div><label class="label-text">Entry Type</label>
-                                                <select class="form-input" value={formData.entry_type} onChange={e => setFormData({...formData, entry_type: e.target.value})}>
-                                                    <option value="New">Newcomer</option><option value="Re">Re-entry</option>
-                                                </select>
-                                            </div>
-                                            <div class="md:col-span-2 p-6 bg-slate-50 rounded-2xl grid grid-cols-2 md:grid-cols-3 gap-3">
-                                                {[{k:'has_passport', l:'Passport'}, {k:'has_health_check', l:'Health'}, {k:'has_contract', l:'Contract'}, {k:'has_agri_cert', l:'Agri Cert'}, {k:'has_training_cert', l:'Training'}].map(d => (
-                                                    <label key={d.k} class="flex items-center gap-2 text-xs font-bold cursor-pointer">
-                                                        <input type="checkbox" checked={formData[d.k]} onChange={e => setFormData({...formData, [d.k]: e.target.checked})} class="w-4 h-4 rounded" /> {d.l}
-                                                    </label>
-                                                ))}
+                                            <div class="p-6 bg-slate-50 rounded-2xl">
+                                                <label class="label-text mb-4">Submission Status</label>
+                                                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                    {[{k:'has_passport', l:'Passport'}, {k:'has_contract', l:'Contract'}, {k:'has_health_check', l:'Health'}].map(d => (
+                                                        <div key={d.k} onClick={() => setFormData({...formData, [d.k]: !formData[d.k]})} class={`doc-check ${formData[d.k] ? 'done' : ''}`}>
+                                                            {formData[d.k] ? '✅' : '⭕'} {d.l}
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
-                                    <div class="mt-10 flex justify-between pt-8 border-t">
+
+                                    {activeTab === 'docs' && (
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            {['passport_url', 'contract_url'].map(field => (
+                                                <div key={field} class="space-y-4">
+                                                    <label class="label-text text-blue-600">{field.replace('_', ' ').toUpperCase()}</label>
+                                                    <div class="aspect-[3/4] bg-slate-100 rounded-3xl border-2 border-dashed flex items-center justify-center overflow-hidden">
+                                                        {formData[field] ? <img src={formData[field]} class="w-full h-full object-cover" /> : <span class="text-slate-400 text-[10px] font-black uppercase">No Image</span>}
+                                                    </div>
+                                                    <input type="file" accept="image/*" onChange={(e) => handleUpload(e, field)} class="text-xs w-full" disabled={uploading} />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {uploading && <p class="text-blue-500 font-bold mt-4 animate-pulse">Compressing & Uploading...</p>}
+
+                                    <div class="mt-12 flex justify-between border-t pt-8">
                                         <button type="button" onClick={() => setView('list')} class="text-slate-400 font-bold">← {t.back}</button>
-                                        <button type="submit" class="bg-blue-600 text-white px-10 py-4 rounded-xl font-black text-xs uppercase tracking-widest">{t.save}</button>
+                                        <button type="submit" class="bg-blue-600 text-white px-12 py-4 rounded-2xl font-black text-xs uppercase shadow-xl shadow-blue-500/20">SAVE</button>
                                     </div>
                                 </form>
                             </div>
@@ -215,20 +239,15 @@
         }
 
         function LoginForm({ supabase }) {
-            const [email, setEmail] = useState('');
-            const [password, setPassword] = useState('');
-            const handleLogin = async (e) => {
-                e.preventDefault();
-                const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                if (error) alert(error.message);
-            };
+            const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
+            const handleLogin = async (e) => { e.preventDefault(); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) alert(error.message); };
             return (
-                <div class="min-h-screen flex items-center justify-center bg-slate-950 p-6">
-                    <form onSubmit={handleLogin} class="bg-white p-12 rounded-[3rem] shadow-2xl w-full max-w-sm text-center">
-                        <h2 class="text-3xl font-black mb-10 tracking-tighter">HSDEC LOGIN</h2>
+                <div class="min-h-screen flex items-center justify-center bg-slate-950 p-6 text-center">
+                    <form onSubmit={handleLogin} class="bg-white p-12 rounded-[3rem] shadow-2xl w-full max-w-sm">
+                        <h2 class="text-3xl font-black mb-10 italic">HSDEC LOGIN</h2>
                         <input type="email" placeholder="Email" class="form-input mb-4" onChange={e => setEmail(e.target.value)} required />
                         <input type="password" placeholder="Password" class="form-input mb-8" onChange={e => setPassword(e.target.value)} required />
-                        <button class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl shadow-blue-500/30">LOGIN</button>
+                        <button class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black">LOGIN</button>
                     </form>
                 </div>
             );
