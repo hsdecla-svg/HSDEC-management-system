@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Global Hub v19.0</title>
+    <title>HSDEC Global Hub v20.0</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -11,14 +11,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+KR:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; background-color: #f8fafc; overflow-x: hidden; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+Lao:wght@400;700&display=swap');
+        body { font-family: 'Inter', 'Noto Sans Lao', sans-serif; background-color: #f8fafc; }
         .form-input { border: 2px solid #e2e8f0; padding: 0.8rem; border-radius: 1rem; width: 100%; outline: none; transition: 0.2s; background: #fff; }
         .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
-        .label-text { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.05em; }
-        .tab-btn { padding: 16px; font-weight: 800; font-size: 11px; transition: 0.3s; border-bottom: 3px solid transparent; text-transform: uppercase; cursor: pointer; flex: 1; text-align: center; }
-        .tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; background: #fff; }
+        .label-text { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 6px; display: block; }
         .nav-btn.active { color: #3b82f6; background: rgba(59, 130, 246, 0.1); border-radius: 1.2rem; }
+        .doc-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
     </style>
 </head>
 <body>
@@ -27,24 +26,21 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // --- Supabase設定 (ここをあなたのURLとKEYに書き換えてください) ---
+        // --- Supabase Config (YOUR URL & KEY) ---
         const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const i18n = {
-            en: { dash: "Dashboard", new: "New", save: "Save", back: "Back", basic: "Basic", personal: "Personal", docs: "Docs", status: "Status", finance: "Finance", total: "Total Monthly", import: "Excel Import", amount: "Amount", item: "Item" },
-            jp: { dash: "管理台帳", new: "新規", save: "保存", back: "戻る", basic: "基本", personal: "個人", docs: "書類", status: "状況", finance: "会計", total: "月間合計", import: "Excel読込", amount: "金額", item: "項目" },
-            lao: { dash: "ແຜງຄວບຄຸມ", new: "ເພີ່ມໃຫມ່", save: "ບັນທຶກ", back: "ກັບຄືນ", basic: "ພື້ນຖານ", personal: "ສ່ວນຕົວ", docs: "ເອກະສານ", status: "ສະຖານະ", finance: "ການເງິນ", total: "ລວມເດືອນນີ້", import: "ນຳເຂົ້າ Excel", amount: "ຈຳນວນ", item: "ລາຍການ" },
-            kr: { dash: "대시보드", new: "신규", save: "저장", back: "뒤로", basic: "기본", personal: "인적", docs: "서류", status: "현황", finance: "회계", total: "월간 합계", import: "엑셀 가져오기", amount: "금액", item: "항목" }
+            en: { dash: "Workers", finance: "Finance", new: "New", import: "Import", export: "Export", total: "Monthly Total" },
+            jp: { dash: "労働者管理", finance: "会計管理", new: "新規追加", import: "Excel読込", export: "Excel出力", total: "月間合計" },
+            lao: { dash: "ລາຍຊື່ຄົນງານ", finance: "ການເງິນ", new: "ເພີ່ມໃຫມ່", import: "ນຳເຂົ້າ", export: "ສົ່ງອອກ", total: "ລວມເດືອນນີ້" }
         };
 
         function App() {
             const [mode, setMode] = useState('worker');
             const [lang, setLang] = useState('en');
             const [view, setView] = useState('list');
-            const [dashTab, setDashTab] = useState('all');
-            const [activeTab, setActiveTab] = useState('basic');
             const [workers, setWorkers] = useState([]);
             const [financeLogs, setFinanceLogs] = useState([]);
             const [rates, setRates] = useState({ USD: 22000, THB: 650 });
@@ -52,7 +48,6 @@
             const [user, setUser] = useState(null);
             const t = i18n[lang];
 
-            const [workerForm, setWorkerForm] = useState({ name: '', batch_no: '1', entry_type: 'New' });
             const [financeForm, setFinanceForm] = useState({ item: '', amount: '', currency: 'LAK', lak_amount: 0, category: 'General', date: new Date().toISOString().split('T')[0] });
 
             useEffect(() => {
@@ -85,18 +80,23 @@
                 setFinanceLogs(f || []);
             };
 
-            // Excelインポート機能
-            const handleExcelImport = (e) => {
+            // Excel Export (会計用)
+            const exportFinance = () => {
+                const worksheet = XLSX.utils.json_to_sheet(filteredFinance);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, "Finance");
+                XLSX.writeFile(workbook, `Finance_${finFilter.month}.xlsx`);
+            };
+
+            // Excel Import (会計用)
+            const importFinance = (e) => {
                 const file = e.target.files[0];
                 const reader = new FileReader();
                 reader.onload = async (evt) => {
                     const wb = XLSX.read(evt.target.result, { type: 'binary' });
-                    const wsname = wb.SheetNames[0];
-                    const data = XLSX.utils.sheet_to_json(wb.Sheets[wsname]);
-                    // Supabaseへ一括保存
-                    const { error } = await supabaseClient.from('workers').insert(data);
-                    if (error) alert(error.message);
-                    else { alert('Import Success!'); fetchData(); }
+                    const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                    const { error } = await supabaseClient.from('finance_logs').insert(data);
+                    if (error) alert(error.message); else fetchData();
                 };
                 reader.readAsBinaryString(file);
             };
@@ -105,23 +105,21 @@
                 return log.date?.startsWith(finFilter.month) && (finFilter.category === 'All' || log.category === finFilter.category);
             });
 
-            const monthlyTotal = filteredFinance.reduce((sum, log) => sum + Number(log.lak_amount || 0), 0);
-
             if (!user) return <LoginForm supabase={supabaseClient} />;
 
             return (
                 <div class="flex h-screen w-screen bg-slate-50">
-                    {/* サイドナビ */}
+                    {/* サイドメニュー */}
                     <nav class="w-20 bg-slate-900 flex flex-col items-center py-10 gap-10 shrink-0">
-                        <div class="text-blue-400 font-black italic text-3xl">H.</div>
-                        <button onClick={() => {setMode('worker'); setView('list');}} class={`p-4 nav-btn ${mode === 'worker' ? 'active text-blue-400' : 'text-slate-500'}`}>
-                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        <div class="text-blue-400 font-black italic text-2xl">H.</div>
+                        <button onClick={() => setMode('worker')} class={`p-4 nav-btn ${mode === 'worker' ? 'active text-blue-400' : 'text-slate-500'}`}>
+                            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                         </button>
-                        <button onClick={() => {setMode('finance'); setView('list');}} class={`p-4 nav-btn ${mode === 'finance' ? 'active text-emerald-400' : 'text-slate-500'}`}>
+                        <button onClick={() => setMode('finance')} class={`p-4 nav-btn ${mode === 'finance' ? 'active text-emerald-400' : 'text-slate-500'}`}>
                             <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </button>
                         <div class="mt-auto space-y-4">
-                            {['en','jp','lao','kr'].map(l => (
+                            {['en','jp','lao'].map(l => (
                                 <button key={l} onClick={() => setLang(l)} class={`block text-[10px] font-black p-1 uppercase ${lang === l ? 'text-white border-b' : 'text-slate-600'}`}>{l}</button>
                             ))}
                         </div>
@@ -130,73 +128,50 @@
                     <main class="flex-grow overflow-y-auto p-6 md:p-12">
                         {mode === 'worker' ? (
                             <div class="max-w-6xl mx-auto">
-                                {view === 'list' ? (
-                                    <div>
-                                        <div class="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
-                                            <h2 class="text-4xl font-black text-slate-800 tracking-tight">{t.dash}</h2>
-                                            <div class="flex gap-4 items-center">
-                                                <label class="bg-white px-5 py-3 rounded-xl shadow-sm border border-slate-200 text-xs font-bold cursor-pointer hover:bg-slate-50">
-                                                    📥 {t.import}
-                                                    <input type="file" class="hidden" accept=".xlsx,.xls" onChange={handleExcelImport} />
-                                                </label>
-                                                <button onClick={() => {setWorkerForm({name:'', batch_no:'1', entry_type:'New'}); setView('edit');}} class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-xl">+ {t.new}</button>
-                                            </div>
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <h2 class="text-4xl font-black text-slate-800 mb-10 tracking-tight uppercase">{t.dash}</h2>
+                                <div class="bg-white rounded-[2.5rem] shadow-sm overflow-hidden border border-slate-100">
+                                    <table class="w-full text-left font-bold text-sm text-slate-600">
+                                        <thead class="bg-slate-50 border-b"><tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest"><th class="p-8">Name</th><th class="p-8">Batch</th><th class="p-8">Passport</th><th class="p-8">Contract</th><th class="p-8">Health</th></tr></thead>
+                                        <tbody class="divide-y divide-slate-50">
                                             {workers.map(w => (
-                                                <div key={w.id} onClick={() => {setWorkerForm(w); setView('edit');}} class="bg-white p-8 rounded-[2rem] shadow-sm hover:shadow-xl transition-all cursor-pointer border-2 border-transparent hover:border-blue-400">
-                                                    <p class="text-[10px] font-black text-blue-500 uppercase mb-2">Batch {w.batch_no}</p>
-                                                    <p class="text-xl font-black text-slate-800">{w.name}</p>
-                                                    <p class="text-xs font-bold text-slate-400 mt-1">{w.province || 'General'}</p>
-                                                </div>
+                                                <tr key={w.id} class="hover:bg-slate-50 transition">
+                                                    <td class="p-8 text-slate-900 font-black">{w.name}</td>
+                                                    <td class="p-8"><span class="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs">#{w.batch_no}</span></td>
+                                                    <td class="p-8"> <span class={`doc-dot ${w.has_passport ? 'bg-emerald-500' : 'bg-rose-400'}`}></span> {w.has_passport ? 'Ready' : 'Missing'}</td>
+                                                    <td class="p-8"> <span class={`doc-dot ${w.has_contract ? 'bg-emerald-500' : 'bg-rose-400'}`}></span> {w.has_contract ? 'Ready' : 'Missing'}</td>
+                                                    <td class="p-8"> <span class={`doc-dot ${w.has_health_check ? 'bg-emerald-500' : 'bg-rose-400'}`}></span> {w.has_health_check ? 'Done' : 'Pending'}</td>
+                                                </tr>
                                             ))}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div class="max-w-4xl mx-auto bg-white rounded-[3rem] shadow-2xl overflow-hidden mb-20">
-                                        <div class="flex bg-slate-50 border-b">
-                                            {['basic', 'personal', 'docs'].map(id => (
-                                                <button key={id} onClick={() => setActiveTab(id)} class={`tab-btn ${activeTab === id ? 'active' : 'text-slate-400'}`}>{t[id]}</button>
-                                            ))}
-                                        </div>
-                                        <form onSubmit={async (e) => {e.preventDefault(); await supabaseClient.from('workers').upsert([workerForm]); setView('list'); fetchData();}} class="p-10 space-y-8">
-                                            {activeTab === 'basic' && (
-                                                <div class="space-y-6">
-                                                    <div><label class="label-text">Full Name</label><input type="text" class="form-input text-lg font-bold" value={workerForm.name} onChange={e => setWorkerForm({...workerForm, name: e.target.value})} required /></div>
-                                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                                        {['has_passport','has_contract','has_health_check','has_agri_cert'].map(f => (
-                                                            <div key={f} onClick={() => setWorkerForm({...workerForm, [f]: !workerForm[f]})} class={`p-4 rounded-2xl border-2 cursor-pointer text-[10px] font-black text-center transition ${workerForm[f] ? 'bg-blue-50 border-blue-400 text-blue-600' : 'bg-slate-50 border-transparent text-slate-400'}`}>
-                                                                {f.replace('has_','').replace('_',' ').toUpperCase()} {workerForm[f] ? '✅' : '⭕'}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            <div class="pt-8 flex justify-between border-t items-center">
-                                                <button type="button" onClick={() => setView('list')} class="text-slate-400 font-black text-[10px] uppercase">{t.back}</button>
-                                                <button type="submit" class="bg-blue-600 text-white px-12 py-4 rounded-2xl font-black shadow-xl uppercase text-xs">{t.save}</button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                )}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         ) : (
+                            /* 会計管理 (Finance) */
                             <div class="max-w-5xl mx-auto">
+                                <div class="flex justify-between items-center mb-10">
+                                    <h2 class="text-4xl font-black text-slate-800 italic uppercase">{t.finance}</h2>
+                                    <div class="flex gap-4">
+                                        <label class="bg-white px-5 py-3 rounded-xl shadow-sm border border-slate-200 text-xs font-bold cursor-pointer hover:bg-slate-50">
+                                            📥 {t.import} <input type="file" class="hidden" accept=".xlsx" onChange={importFinance} />
+                                        </label>
+                                        <button onClick={exportFinance} class="bg-white px-5 py-3 rounded-xl shadow-sm border border-slate-200 text-xs font-bold hover:bg-slate-50">📤 {t.export}</button>
+                                        <button onClick={() => setView('edit')} class="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold shadow-xl shadow-emerald-200">+ {t.new}</button>
+                                    </div>
+                                </div>
+
                                 {view === 'list' ? (
-                                    <div class="animate-in fade-in">
-                                        <div class="flex justify-between items-center mb-10">
-                                            <h2 class="text-4xl font-black text-slate-800 italic uppercase">{t.finance}</h2>
-                                            <button onClick={() => setView('edit')} class="bg-emerald-600 text-white px-10 py-4 rounded-2xl font-black shadow-xl">+ Log</button>
-                                        </div>
+                                    <>
                                         {/* 合計金額パネル */}
                                         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10 bg-white p-10 rounded-[3.5rem] shadow-sm items-end border border-emerald-50">
                                             <div class="md:col-span-1"><label class="label-text">Month</label><input type="month" class="form-input font-bold" value={finFilter.month} onChange={e => setFinFilter({...finFilter, month: e.target.value})} /></div>
-                                            <div class="md:col-span-1"><label class="label-text">Category</label><select class="form-input font-bold" value={finFilter.category} onChange={e => setFinFilter({...finFilter, category: e.target.value})}><option value="All">All</option><option value="Gas">Gas</option><option value="Food">Food</option></select></div>
+                                            <div class="md:col-span-1"><label class="label-text">Category</label><select class="form-input font-bold" value={finFilter.category} onChange={e => setFinFilter({...finFilter, category: e.target.value})}><option value="All">All Categories</option><option value="Gas">Gasoline</option><option value="Food">Food</option><option value="Salary">Salary</option></select></div>
                                             <div class="md:col-span-2 text-right">
-                                                <p class="text-xs font-black text-emerald-500 uppercase tracking-widest mb-2">{t.total} ({finFilter.month})</p>
-                                                <p class="text-5xl font-black text-slate-900 tracking-tighter italic">₭ {monthlyTotal.toLocaleString()}</p>
+                                                <p class="text-xs font-black text-emerald-500 uppercase tracking-widest mb-1">{t.total}</p>
+                                                <p class="text-5xl font-black text-slate-900 tracking-tighter italic">₭ {filteredFinance.reduce((s,l)=>s+Number(l.lak_amount||0),0).toLocaleString()}</p>
                                             </div>
                                         </div>
+                                        {/* 会計テーブル */}
                                         <div class="bg-white rounded-[3rem] shadow-sm overflow-hidden border border-slate-100">
                                             <table class="w-full text-left font-bold text-sm text-slate-600">
                                                 <thead class="bg-slate-50 border-b"><tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest"><th class="p-8">Date</th><th class="p-8">Item</th><th class="p-8 text-right">LAK Amount</th></tr></thead>
@@ -211,31 +186,23 @@
                                                 </tbody>
                                             </table>
                                         </div>
-                                    </div>
+                                    </>
                                 ) : (
                                     <div class="max-w-2xl mx-auto bg-white p-12 rounded-[4rem] shadow-2xl">
                                         <h3 class="text-2xl font-black mb-10 text-emerald-600 italic text-center uppercase tracking-widest">Finance Entry</h3>
-                                        <div class="grid grid-cols-2 gap-6 mb-8 bg-blue-50 p-6 rounded-[2.5rem] border border-blue-100 text-center">
-                                            <div><p class="text-[10px] font-black text-blue-400 uppercase">USD Rate</p><p class="font-bold">₭ {rates.USD.toLocaleString()}</p></div>
-                                            <div><p class="text-[10px] font-black text-blue-400 uppercase">THB Rate</p><p class="font-bold">₭ {rates.THB.toLocaleString()}</p></div>
-                                        </div>
-                                        <form onSubmit={async (e) => {e.preventDefault(); await supabaseClient.from('finance_logs').insert([financeForm]); setView('list'); fetchData();}} class="space-y-8">
+                                        <form onSubmit={async (e)=>{e.preventDefault(); await supabaseClient.from('finance_logs').insert([financeForm]); setView('list'); fetchData();}} class="space-y-8">
                                             <div class="grid grid-cols-2 gap-6">
-                                                <div><label class="label-text">{t.amount}</label><input type="number" step="0.01" class="form-input text-2xl font-black" value={financeForm.amount} onChange={e => setFinanceForm({...financeForm, amount: e.target.value})} required /></div>
-                                                <div><label class="label-text">{t.currency}</label><select class="form-input font-bold" value={financeForm.currency} onChange={e => setFinanceForm({...financeForm, currency: e.target.value})}><option value="LAK">LAK</option><option value="USD">USD</option><option value="THB">THB</option></select></div>
+                                                <div><label class="label-text">Amount</label><input type="number" step="0.01" class="form-input text-2xl font-black" value={financeForm.amount} onChange={e=>setFinanceForm({...financeForm, amount:e.target.value})} required /></div>
+                                                <div><label class="label-text">Currency</label><select class="form-input font-bold" value={financeForm.currency} onChange={e=>setFinanceForm({...financeForm, currency:e.target.value})}><option value="LAK">LAK</option><option value="USD">USD</option><option value="THB">THB</option></select></div>
                                             </div>
                                             <div class="bg-emerald-600 p-8 rounded-[3rem] text-white shadow-2xl text-center">
-                                                <label class="text-[11px] font-black opacity-80 uppercase tracking-widest mb-2 block">{t.total_lak}</label>
-                                                <p class="text-4xl font-black italic tracking-tighter">₭ {financeForm.lak_amount.toLocaleString()}</p>
+                                                <p class="text-xs font-black opacity-80 uppercase tracking-widest mb-1">Equivalent KIP</p>
+                                                <p class="text-4xl font-black italic">₭ {financeForm.lak_amount.toLocaleString()}</p>
                                             </div>
-                                            <div><label class="label-text">{t.item}</label><input type="text" class="form-input" value={financeForm.item} onChange={e => setFinanceForm({...financeForm, item: e.target.value})} required /></div>
-                                            <div class="grid grid-cols-2 gap-6">
-                                                <div><label class="label-text">Date</label><input type="date" class="form-input font-bold" value={financeForm.date} onChange={e => setFinanceForm({...financeForm, date: e.target.value})} required /></div>
-                                                <div><label class="label-text">Category</label><select class="form-input font-bold" value={financeForm.category} onChange={e => setFinanceForm({...financeForm, category: e.target.value})}><option value="Gas">Gas</option><option value="Food">Food</option><option value="Salary">Salary</option></select></div>
-                                            </div>
-                                            <div class="flex justify-between items-center pt-8 border-t">
-                                                <button type="button" onClick={() => setView('list')} class="text-slate-400 font-black text-xs uppercase underline">Cancel</button>
-                                                <button type="submit" class="bg-emerald-600 text-white px-12 py-5 rounded-3xl font-black shadow-xl uppercase text-xs">Save Log</button>
+                                            <div><label class="label-text">Item</label><input type="text" class="form-input font-bold" value={financeForm.item} onChange={e=>setFinanceForm({...financeForm, item:e.target.value})} required /></div>
+                                            <div class="flex justify-between items-center border-t pt-8">
+                                                <button type="button" onClick={()=>setView('list')} class="text-slate-400 font-black text-xs uppercase underline">Cancel</button>
+                                                <button type="submit" class="bg-emerald-600 text-white px-12 py-4 rounded-2xl font-black shadow-xl uppercase text-xs">Save</button>
                                             </div>
                                         </form>
                                     </div>
@@ -253,10 +220,10 @@
             return (
                 <div class="min-h-screen flex items-center justify-center bg-slate-950 p-6">
                     <form onSubmit={handleLogin} class="bg-white p-14 rounded-[4rem] shadow-2xl w-full max-w-sm text-center">
-                        <h2 class="text-3xl font-black mb-10 text-slate-900 uppercase tracking-tighter italic">HSDEC HUB</h2>
+                        <h2 class="text-2xl font-black mb-10 text-slate-800 uppercase tracking-tighter">HSDEC HUB</h2>
                         <input type="email" placeholder="Email" class="form-input mb-4 text-center font-bold" onChange={e => setEmail(e.target.value)} required />
                         <input type="password" placeholder="Password" class="form-input mb-10 text-center font-bold" onChange={e => setPassword(e.target.value)} required />
-                        <button class="w-full bg-blue-600 text-white py-6 rounded-3xl font-black shadow-2xl hover:scale-105 transition">LOGIN</button>
+                        <button class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black shadow-xl">LOGIN</button>
                     </form>
                 </div>
             );
