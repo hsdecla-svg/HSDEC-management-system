@@ -1,103 +1,157 @@
-<script type="text/babel">
-    const { useState, useEffect } = React;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HSDEC Global Platform</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
+        .form-input { border: 2px solid #f1f5f9; padding: 1rem; border-radius: 1rem; background: #f8fafc; outline: none; width: 100%; transition: all 0.2s; }
+        .form-input:focus { border-color: #3b82f6; background: white; }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
 
-    const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-    function App() {
-        const [user, setUser] = useState(null);
-        const [view, setView] = useState('list');
-        const [workers, setWorkers] = useState([]);
-        const [loading, setLoading] = useState(false);
-        const [formData, setFormData] = useState({ name: '', phone: '' }); // 簡易化してテスト
+        // ★★★ 自分のURLとKEYに書き換えてください ★★★
+        const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        useEffect(() => {
-            supabaseClient.auth.getSession().then(({ data: { session } }) => {
-                setUser(session?.user ?? null);
-                if (session) fetchWorkers();
-            });
-        }, []);
+        function App() {
+            const [user, setUser] = useState(null);
+            const [view, setView] = useState('list');
+            const [workers, setWorkers] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [formData, setFormData] = useState({ name: '', phone: '', passport_no: '' });
 
-        // --- 強化されたデータ取得関数 ---
-        const fetchWorkers = async () => {
-            setLoading(true);
-            console.log("Starting fetch...");
-            
-            // 全カラムを明示的に取得
-            const { data, error } = await supabaseClient
-                .from('workers')
-                .select('*')
-                .order('created_at', { ascending: false });
+            // 1. 起動時にセッション確認
+            useEffect(() => {
+                supabaseClient.auth.getSession().then(({ data: { session } }) => {
+                    setUser(session?.user ?? null);
+                    if (session) fetchWorkers();
+                });
+            }, []);
 
-            if (error) {
-                console.error("Fetch Error:", error);
-                alert("Database Error: " + error.message);
-            } else {
-                console.log("Success! Data received:", data);
-                setWorkers(data || []);
-            }
-            setLoading(false);
-        };
+            // 2. データ取得（安定版）
+            const fetchWorkers = async () => {
+                setLoading(true);
+                const { data, error } = await supabaseClient
+                    .from('workers')
+                    .select('*')
+                    .order('created_at', { ascending: false });
 
-        if (!user) return <LoginForm supabase={supabaseClient} />;
+                if (error) {
+                    console.error("Fetch Error:", error);
+                } else {
+                    setWorkers(data || []);
+                }
+                setLoading(false);
+            };
 
-        return (
-            <div class="min-h-screen flex flex-col md:flex-row">
-                {/* サイドバー */}
-                <aside class="w-full md:w-64 bg-slate-900 text-white p-6 flex-shrink-0">
-                    <h1 class="text-2xl font-black text-blue-400 mb-10 italic">HSDEC</h1>
-                    <nav class="space-y-4">
-                        <button onClick={() => { setView('list'); fetchWorkers(); }} class={`w-full text-left p-3 rounded-xl font-bold ${view === 'list' ? 'bg-blue-600' : 'text-slate-400'}`}>📂 Dashboard</button>
-                        <button onClick={() => setView('detail')} class={`w-full text-left p-3 rounded-xl font-bold ${view === 'detail' ? 'bg-blue-600' : 'text-slate-400'}`}>➕ New Entry</button>
-                    </nav>
-                </aside>
+            // 3. 保存処理
+            const handleSave = async (e) => {
+                e.preventDefault();
+                if (!formData.name) return alert("Name is required");
+                
+                const { error } = await supabaseClient.from('workers').upsert([formData]);
+                
+                if (error) {
+                    alert("Save Error: " + error.message);
+                } else {
+                    alert("Success!");
+                    setFormData({ name: '', phone: '', passport_no: '' });
+                    await fetchWorkers();
+                    setView('list');
+                }
+            };
 
-                {/* メインエリア */}
-                <main class="flex-grow p-8 bg-slate-50">
-                    {view === 'list' ? (
-                        <div class="max-w-6xl mx-auto">
-                            <div class="flex justify-between items-center mb-8">
-                                <h2 class="text-3xl font-black text-slate-800">Dashboard</h2>
-                                <button onClick={fetchWorkers} class="text-sm bg-white border px-4 py-2 rounded-xl font-bold shadow-sm hover:bg-slate-100 transition">
-                                    {loading ? '🔄 Loading...' : '🔄 Refresh List'}
-                                </button>
-                            </div>
+            if (!user) return <LoginForm supabase={supabaseClient} />;
 
-                            {workers.length === 0 ? (
-                                <div class="bg-white p-20 rounded-[2rem] border-2 border-dashed border-slate-200 text-center">
-                                    <p class="text-slate-400 font-bold">SQL table has data, but Dashboard is empty.</p>
-                                    <p class="text-slate-300 text-xs mt-2">Checking connection to Supabase...</p>
+            return (
+                <div class="min-h-screen flex flex-col md:flex-row">
+                    <aside class="w-full md:w-64 bg-slate-900 text-white p-6 flex-shrink-0">
+                        <h1 class="text-2xl font-black text-blue-400 mb-10 tracking-tighter">HSDEC</h1>
+                        <nav class="space-y-4">
+                            <button onClick={() => { setView('list'); fetchWorkers(); }} class={`w-full text-left p-3 rounded-xl font-bold ${view === 'list' ? 'bg-blue-600' : 'text-slate-400'}`}>📂 Dashboard</button>
+                            <button onClick={() => setView('detail')} class={`w-full text-left p-3 rounded-xl font-bold ${view === 'detail' ? 'bg-blue-600' : 'text-slate-400'}`}>➕ New Entry</button>
+                            <button onClick={() => supabaseClient.auth.signOut()} class="w-full text-left p-3 text-red-500 text-xs mt-20 uppercase">Logout</button>
+                        </nav>
+                    </aside>
+
+                    <main class="flex-grow p-4 md:p-8">
+                        {view === 'list' ? (
+                            <div class="max-w-6xl mx-auto">
+                                <div class="flex justify-between items-center mb-8">
+                                    <h2 class="text-3xl font-black">Dashboard</h2>
+                                    <button onClick={fetchWorkers} class="text-xs bg-white border px-4 py-2 rounded-xl shadow-sm">{loading ? 'Loading...' : 'Refresh'}</button>
                                 </div>
-                            ) : (
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {workers.map(w => (
-                                        <div key={w.id} class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 hover:shadow-lg transition-all">
-                                            <div class="font-black text-xl text-slate-900">{w.name || 'Unnamed Worker'}</div>
-                                            <div class="text-[10px] font-black text-slate-400 mt-1 uppercase">Passport: {w.passport_no || 'N/A'}</div>
-                                            <div class="mt-4 pt-4 border-t border-slate-50 flex gap-2">
-                                                <span class="bg-blue-50 text-blue-600 text-[10px] font-black px-2 py-1 rounded">TOPIK: {w.topik_level || '-'}</span>
+                                {workers.length === 0 ? (
+                                    <div class="bg-white p-20 rounded-[2rem] text-center border-2 border-dashed border-slate-200 text-slate-400">No data found.</div>
+                                ) : (
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {workers.map(w => (
+                                            <div key={w.id} class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                                                <div class="font-black text-xl">{w.name}</div>
+                                                <div class="text-xs text-slate-400 font-bold uppercase mt-1">Passport: {w.passport_no || '---'}</div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        /* 入力フォーム部分は前回のものを維持 */
-                        <div class="max-w-2xl mx-auto bg-white p-10 rounded-[2.5rem] shadow-xl">
-                            <h2 class="text-2xl font-black mb-6">Register</h2>
-                            <input type="text" placeholder="Name" class="w-full border p-4 rounded-xl mb-4 bg-slate-50" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                            <button onClick={async () => {
-                                const { error } = await supabaseClient.from('workers').insert([formData]);
-                                if (error) alert(error.message);
-                                else { alert("Saved!"); setView('list'); fetchWorkers(); }
-                            }} class="w-full bg-blue-600 text-white py-4 rounded-xl font-black">Save</button>
-                        </div>
-                    )}
-                </main>
-            </div>
-        );
-    }
-    /* LoginFormなどの残りはそのまま */
-</script>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div class="max-w-2xl mx-auto bg-white p-10 rounded-[2.5rem] shadow-xl">
+                                <h2 class="text-2xl font-black mb-8">New Worker</h2>
+                                <form onSubmit={handleSave} class="space-y-6">
+                                    <div><label class="text-[10px] font-black text-slate-400 uppercase">Name</label>
+                                    <input type="text" class="form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} /></div>
+                                    <div><label class="text-[10px] font-black text-slate-400 uppercase">Passport</label>
+                                    <input type="text" class="form-input" value={formData.passport_no} onChange={e => setFormData({...formData, passport_no: e.target.value})} /></div>
+                                    <div class="flex gap-4 pt-10">
+                                        <button type="button" onClick={() => setView('list')} class="flex-grow py-4 font-bold text-slate-400">Cancel</button>
+                                        <button type="submit" class="flex-grow py-4 bg-blue-600 text-white rounded-2xl font-black shadow-lg">Save Worker</button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        function LoginForm({ supabase }) {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                const { error } = await supabase.auth.signInWithPassword({ email, password });
+                if (error) alert(error.message);
+            };
+            return (
+                <div class="min-h-screen flex items-center justify-center bg-slate-950 p-6">
+                    <div class="max-w-md w-full bg-white rounded-[2.5rem] p-12 shadow-2xl">
+                        <h1 class="text-3xl font-black text-center mb-8">HSDEC LOGIN</h1>
+                        <form onSubmit={handleLogin} class="space-y-4">
+                            <input type="email" placeholder="Email" class="form-input" value={email} onChange={e => setEmail(e.target.value)} required />
+                            <input type="password" placeholder="Password" class="form-input" value={password} onChange={e => setPassword(e.target.value)} required />
+                            <button type="submit" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-black shadow-xl">Sign In</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
