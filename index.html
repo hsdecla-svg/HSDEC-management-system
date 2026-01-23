@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Global Hub - Clean List</title>
+    <title>HSDEC Global Hub - Ultimate</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -12,13 +12,14 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+KR:wght@400;700;900&display=swap');
         body { font-family: 'Inter', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; background: #f8fafc; color: #0f172a; overflow-x: hidden; }
-        .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; outline: none; background: white; font-size: 16px; }
-        .sidebar-btn { padding: 0.8rem; border-radius: 1.25rem; transition: 0.3s; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 3.5rem; height: 3.5rem; }
-        .active-btn { background: #10b981 !important; color: white !important; }
-        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; }
+        .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; outline: none; background: white; font-size: 16px; transition: 0.2s; }
+        .form-input:focus { border-color: #10b981; }
+        .sidebar-btn { padding: 0.8rem; border-radius: 1.25rem; transition: 0.3s; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 3.5rem; height: 3.5rem; color: #64748b; }
+        .active-btn { background: #10b981 !important; color: white !important; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3); }
+        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; letter-spacing: 0.05em; }
         .modal-full { position: fixed; inset: 0; background: #ffffff; z-index: 1000; overflow-y: auto; padding: 20px; }
         @media (max-width: 1024px) {
-            .nav-container { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; flex-direction: row !important; width: 100% !important; z-index: 100; background: #0f172a; }
+            .nav-container { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; flex-direction: row !important; width: 100% !important; z-index: 100; background: #0f172a; padding: 0 10px !important; }
             .content-area { padding-bottom: 90px !important; }
         }
     </style>
@@ -30,14 +31,15 @@
         const { useState, useEffect } = React;
 
         const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
+        const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz'; 
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const STAFFS = ["Mr. Chanthaviphone", "Ms. Sengmala", "Mr. Takashi", "Ms. Mim", "Ms. Chansouk", "Other"];
         const i18n = {
-            en: { workers: "Workers", finance: "Finance", batch: "Batch", name: "Name", village: "Village", total: "Monthly Total", is_couple: "Couple", save: "Save", close: "Close", back: "Back", new: "New" },
-            jp: { workers: "労働者", finance: "会計", batch: "期生", name: "氏名", village: "村", total: "今月の支出", is_couple: "夫婦", save: "保存", close: "閉じる", back: "戻る", new: "新規" },
-            lao: { workers: "ຄົນງານ", finance: "ການເງິນ", batch: "ລຸ້ນ", name: "ຊື່", village: "ບ້ານ", total: "ລວມເດືອນນີ້", is_couple: "ຄູ່ຜົວເມຍ", save: "ບັນທຶກ", close: "ປິດ", back: "ກັບຄືນ", new: "ເພີ່ມໃໝ່" }
+            en: { workers: "Workers", finance: "Finance", batch: "Batch", name: "Name", village: "Village", edit: "Edit", save: "Save", back: "Back", new: "New", couple: "Couple", total: "Total", details: "Details", family: "Family", history: "Work History" },
+            jp: { workers: "労働者", finance: "会計", batch: "期生", name: "氏名", village: "村", edit: "編集", save: "保存", back: "戻る", new: "新規", couple: "夫婦", total: "合計", details: "詳細", family: "家族構成", history: "職歴" },
+            lao: { workers: "ຄົນງານ", finance: "ການເງິນ", batch: "ລຸ້ນ", name: "ຊື່", village: "ບ້ານ", edit: "ແກ້ໄຂ", save: "ບັນທຶກ", back: "ກັບຄືນ", new: "ເພີ່ມໃໝ່", couple: "ຄູ່ສົມລົດ", total: "ລວມ", details: "ລາຍລະອຽດ", family: "ຄອບຄົວ", history: "ປະຫວັດ" },
+            kr: { workers: "근로자", finance: "회계", batch: "기수", name: "이름", village: "마을", edit: "편집", save: "저장", back: "뒤로", new: "신규", couple: "부부", total: "합계", details: "내역", family: "가족", history: "경력" }
         };
 
         function App() {
@@ -51,10 +53,12 @@
             const [monthFilter, setMonthFilter] = useState(new Date().toISOString().slice(0, 7));
             const [isUploading, setIsUploading] = useState(false);
 
-            const t = i18n[lang] || i18n.en;
+            const t = i18n[lang];
 
-            const [wForm, setWForm] = useState({ name: '', batch_no: 1, village: '', district: '', province: '', family: '', work_history: '', is_couple: false, spouse_name: '', photo_url: '', passport_url: '' });
-            const [fForm, setFForm] = useState({ date: new Date().toISOString().split('T')[0], item: '', amount: '', currency: 'LAK', category: 'food', payer: STAFFS[0], batch: 'Batch 1', details: '', receipt_url: '' });
+            const initialWForm = { name: '', batch_no: 1, village: '', district: '', province: '', family: '', work_history: '', is_couple: false, spouse_name: '', photo_url: '', passport_url: '' };
+            const initialFForm = { date: new Date().toISOString().split('T')[0], item: '', amount: '', currency: 'LAK', category: 'food', payer: STAFFS[0], batch: 'Batch 1', details: '', receipt_url: '' };
+            const [wForm, setWForm] = useState(initialWForm);
+            const [fForm, setFForm] = useState(initialFForm);
 
             useEffect(() => { fetchData(); }, [monthFilter]);
 
@@ -70,40 +74,39 @@
                 if (!file) return;
                 setIsUploading(true);
                 const fileName = `${Date.now()}_${file.name}`;
-                const { data, error } = await supabase.storage.from('workers').upload(fileName, file);
+                const { data } = await supabase.storage.from('workers').upload(fileName, file);
                 if (data) {
                     const { data: urlData } = supabase.storage.from('workers').getPublicUrl(fileName);
-                    if (mode === 'worker') setWForm(prev => ({ ...prev, [field]: urlData.publicUrl }));
+                    if (view.includes('worker')) setWForm(prev => ({ ...prev, [field]: urlData.publicUrl }));
                     else setFForm(prev => ({ ...prev, receipt_url: urlData.publicUrl }));
                 }
                 setIsUploading(false);
             };
 
-            const saveWorker = async (e) => {
+            const submitWorker = async (e) => {
                 e.preventDefault();
                 await supabase.from('workers').upsert([wForm]);
                 setView('list'); fetchData();
             };
 
-            const saveFinance = async (e) => {
+            const submitFinance = async (e) => {
                 e.preventDefault();
-                await supabase.from('finance_logs').insert([{...fForm, lak_amount: Number(fForm.amount)}]);
+                await supabase.from('finance_logs').upsert([{...fForm, lak_amount: Number(fForm.amount)}]);
                 setView('list'); fetchData();
             };
 
             return (
                 <div class="flex flex-col lg:flex-row min-h-screen">
-                    {/* BOTTOM / SIDE NAV */}
                     <nav class="nav-container lg:fixed lg:left-0 lg:top-0 lg:bottom-0 lg:w-20 bg-slate-900 flex flex-col items-center justify-around lg:justify-start lg:py-10 z-[100]">
-                        <div onClick={() => {setMode('worker'); setView('list'); setSelectedBatch(null);}} class={`sidebar-btn ${mode === 'worker' ? 'active-btn' : 'text-slate-500'}`}>
+                        <div onClick={() => {setMode('worker'); setView('list'); setSelectedBatch(null);}} class={`sidebar-btn ${mode === 'worker' ? 'active-btn' : ''}`}>
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                         </div>
-                        <div onClick={() => {setMode('finance'); setView('list');}} class={`sidebar-btn ${mode === 'finance' ? 'active-btn' : 'text-slate-500'}`}>
+                        <div onClick={() => {setMode('finance'); setView('list');}} class={`sidebar-btn ${mode === 'finance' ? 'active-btn' : ''}`}>
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                         </div>
-                        <div class="flex lg:flex-col gap-3">
-                            {['en','jp','lao'].map(l => (
-                                <button key={l} onClick={() => setLang(l)} class={`text-[10px] font-black uppercase ${lang === l ? 'text-emerald-400' : 'text-slate-500'}`}>{l}</button>
+                        <div class="flex lg:flex-col gap-2">
+                            {['en','jp','lao','kr'].map(l => (
+                                <button key={l} onClick={() => setLang(l)} class={`text-[9px] font-black uppercase ${lang === l ? 'text-emerald-400' : 'text-slate-500'}`}>{l}</button>
                             ))}
                         </div>
                     </nav>
@@ -111,168 +114,130 @@
                     <main class="content-area flex-grow lg:pl-20 p-4 md:p-10">
                         <div class="flex justify-between items-center mb-8">
                             <h2 class="text-3xl font-black italic uppercase text-slate-800">{t[mode]}</h2>
-                            <button onClick={() => setView(mode === 'worker' ? 'edit-worker' : 'edit-finance')} class="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-black text-sm">+ {t.new}</button>
+                            <button onClick={() => {
+                                if(mode==='worker') { setWForm(initialWForm); setView('edit-worker'); }
+                                else { setFForm(initialFForm); setView('edit-finance'); }
+                            }} class="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-black text-sm tracking-tighter">+ {t.new}</button>
                         </div>
 
                         {mode === 'worker' ? (
                             selectedBatch === null ? (
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     {[1,2,3].map(bn => (
-                                        <div key={bn} onClick={() => setSelectedBatch(bn)} class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 active:bg-slate-50">
-                                            <h3 class="text-lg font-black text-slate-400">BATCH</h3>
-                                            <p class="text-4xl font-black text-slate-800 italic">{bn}</p>
-                                            <p class="text-emerald-500 font-bold mt-2 text-sm uppercase">{workers.filter(w=>w.batch_no == bn).length} People</p>
+                                        <div key={bn} onClick={() => setSelectedBatch(bn)} class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 active:scale-95 transition cursor-pointer">
+                                            <p class="text-xs font-black text-slate-400 uppercase tracking-widest">{t.batch}</p>
+                                            <p class="text-5xl font-black text-slate-800 italic">{bn}</p>
+                                            <p class="text-emerald-500 font-bold mt-2">{workers.filter(w=>w.batch_no == bn).length} registered</p>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <div class="space-y-3 animate-in fade-in">
-                                    <button onClick={() => setSelectedBatch(null)} class="text-xs font-black text-slate-400 mb-4 uppercase flex items-center gap-1">← {t.back}</button>
+                                <div class="space-y-3">
+                                    <button onClick={() => setSelectedBatch(null)} class="text-[10px] font-black text-slate-400 mb-4 uppercase flex items-center gap-1">← {t.back}</button>
                                     {workers.filter(w => w.batch_no == selectedBatch).map(w => (
-                                        <div key={w.id} onClick={()=>{setSelectedItem(w); setView('detail-worker');}} class="bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm border border-transparent active:border-emerald-500 transition">
+                                        <div key={w.id} onClick={()=>{setSelectedItem(w); setView('detail-worker');}} class="bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm active:bg-slate-50">
                                             <div>
                                                 <p class="font-black text-slate-800 text-lg leading-none mb-1">{w.name}</p>
-                                                <p class="text-[10px] font-bold text-slate-400 uppercase italic">{w.village}, {w.province}</p>
+                                                <p class="text-[10px] font-bold text-slate-400 uppercase">{w.village}, {w.province}</p>
                                             </div>
-                                            {w.is_couple && <span class="bg-rose-100 text-rose-500 text-[9px] font-black px-2 py-1 rounded-md uppercase italic">{t.is_couple}</span>}
+                                            {w.is_couple && <span class="bg-rose-100 text-rose-500 text-[9px] font-black px-2 py-1 rounded-md uppercase italic">{t.couple}</span>}
                                         </div>
                                     ))}
                                 </div>
                             )
                         ) : (
-                            /* FINANCE LIST */
                             <div class="space-y-4">
                                 <div class="bg-slate-900 p-6 rounded-3xl text-white flex justify-between items-center">
                                     <input type="month" class="bg-transparent font-black" value={monthFilter} onChange={e=>setMonthFilter(e.target.value)} />
                                     <p class="text-2xl font-black font-mono">₭{financeLogs.reduce((s,l)=>s+Number(l.lak_amount||0),0).toLocaleString()}</p>
                                 </div>
                                 {financeLogs.map(log => (
-                                    <div key={log.id} onClick={()=>{setSelectedItem(log); setView('detail-finance');}} class="bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm active:bg-slate-50">
+                                    <div key={log.id} onClick={()=>{setSelectedItem(log); setView('detail-finance');}} class="bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm">
                                         <div><p class="text-[10px] font-black text-slate-400 uppercase mb-1">{log.date}</p><p class="font-black text-slate-800">{log.item}</p></div>
-                                        <p class="font-black italic text-slate-700 font-mono">₭{Number(log.lak_amount).toLocaleString()}</p>
+                                        <p class="font-black font-mono">₭{Number(log.lak_amount).toLocaleString()}</p>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </main>
 
-                    {/* MODAL: DETAIL (HERE IS WHERE PHOTOS ARE SHOWN) */}
+                    {/* DETAIL MODAL (PHOTOS ARE HERE) */}
                     {(view === 'detail-worker' || view === 'detail-finance') && selectedItem && (
-                        <div class="modal-full animate-in slide-in-from-bottom duration-300">
-                            <div class="max-w-2xl mx-auto pb-20">
+                        <div class="modal-full">
+                            <div class="max-w-2xl mx-auto pb-24">
                                 <div class="flex justify-between items-center mb-8">
-                                    <button onClick={()=>setView('list')} class="text-slate-400 font-black text-sm uppercase">← {t.back}</button>
-                                    <button onClick={()=>setView('list')} class="text-3xl text-slate-300">×</button>
+                                    <button onClick={()=>setView('list')} class="text-slate-400 font-black text-xs uppercase italic">← {t.back}</button>
+                                    <button onClick={()=>{
+                                        if(view === 'detail-worker') { setWForm(selectedItem); setView('edit-worker'); }
+                                        else { setFForm(selectedItem); setView('edit-finance'); }
+                                    }} class="bg-emerald-100 text-emerald-600 px-4 py-1.5 rounded-lg font-black text-xs uppercase">{t.edit}</button>
                                 </div>
 
                                 {view === 'detail-worker' ? (
                                     <div class="space-y-6">
-                                        <div class="bg-slate-50 p-6 rounded-[2.5rem] text-center">
-                                            {/* 顔写真表示エリア */}
-                                            <div class="w-40 h-40 mx-auto bg-slate-200 rounded-[2rem] overflow-hidden shadow-xl mb-4">
-                                                {selectedItem.photo_url ? (
-                                                    <img src={selectedItem.photo_url} class="w-full h-full object-cover" onError={(e)=>e.target.src='https://via.placeholder.com/150?text=No+Photo'} />
-                                                ) : (
-                                                    <div class="w-full h-full flex items-center justify-center text-[10px] font-black text-slate-400">NO FACE PHOTO</div>
-                                                )}
-                                            </div>
-                                            <h2 class="text-3xl font-black text-slate-900">{selectedItem.name}</h2>
-                                            <p class="text-xs font-black text-emerald-500 uppercase tracking-widest mt-1">Batch {selectedItem.batch_no}</p>
+                                        <div class="text-center">
+                                            <img src={selectedItem.photo_url || 'https://via.placeholder.com/150'} class="w-40 h-40 mx-auto rounded-[2rem] object-cover shadow-xl border-4 border-white mb-4" />
+                                            <h2 class="text-3xl font-black">{selectedItem.name}</h2>
+                                            <p class="text-xs font-black text-slate-400 uppercase mt-1 italic">Batch {selectedItem.batch_no}</p>
                                         </div>
-
-                                        <div class="grid grid-cols-1 gap-4">
-                                            <div class="bg-white border p-6 rounded-2xl">
-                                                <label class="label-cap">Village / Origin</label>
-                                                <p class="font-bold text-slate-800">{selectedItem.village}, {selectedItem.district}, {selectedItem.province}</p>
-                                            </div>
-                                            {selectedItem.is_couple && (
-                                                <div class="bg-rose-50 p-6 rounded-2xl">
-                                                    <label class="label-cap text-rose-400">Couple Info</label>
-                                                    <p class="font-black text-rose-900 uppercase">Spouse: {selectedItem.spouse_name}</p>
-                                                </div>
-                                            )}
-                                            <div class="bg-white border p-6 rounded-2xl">
-                                                <label class="label-cap">Family Info</label>
-                                                <p class="whitespace-pre-wrap font-medium text-slate-600 italic">{selectedItem.family || 'No data recorded'}</p>
-                                            </div>
-                                            <div class="bg-white border p-6 rounded-2xl">
-                                                <label class="label-cap">Work History</label>
-                                                <p class="whitespace-pre-wrap font-medium text-slate-600 italic">{selectedItem.work_history || 'No data recorded'}</p>
-                                            </div>
-
-                                            {/* パスポート写真表示エリア */}
-                                            <div class="mt-4">
-                                                <label class="label-cap">Passport Scan</label>
-                                                {selectedItem.passport_url ? (
-                                                    <img src={selectedItem.passport_url} class="w-full rounded-2xl shadow-lg border-4 border-white" />
-                                                ) : (
-                                                    <div class="p-12 border-2 border-dashed rounded-2xl text-center text-slate-300 font-black uppercase italic">No Passport Scan</div>
-                                                )}
-                                            </div>
+                                        <div class="space-y-4">
+                                            <div class="bg-slate-50 p-5 rounded-2xl"><label class="label-cap">Address</label><p class="font-bold">{selectedItem.village}, {selectedItem.district}, {selectedItem.province}</p></div>
+                                            {selectedItem.is_couple && <div class="bg-rose-50 p-5 rounded-2xl"><label class="label-cap text-rose-400">Spouse</label><p class="font-black uppercase">{selectedItem.spouse_name}</p></div>}
+                                            <div class="bg-slate-50 p-5 rounded-2xl"><label class="label-cap">{t.family}</label><p class="whitespace-pre-wrap italic text-slate-600">{selectedItem.family || '-'}</p></div>
+                                            <div class="bg-slate-50 p-5 rounded-2xl"><label class="label-cap">{t.history}</label><p class="whitespace-pre-wrap italic text-slate-600">{selectedItem.work_history || '-'}</p></div>
+                                            <label class="label-cap">Passport</label>
+                                            <img src={selectedItem.passport_url || 'https://via.placeholder.com/400?text=No+Passport'} class="w-full rounded-2xl shadow-lg" />
                                         </div>
                                     </div>
                                 ) : (
-                                    /* FINANCE DETAIL (Receipt Photo focus) */
                                     <div class="space-y-6">
                                         <div class="bg-slate-900 p-8 rounded-[2rem] text-white">
                                             <p class="text-[10px] font-black text-emerald-400 uppercase mb-2">{selectedItem.date}</p>
                                             <h2 class="text-3xl font-black italic uppercase">{selectedItem.item}</h2>
-                                            <p class="text-4xl font-black font-mono mt-4">₭{Number(selectedItem.lak_amount).toLocaleString()}</p>
+                                            <p class="text-4xl font-black font-mono mt-2">₭{Number(selectedItem.lak_amount).toLocaleString()}</p>
                                         </div>
-                                        <div class="bg-white border p-6 rounded-2xl">
-                                            <label class="label-cap">Breakdown Details</label>
-                                            <p class="whitespace-pre-wrap font-bold text-slate-700 italic">{selectedItem.details || 'No breakdown recorded'}</p>
-                                        </div>
-                                        <div>
-                                            <label class="label-cap">Receipt Image</label>
-                                            {selectedItem.receipt_url ? (
-                                                <img src={selectedItem.receipt_url} class="w-full rounded-2xl shadow-lg border-4 border-white" />
-                                            ) : (
-                                                <div class="p-12 border-2 border-dashed rounded-2xl text-center text-slate-300 font-black italic">No Receipt Photo</div>
-                                            )}
-                                        </div>
+                                        <div class="bg-slate-50 p-5 rounded-2xl"><label class="label-cap">{t.details}</label><p class="whitespace-pre-wrap font-bold italic">{selectedItem.details || '-'}</p></div>
+                                        <label class="label-cap">Receipt</label>
+                                        <img src={selectedItem.receipt_url || 'https://via.placeholder.com/400?text=No+Receipt'} class="w-full rounded-2xl shadow-lg" />
                                     </div>
                                 )}
                             </div>
                         </div>
                     )}
 
-                    {/* MODAL: EDIT/NEW (PHOTO UPLOADER HERE) */}
+                    {/* EDIT MODAL (FOR BOTH NEW & EDIT) */}
                     {(view === 'edit-worker' || view === 'edit-finance') && (
                         <div class="modal-full">
-                            <div class="max-w-xl mx-auto pb-20">
-                                <div class="flex justify-between items-center mb-8"><h2 class="text-2xl font-black uppercase">{t.new}</h2><button onClick={()=>setView('list')} class="text-3xl">×</button></div>
-                                <form onSubmit={mode === 'worker' ? saveWorker : saveFinance} class="space-y-5">
-                                    {mode === 'worker' ? (
+                            <div class="max-w-xl mx-auto pb-24">
+                                <div class="flex justify-between items-center mb-8"><h2 class="text-2xl font-black uppercase italic">{t.new} / {t.edit}</h2><button onClick={()=>setView('list')} class="text-3xl text-slate-300">×</button></div>
+                                <form onSubmit={view === 'edit-worker' ? submitWorker : submitFinance} class="space-y-5">
+                                    {view === 'edit-worker' ? (
                                         <>
                                             <div><label class="label-cap">{t.name}</label><input type="text" class="form-input" value={wForm.name} onChange={e=>setWForm({...wForm, name:e.target.value})} required /></div>
-                                            <div class="grid grid-cols-3 gap-3">
-                                                <input type="text" class="form-input" placeholder="Village" onChange={e=>setWForm({...wForm, village:e.target.value})} />
-                                                <input type="text" class="form-input" placeholder="District" onChange={e=>setWForm({...wForm, district:e.target.value})} />
-                                                <input type="text" class="form-input" placeholder="Province" onChange={e=>setWForm({...wForm, province:e.target.value})} />
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div><label class="label-cap">Batch</label><select class="form-select" value={wForm.batch_no} onChange={e=>setWForm({...wForm, batch_no:Number(e.target.value)})}>{[1,2,3].map(n=><option key={n} value={n}>Batch {n}</option>)}</select></div>
+                                                <div><label class="label-cap">Village</label><input type="text" class="form-input" value={wForm.village} onChange={e=>setWForm({...wForm, village:e.target.value})} /></div>
                                             </div>
-                                            <div class="p-4 bg-slate-50 rounded-xl">
-                                                <label class="label-cap">Photo Upload</label>
-                                                <p class="text-[9px] font-bold text-slate-400 mb-2 uppercase">Face Photo</p>
-                                                <input type="file" class="text-xs mb-4" onChange={e=>handleFileUpload(e, 'photo_url')} />
-                                                <p class="text-[9px] font-bold text-slate-400 mb-2 uppercase">Passport Scan</p>
-                                                <input type="file" class="text-xs" onChange={e=>handleFileUpload(e, 'passport_url')} />
+                                            <div class="bg-slate-50 p-4 rounded-xl space-y-3">
+                                                <div class="flex items-center gap-2"><input type="checkbox" checked={wForm.is_couple} onChange={e=>setWForm({...wForm, is_couple:e.target.checked})} /> <span class="font-black text-xs uppercase">{t.couple}</span></div>
+                                                {wForm.is_couple && <input type="text" class="form-input" placeholder="Spouse Name" value={wForm.spouse_name} onChange={e=>setWForm({...wForm, spouse_name:e.target.value})} />}
                                             </div>
-                                            <textarea class="form-textarea h-24" placeholder="Family..." onChange={e=>setWForm({...wForm, family:e.target.value})}></textarea>
-                                            <textarea class="form-textarea h-24" placeholder="Work History..." onChange={e=>setWForm({...wForm, work_history:e.target.value})}></textarea>
+                                            <textarea class="form-textarea h-24" placeholder={t.family} value={wForm.family} onChange={e=>setWForm({...wForm, family:e.target.value})}></textarea>
+                                            <textarea class="form-textarea h-24" placeholder={t.history} value={wForm.work_history} onChange={e=>setWForm({...wForm, work_history:e.target.value})}></textarea>
+                                            <div class="grid grid-cols-2 gap-4">
+                                                <div><label class="label-cap">Face Photo</label><input type="file" onChange={e=>handleFileUpload(e, 'photo_url')} class="text-[10px]"/></div>
+                                                <div><label class="label-cap">Passport</label><input type="file" onChange={e=>handleFileUpload(e, 'passport_url')} class="text-[10px]"/></div>
+                                            </div>
                                         </>
                                     ) : (
                                         <>
-                                            <input type="text" class="form-input text-xl" placeholder="Item Name" onChange={e=>setFForm({...fForm, item:e.target.value})} required />
-                                            <input type="number" class="form-input text-xl font-mono" placeholder="Amount (LAK)" onChange={e=>setFForm({...fForm, amount:e.target.value})} required />
-                                            <textarea class="form-textarea h-32" placeholder="Breakdown details..." onChange={e=>setFForm({...fForm, details:e.target.value})}></textarea>
-                                            <div class="p-4 bg-slate-50 border-2 border-dashed rounded-xl">
-                                                <label class="label-cap">Upload Receipt</label>
-                                                <input type="file" class="text-xs" onChange={e=>handleFileUpload(e, 'receipt_url')} />
-                                            </div>
+                                            <input type="text" class="form-input text-lg" placeholder="Item" value={fForm.item} onChange={e=>setFForm({...fForm, item:e.target.value})} required />
+                                            <input type="number" class="form-input font-mono" placeholder="Amount (LAK)" value={fForm.amount} onChange={e=>setFForm({...fForm, amount:e.target.value})} required />
+                                            <textarea class="form-textarea h-32" placeholder={t.details} value={fForm.details} onChange={e=>setFForm({...fForm, details:e.target.value})}></textarea>
+                                            <div><label class="label-cap">Receipt Photo</label><input type="file" onChange={e=>handleFileUpload(e, 'receipt_url')} class="text-[10px]"/></div>
                                         </>
                                     )}
-                                    <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase" disabled={isUploading}>{isUploading ? 'Uploading...' : t.save}</button>
+                                    <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase shadow-xl" disabled={isUploading}>{isUploading ? 'Uploading...' : t.save}</button>
                                 </form>
                             </div>
                         </div>
