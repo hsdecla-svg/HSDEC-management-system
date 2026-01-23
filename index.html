@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Global Ultimate Hub</title>
+    <title>HSDEC Global Ultimate Hub - FULL SPEC</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -19,6 +19,7 @@
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         .label-cap { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.05em; }
         .glass-nav { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(12px); }
+        .status-badge { font-size: 9px; font-weight: 900; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -41,7 +42,7 @@
                 family: "Family Info", history: "Work History", is_couple: "Couple", single: "Single", spouse_name: "Spouse Name",
                 item: "Item Name", amount: "Amount", payer: "Payer", details: "Breakdown/Qty", search: "Search Origin (Village/City/State)",
                 passport: "Passport Scan", face_photo: "Profile Photo", upload: "Upload Image", total: "Total Expense", back: "Back",
-                receipt: "Receipt Image", memo: "Memo"
+                receipt: "Receipt Image", memo: "Memo", count: "Total Registered"
             },
             jp: {
                 workers: "労働者", finance: "会計", batch: "期生", name: "氏名", new: "新規登録", save: "保存", close: "閉じる",
@@ -49,7 +50,7 @@
                 family: "家族構成", history: "職歴", is_couple: "夫婦", single: "単身", spouse_name: "配偶者氏名",
                 item: "品目", amount: "金額", payer: "支払者", details: "詳細内訳(個数など)", search: "出身地検索 (村/市/県)",
                 passport: "パスポート", face_photo: "顔写真", upload: "写真をアップロード", total: "今月の支出合計", back: "戻る",
-                receipt: "領収書写真", memo: "備考"
+                receipt: "領収書写真", memo: "備考", count: "現在の登録人数"
             },
             lao: {
                 workers: "ຄົນງານ", finance: "ການເງິນ", batch: "ລຸ້ນ", name: "ຊື່ເຕັມ", new: "ເພີ່ມໃໝ່", save: "ບັນທຶກ", close: "ປິດ",
@@ -57,7 +58,7 @@
                 family: "ຂໍ້ມູນຄອບຄົວ", history: "ປະຫວັດການເຮັດວຽກ", is_couple: "ຄູ່ຜົວເມຍ", single: "ຄົນດຽວ", spouse_name: "ຊື່ຄູ່ສົມລົດ",
                 item: "ລາຍການ", amount: "ຈຳນວນເງິນ", payer: "ຜູ້ຈ່າຍ", details: "ລາຍລະອຽດ", search: "ຄົ້ນຫາ ບ້ານ/ເມືອງ/ແຂວງ",
                 passport: "ຮູບຜ່ານແດນ", face_photo: "ຮູບໜ້າ", upload: "ໂຫລດຮູບ", total: "ລວມເດືອນນີ້", back: "ກັບຄືນ",
-                receipt: "ຮູບໃບບິນ", memo: "ໝາຍເຫດ"
+                receipt: "ຮູບໃບບິນ", memo: "ໝາຍເຫດ", count: "ລວມທັງໝົດ"
             },
             kr: {
                 workers: "근로자", finance: "회계", batch: "기수", name: "성명", new: "신규 등록", save: "저장", close: "닫기",
@@ -65,7 +66,7 @@
                 family: "가족 관계", history: "경력 사항", is_couple: "부부 동반", single: "독신/단신", spouse_name: "배우자 성명",
                 item: "항목", amount: "금액", payer: "결제자", details: "상세 내역/수량", search: "마을/시/도 검색",
                 passport: "여권 사진", face_photo: "증명 사진", upload: "사진 업로드", total: "월간 지출 합계", back: "뒤로",
-                receipt: "영수증 사진", memo: "메모"
+                receipt: "영수증 사진", memo: "메모", count: "총 등록 인원"
             }
         };
 
@@ -78,26 +79,25 @@
             const [selectedBatch, setSelectedBatch] = useState(null);
             const [selectedItem, setSelectedItem] = useState(null);
             const [rates, setRates] = useState({ USD: 22000, THB: 650 });
-            const [uploading, setUploading] = useState(false);
+            const [isUploading, setIsUploading] = useState(false);
 
-            // Filters
             const [monthFilter, setMonthFilter] = useState(new Date().toISOString().slice(0, 7));
             const [geoSearch, setGeoSearch] = useState('');
             const [coupleFilter, setCoupleFilter] = useState('all'); 
 
             const t = i18n[lang];
 
-            const [wForm, setWForm] = useState({ 
-                name: '', batch_no: 1, address: '', village: '', district: '', province: '',
-                family: '', work_history: '', is_couple: false, spouse_name: '',
-                photo_url: '', passport_url: '', has_passport: false, has_contract: false, has_health_check: false 
-            });
-            const [fForm, setFForm] = useState({ date: new Date().toISOString().split('T')[0], item: '', amount: '', currency: 'LAK', category: 'food', payer: STAFFS[0], batch: 'Batch 1', details: '', memo: '', receipt_url: '' });
+            // FORMS
+            const initialWForm = { name: '', batch_no: 1, address: '', village: '', district: '', province: '', family: '', work_history: '', is_couple: false, spouse_name: '', photo_url: '', passport_url: '' };
+            const [wForm, setWForm] = useState(initialWForm);
+            
+            const initialFForm = { date: new Date().toISOString().split('T')[0], item: '', amount: '', currency: 'LAK', category: 'food', payer: STAFFS[0], batch: 'Batch 1', details: '', memo: '', receipt_url: '' };
+            const [fForm, setFForm] = useState(initialFForm);
 
             useEffect(() => { fetchData(); fetchRates(); }, [monthFilter]);
 
             async function fetchData() {
-                const { data: w } = await supabase.from('workers').select('*').order('name');
+                const { data: w } = await supabase.from('workers').select('*').order('created_at', { ascending: false });
                 setWorkers(w || []);
                 const { data: f } = await supabase.from('finance_logs').select('*').ilike('date', `${monthFilter}%`).order('date', { ascending: false });
                 setFinanceLogs(f || []);
@@ -120,25 +120,30 @@
                 });
             }, [workers, geoSearch, coupleFilter, selectedBatch]);
 
-            const handleFileUpload = async (e, bucket, type) => {
+            const handleFileUpload = async (e, type) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                setUploading(true);
+                setIsUploading(true);
                 const fileName = `${Date.now()}_${file.name}`;
-                const { data } = await supabase.storage.from(bucket).upload(fileName, file);
+                const { data, error } = await supabase.storage.from('workers').upload(fileName, file);
                 if (data) {
-                    const { data: url } = supabase.storage.from(bucket).getPublicUrl(fileName);
+                    const { data: url } = supabase.storage.from('workers').getPublicUrl(fileName);
                     if (type === 'worker_photo') setWForm(p => ({ ...p, photo_url: url.publicUrl }));
                     if (type === 'worker_passport') setWForm(p => ({ ...p, passport_url: url.publicUrl }));
                     if (type === 'finance_receipt') setFForm(p => ({ ...p, receipt_url: url.publicUrl }));
                 }
-                setUploading(false);
+                setIsUploading(false);
             };
 
             const saveWorker = async (e) => {
                 e.preventDefault();
-                await supabase.from('workers').upsert([wForm]);
-                setView('list'); fetchData();
+                const { error } = await supabase.from('workers').upsert([wForm]);
+                if (error) { alert("Save Error: " + error.message); }
+                else { 
+                    alert("Worker data saved!"); 
+                    setView('list'); 
+                    fetchData(); 
+                }
             };
 
             const saveFinance = async (e) => {
@@ -146,13 +151,18 @@
                 let lak = Number(fForm.amount);
                 if(fForm.currency === 'USD') lak *= rates.USD;
                 if(fForm.currency === 'THB') lak *= rates.THB;
-                await supabase.from('finance_logs').insert([{...fForm, lak_amount: Math.round(lak)}]);
-                setView('list'); fetchData();
+                const { error } = await supabase.from('finance_logs').insert([{...fForm, lak_amount: Math.round(lak)}]);
+                if (error) { alert("Finance Save Error: " + error.message); }
+                else { 
+                    alert("Finance entry added!");
+                    setView('list'); 
+                    fetchData(); 
+                }
             };
 
             return (
                 <div class="flex h-screen w-screen overflow-hidden">
-                    {/* Sidebar Nav */}
+                    {/* --- SIDEBAR NAVIGATION --- */}
                     <nav class="w-20 glass-nav flex flex-col items-center py-10 gap-8 z-50">
                         <div class="text-emerald-500 font-black text-2xl italic mb-4">H.</div>
                         <div onClick={() => {setMode('worker'); setView('list'); setSelectedBatch(null);}} class={`sidebar-btn ${mode === 'worker' ? 'bg-emerald-500 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>
@@ -168,40 +178,54 @@
                         </div>
                     </nav>
 
+                    {/* --- MAIN CONTENT AREA --- */}
                     <main class="flex-grow overflow-y-auto p-6 md:p-12">
                         {mode === 'worker' ? (
-                            /* --- WORKER MODULE --- */
                             <div class="max-w-6xl mx-auto">
                                 <div class="flex justify-between items-end mb-10">
-                                    <h2 class="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">{t.workers}</h2>
-                                    <button onClick={() => {setWForm({name:'', batch_no:1, is_couple:false}); setView('edit-worker');}} class="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black shadow-xl hover:scale-105 transition">+ {t.new}</button>
-                                </div>
-
-                                <div class="bg-white p-8 rounded-[3rem] shadow-sm mb-10 flex flex-wrap gap-6 items-end">
-                                    <div class="flex-grow min-w-[300px]"><label class="label-cap">{t.search}</label><input type="text" class="form-input" placeholder="Enter Village, City or State name..." value={geoSearch} onChange={e=>setGeoSearch(e.target.value)} /></div>
-                                    <div class="w-48"><label class="label-cap">{t.is_couple} / {t.single}</label><select class="form-select" value={coupleFilter} onChange={e=>setCoupleFilter(e.target.value)}><option value="all">ALL STATUS</option><option value="couple">{t.is_couple.toUpperCase()}</option><option value="single">{t.single.toUpperCase()}</option></select></div>
+                                    <h2 class="text-5xl font-black text-slate-900 tracking-tighter uppercase italic">{t.workers}</h2>
+                                    <button onClick={() => {setWForm(initialWForm); setView('edit-worker');}} class="bg-slate-900 text-white px-10 py-5 rounded-[2rem] font-black shadow-xl hover:scale-105 transition">+ {t.new}</button>
                                 </div>
 
                                 {selectedBatch === null ? (
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                    /* BATCH DASHBOARD */
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
                                         {[1,2,3].map(bn => (
-                                            <div key={bn} onClick={() => setSelectedBatch(bn)} class="bg-white p-12 rounded-[3rem] shadow-sm border-2 border-transparent hover:border-emerald-500 transition cursor-pointer group text-center">
-                                                <div class="text-7xl font-black text-slate-100 group-hover:text-emerald-50 mb-4 transition">0{bn}</div>
-                                                <h3 class="text-2xl font-black text-slate-800 italic uppercase">{t.batch} {bn}</h3>
+                                            <div key={bn} onClick={() => setSelectedBatch(bn)} class="bg-white p-14 rounded-[4rem] shadow-sm border-2 border-transparent hover:border-emerald-500 transition cursor-pointer group text-center relative overflow-hidden">
+                                                <div class="text-9xl font-black text-slate-50 absolute -right-4 -bottom-8 group-hover:text-emerald-50 transition">0{bn}</div>
+                                                <h3 class="text-3xl font-black text-slate-800 italic uppercase relative z-10">{t.batch} {bn}</h3>
+                                                <div class="mt-6 bg-emerald-50 inline-block px-8 py-3 rounded-full relative z-10">
+                                                    <p class="text-emerald-600 font-black text-sm uppercase tracking-widest">
+                                                        {workers.filter(w=>w.batch_no == bn).length} {t.count}
+                                                    </p>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
+                                    /* WORKER LIST IN BATCH */
                                     <div class="animate-in slide-in-from-right duration-300">
-                                        <button onClick={() => setSelectedBatch(null)} class="mb-10 text-emerald-600 font-black text-xs uppercase flex items-center gap-2">← {t.back}</button>
-                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        <div class="flex items-center justify-between mb-8">
+                                            <button onClick={() => setSelectedBatch(null)} class="text-emerald-600 font-black text-xs uppercase flex items-center gap-2 bg-emerald-50 px-6 py-3 rounded-full">← {t.back}</button>
+                                            <h3 class="text-2xl font-black italic uppercase text-slate-400">{t.batch} {selectedBatch} List</h3>
+                                        </div>
+                                        
+                                        <div class="bg-white p-8 rounded-[3rem] shadow-sm mb-12 flex flex-wrap gap-6 items-end">
+                                            <div class="flex-grow min-w-[300px]"><label class="label-cap">{t.search}</label><input type="text" class="form-input" placeholder="Search village, district, or province..." value={geoSearch} onChange={e=>setGeoSearch(e.target.value)} /></div>
+                                            <div class="w-48"><label class="label-cap">{t.is_couple} / {t.single}</label><select class="form-select" value={coupleFilter} onChange={e=>setCoupleFilter(e.target.value)}><option value="all">ALL</option><option value="couple">{t.is_couple.toUpperCase()}</option><option value="single">{t.single.toUpperCase()}</option></select></div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                             {filteredWorkers.map(w => (
-                                                <div key={w.id} onClick={() => {setSelectedItem(w); setView('detail-worker');}} class="bg-white p-6 rounded-[2.5rem] shadow-sm flex items-center gap-6 cursor-pointer hover:shadow-xl transition relative overflow-hidden group">
-                                                    {w.is_couple && <div class="absolute top-0 right-0 bg-rose-500 text-white text-[9px] font-black px-4 py-1.5 rounded-bl-xl uppercase italic shadow-sm">Couple</div>}
-                                                    <img src={w.photo_url || 'https://via.placeholder.com/150'} class="w-24 h-24 rounded-[2rem] object-cover bg-slate-100 group-hover:scale-105 transition" />
+                                                <div key={w.id} onClick={() => {setSelectedItem(w); setView('detail-worker');}} class="bg-white p-6 rounded-[3rem] shadow-sm flex items-center gap-8 cursor-pointer hover:shadow-2xl transition group relative overflow-hidden border border-slate-50">
+                                                    {w.is_couple && <div class="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-black px-6 py-2 rounded-bl-2xl uppercase italic tracking-widest">{t.is_couple}</div>}
+                                                    <img src={w.photo_url || 'https://via.placeholder.com/150'} class="w-28 h-28 rounded-[2.5rem] object-cover bg-slate-100 group-hover:scale-110 transition" />
                                                     <div>
-                                                        <p class="text-xl font-black text-slate-800 leading-none mb-2">{w.name}</p>
-                                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{w.village}, {w.district}, {w.province}</p>
+                                                        <p class="text-2xl font-black text-slate-800 leading-none mb-3">{w.name}</p>
+                                                        <div class="flex gap-2">
+                                                            <span class="status-badge bg-slate-100 text-slate-500">{w.province}</span>
+                                                            <span class="status-badge bg-slate-100 text-slate-500">{w.district}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ))}
@@ -213,21 +237,28 @@
                             /* --- FINANCE MODULE --- */
                             <div class="max-w-6xl mx-auto">
                                 <div class="flex justify-between items-end mb-12">
-                                    <h2 class="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">{t.finance}</h2>
-                                    <button onClick={() => {setFForm({date: new Date().toISOString().split('T')[0], item:'', amount:'', currency:'LAK', category:'food', payer: STAFFS[0], batch:'Batch 1'}); setView('edit-finance');}} class="bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black shadow-xl tracking-widest">+ {t.new}</button>
+                                    <h2 class="text-5xl font-black text-slate-900 tracking-tighter uppercase italic">{t.finance}</h2>
+                                    <button onClick={() => {setFForm(initialFForm); setView('edit-finance');}} class="bg-emerald-600 text-white px-10 py-5 rounded-[2rem] font-black shadow-xl hover:bg-emerald-700 transition">+ {t.new}</button>
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-4 gap-8 bg-white p-10 rounded-[3rem] shadow-sm mb-10 items-end border-b-8 border-emerald-500">
-                                    <div><label class="label-cap">Month</label><input type="month" class="form-input" value={monthFilter} onChange={e => setMonthFilter(e.target.value)} /></div>
-                                    <div class="md:col-span-3 text-right">
-                                        <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">{t.total}</p>
-                                        <p class="text-6xl font-black text-slate-900 italic tracking-tighter font-mono">₭ {financeLogs.reduce((s,l)=>s+Number(l.lak_amount||0),0).toLocaleString()}</p>
+                                <div class="bg-white p-12 rounded-[4rem] shadow-sm mb-12 flex flex-col md:flex-row justify-between items-center gap-8 border-b-[12px] border-emerald-500">
+                                    <div class="w-full md:w-auto"><label class="label-cap">Select Month</label><input type="month" class="form-input text-xl" value={monthFilter} onChange={e => setMonthFilter(e.target.value)} /></div>
+                                    <div class="text-right">
+                                        <p class="text-xs font-black text-emerald-500 uppercase tracking-[0.2em] mb-2">{t.total} ({monthFilter})</p>
+                                        <p class="text-7xl font-black text-slate-900 italic tracking-tighter font-mono">₭ {financeLogs.reduce((s,l)=>s+Number(l.lak_amount||0),0).toLocaleString()}</p>
                                     </div>
                                 </div>
-                                <div class="space-y-4">
+                                <div class="space-y-6">
                                     {financeLogs.map(log => (
-                                        <div key={log.id} onClick={() => { setSelectedItem(log); setView('detail-finance'); }} class="bg-white p-8 rounded-[2.5rem] shadow-sm flex justify-between items-center cursor-pointer hover:bg-slate-50 transition border border-slate-50">
-                                            <div><p class="text-[10px] text-slate-400 font-black uppercase mb-1">{log.date} • {log.category}</p><p class="font-black text-slate-800 text-2xl">{log.item}</p><p class="text-[11px] font-bold text-emerald-600 uppercase mt-1">{log.payer} ({log.batch})</p></div>
-                                            <p class="font-black text-3xl italic text-slate-900 tracking-tighter font-mono">₭ {Number(log.lak_amount).toLocaleString()}</p>
+                                        <div key={log.id} onClick={() => { setSelectedItem(log); setView('detail-finance'); }} class="bg-white p-10 rounded-[3.5rem] shadow-sm flex flex-col md:flex-row justify-between items-center cursor-pointer hover:bg-emerald-50 transition group border border-transparent hover:border-emerald-200">
+                                            <div class="text-center md:text-left mb-4 md:mb-0">
+                                                <p class="text-xs text-slate-400 font-black uppercase mb-2 tracking-widest">{log.date} • {log.category}</p>
+                                                <p class="font-black text-slate-800 text-3xl group-hover:text-emerald-700 transition">{log.item}</p>
+                                                <div class="flex gap-3 mt-3 justify-center md:justify-start">
+                                                    <span class="status-badge bg-emerald-100 text-emerald-700">{log.payer}</span>
+                                                    <span class="status-badge bg-slate-100 text-slate-600">{log.batch}</span>
+                                                </div>
+                                            </div>
+                                            <p class="font-black text-4xl italic text-slate-900 tracking-tighter font-mono">₭ {Number(log.lak_amount).toLocaleString()}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -235,142 +266,217 @@
                         )}
                     </main>
 
-                    {/* --- MODAL: WORKER DETAIL --- */}
-                    {view === 'detail-worker' && selectedItem && (
-                        <div class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-6">
-                            <div class="bg-white w-full max-w-5xl rounded-[4rem] p-12 max-h-[90vh] overflow-y-auto modal-up relative shadow-2xl">
-                                <div class="absolute top-8 right-12 text-slate-300 font-black text-4xl cursor-pointer hover:text-rose-500" onClick={() => setView('list')}>×</div>
-                                <div class="flex flex-col lg:flex-row gap-16">
-                                    <div class="w-full lg:w-1/3 text-center">
-                                        <img src={selectedItem.photo_url || 'https://via.placeholder.com/300'} class="w-64 h-64 rounded-[4rem] object-cover shadow-2xl border-8 border-white mb-8 mx-auto" />
-                                        <h2 class="text-4xl font-black text-slate-900 mb-2 leading-tight">{selectedItem.name}</h2>
-                                        <div class="px-6 py-2 bg-emerald-100 text-emerald-700 rounded-full font-black uppercase text-[10px] tracking-widest mb-8 inline-block">Batch {selectedItem.batch_no}</div>
-                                        <button onClick={() => {setWForm(selectedItem); setView('edit-worker');}} class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-xs tracking-widest">{t.save} / Edit</button>
-                                    </div>
-                                    <div class="flex-grow space-y-10">
-                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50 p-8 rounded-[3rem]">
-                                            <div><label class="label-cap">{t.village}</label><p class="font-black text-slate-700 text-lg uppercase italic">{selectedItem.village || '---'}</p></div>
-                                            <div><label class="label-cap">{t.district}</label><p class="font-black text-slate-700 text-lg uppercase italic">{selectedItem.district || '---'}</p></div>
-                                            <div><label class="label-cap">{t.province}</label><p class="font-black text-slate-700 text-lg uppercase italic">{selectedItem.province || '---'}</p></div>
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                            <div class="bg-rose-50 p-8 rounded-[2.5rem] border-2 border-rose-100">
-                                                <label class="label-cap text-rose-500">{t.is_couple} Status</label>
-                                                <p class="font-black text-2xl text-rose-900 uppercase italic leading-none">{selectedItem.is_couple ? t.is_couple : t.single}</p>
-                                                {selectedItem.is_couple && <p class="mt-4 text-rose-600 font-bold bg-white px-4 py-2 rounded-xl inline-block">Spouse: {selectedItem.spouse_name}</p>}
-                                            </div>
-                                            <div class="p-4"><label class="label-cap">{t.address}</label><p class="font-bold text-slate-600 leading-relaxed">{selectedItem.address || '---'}</p></div>
-                                        </div>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                            <div><label class="label-cap">{t.family}</label><p class="font-bold text-slate-600 whitespace-pre-wrap leading-relaxed">{selectedItem.family || '---'}</p></div>
-                                            <div><label class="label-cap">{t.history}</label><p class="font-bold text-slate-600 whitespace-pre-wrap leading-relaxed">{selectedItem.work_history || '---'}</p></div>
-                                        </div>
-                                        <div><label class="label-cap">{t.passport}</label>{selectedItem.passport_url ? <img src={selectedItem.passport_url} class="w-full rounded-[3rem] shadow-xl mt-4 border-4 border-white" /> : <div class="p-20 border-4 border-dashed border-slate-100 text-center font-black text-slate-200 uppercase rounded-[3rem]">No Scan</div>}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* --- MODAL: WORKER EDIT --- */}
+                    {/* --- MODAL: WORKER EDIT (FULL FORM) --- */}
                     {view === 'edit-worker' && (
-                        <div class="fixed inset-0 bg-white z-[60] overflow-y-auto p-12 animate-in fade-in">
+                        <div class="fixed inset-0 bg-white z-[60] overflow-y-auto p-12 animate-in fade-in duration-500">
                             <div class="max-w-4xl mx-auto pb-32">
-                                <h2 class="text-4xl font-black text-slate-900 italic tracking-tighter uppercase mb-12">{t.new} / {t.workers}</h2>
-                                <form onSubmit={saveWorker} class="space-y-10">
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div><label class="label-cap">{t.name}</label><input type="text" class="form-input" value={wForm.name} onChange={e=>setWForm({...wForm, name:e.target.value})} required /></div>
-                                        <div><label class="label-cap">{t.batch}</label><select class="form-select" value={wForm.batch_no} onChange={e=>setWForm({...wForm, batch_no:Number(e.target.value)})}>{[1,2,3].map(n=><option key={n} value={n}>Batch {n}</option>)}</select></div>
+                                <div class="flex justify-between items-center mb-16">
+                                    <h2 class="text-5xl font-black text-slate-900 italic uppercase tracking-tighter">{t.new} / {t.workers}</h2>
+                                    <button onClick={()=>setView('list')} class="text-slate-300 hover:text-rose-500 text-5xl font-black">×</button>
+                                </div>
+                                <form onSubmit={saveWorker} class="space-y-12">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                        <div><label class="label-cap">{t.name}</label><input type="text" class="form-input text-xl" value={wForm.name} onChange={e=>setWForm({...wForm, name:e.target.value})} required /></div>
+                                        <div><label class="label-cap">{t.batch}</label><select class="form-select text-xl" value={wForm.batch_no} onChange={e=>setWForm({...wForm, batch_no:Number(e.target.value)})}>{[1,2,3].map(n=><option key={n} value={n}>Batch {n}</option>)}</select></div>
                                     </div>
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                        <div><label class="label-cap">{t.village}</label><input type="text" class="form-input" value={wForm.village} onChange={e=>setWForm({...wForm, village:e.target.value})} /></div>
-                                        <div><label class="label-cap">{t.district}</label><input type="text" class="form-input" value={wForm.district} onChange={e=>setWForm({...wForm, district:e.target.value})} /></div>
-                                        <div><label class="label-cap">{t.province}</label><input type="text" class="form-input" value={wForm.province} onChange={e=>setWForm({...wForm, province:e.target.value})} /></div>
+                                    
+                                    <div class="bg-slate-50 p-10 rounded-[3rem] space-y-8">
+                                        <p class="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-4">Origin Information (出身地)</p>
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                            <div><label class="label-cap">{t.village}</label><input type="text" class="form-input" value={wForm.village} onChange={e=>setWForm({...wForm, village:e.target.value})} /></div>
+                                            <div><label class="label-cap">{t.district}</label><input type="text" class="form-input" value={wForm.district} onChange={e=>setWForm({...wForm, district:e.target.value})} /></div>
+                                            <div><label class="label-cap">{t.province}</label><input type="text" class="form-input" value={wForm.province} onChange={e=>setWForm({...wForm, province:e.target.value})} /></div>
+                                        </div>
+                                        <div><label class="label-cap">{t.address}</label><input type="text" class="form-input" value={wForm.address} onChange={e=>setWForm({...wForm, address:e.target.value})} /></div>
                                     </div>
-                                    <div class="bg-rose-50 p-8 rounded-[3rem] space-y-6">
-                                        <div class="flex items-center gap-4">
-                                            <input type="checkbox" class="w-8 h-8 accent-rose-500" checked={wForm.is_couple} onChange={e=>setWForm({...wForm, is_couple:e.target.checked})} />
-                                            <span class="font-black text-rose-900 uppercase italic">{t.is_couple} (ON/OFF)</span>
+
+                                    <div class={`p-10 rounded-[3rem] transition duration-500 border-2 ${wForm.is_couple ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-transparent'}`}>
+                                        <div class="flex items-center gap-6">
+                                            <input type="checkbox" class="w-10 h-10 accent-rose-500 rounded-xl" checked={wForm.is_couple} onChange={e=>setWForm({...wForm, is_couple:e.target.checked})} />
+                                            <div>
+                                                <p class="font-black text-2xl text-slate-800 uppercase italic leading-none">{t.is_couple} Mode</p>
+                                                <p class="text-xs font-bold text-slate-400 mt-1 uppercase">Check if applying as a couple</p>
+                                            </div>
                                         </div>
                                         {wForm.is_couple && (
-                                            <div class="animate-in slide-in-from-top"><label class="label-cap text-rose-400">{t.spouse_name}</label><input type="text" class="form-input border-rose-200" value={wForm.spouse_name} onChange={e=>setWForm({...wForm, spouse_name:e.target.value})} /></div>
+                                            <div class="mt-8 animate-in slide-in-from-top">
+                                                <label class="label-cap text-rose-400">{t.spouse_name}</label>
+                                                <input type="text" class="form-input border-rose-200 text-xl" value={wForm.spouse_name} onChange={e=>setWForm({...wForm, spouse_name:e.target.value})} />
+                                            </div>
                                         )}
                                     </div>
-                                    <div><label class="label-cap">{t.address}</label><input type="text" class="form-input" value={wForm.address} onChange={e=>setWForm({...wForm, address:e.target.value})} /></div>
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div><label class="label-cap">{t.family}</label><textarea class="form-textarea h-40" value={wForm.family} onChange={e=>setWForm({...wForm, family:e.target.value})}></textarea></div>
-                                        <div><label class="label-cap">{t.history}</label><textarea class="form-textarea h-40" value={wForm.work_history} onChange={e=>setWForm({...wForm, work_history:e.target.value})}></textarea></div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                        <div><label class="label-cap">{t.family}</label><textarea class="form-textarea h-48" placeholder="List family members..." value={wForm.family} onChange={e=>setWForm({...wForm, family:e.target.value})}></textarea></div>
+                                        <div><label class="label-cap">{t.history}</label><textarea class="form-textarea h-48" placeholder="Previous work experience..." value={wForm.work_history} onChange={e=>setWForm({...wForm, work_history:e.target.value})}></textarea></div>
                                     </div>
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-50 p-8 rounded-[3rem]">
-                                        <div><label class="label-cap text-emerald-600">{t.face_photo}</label><input type="file" class="form-input" onChange={e=>handleFileUpload(e,'workers','worker_photo')} /></div>
-                                        <div><label class="label-cap text-emerald-600">{t.passport}</label><input type="file" class="form-input" onChange={e=>handleFileUpload(e,'workers','worker_passport')} /></div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-10 bg-emerald-50 p-10 rounded-[3rem]">
+                                        <div>
+                                            <label class="label-cap text-emerald-600">{t.face_photo}</label>
+                                            <input type="file" class="form-input" onChange={e=>handleFileUpload(e,'worker_photo')} />
+                                            {wForm.photo_url && <img src={wForm.photo_url} class="mt-4 w-32 h-32 rounded-2xl object-cover border-4 border-white shadow-lg" />}
+                                        </div>
+                                        <div>
+                                            <label class="label-cap text-emerald-600">{t.passport}</label>
+                                            <input type="file" class="form-input" onChange={e=>handleFileUpload(e,'worker_passport')} />
+                                            {wForm.passport_url && <p class="mt-4 text-[10px] font-black text-emerald-600 uppercase italic">✓ Passport Image Linked</p>}
+                                        </div>
                                     </div>
-                                    <div class="flex gap-4 pt-10">
-                                        <button type="button" onClick={()=>setView('list')} class="flex-1 font-black text-slate-400 uppercase text-xs">{t.close}</button>
-                                        <button type="submit" class="flex-[2] bg-slate-900 text-white py-6 rounded-3xl font-black uppercase tracking-[0.3em]">{t.save}</button>
+
+                                    <div class="flex gap-6 pt-10">
+                                        <button type="button" onClick={()=>setView('list')} class="flex-1 font-black text-slate-400 uppercase tracking-widest text-sm">{t.close}</button>
+                                        <button type="submit" class={`flex-[3] py-8 rounded-[2.5rem] font-black uppercase tracking-[0.4em] text-white shadow-2xl transition ${isUploading ? 'bg-slate-300' : 'bg-slate-900 hover:bg-emerald-600'}`} disabled={isUploading}>
+                                            {isUploading ? 'Uploading...' : t.save}
+                                        </button>
                                     </div>
                                 </form>
                             </div>
                         </div>
                     )}
 
-                    {/* --- MODAL: FINANCE DETAIL --- */}
-                    {view === 'detail-finance' && selectedItem && (
-                        <div class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-end">
-                            <div class="bg-white w-full rounded-t-[5rem] p-12 max-h-[95vh] overflow-y-auto modal-up">
-                                <div class="w-20 h-2 bg-slate-200 rounded-full mx-auto mb-12 cursor-pointer" onClick={() => setView('list')}></div>
-                                <div class="flex flex-col lg:flex-row gap-16 max-w-6xl mx-auto">
-                                    <div class="flex-1">
-                                        <p class="text-xs font-black text-emerald-500 uppercase tracking-widest mb-4">{selectedItem.category} • {selectedItem.batch}</p>
-                                        <h2 class="text-5xl font-black text-slate-900 italic tracking-tighter mb-8 uppercase leading-tight">{selectedItem.item}</h2>
-                                        <div class="bg-slate-900 p-10 rounded-[3.5rem] text-center mb-10 shadow-2xl">
-                                            <p class="text-6xl font-black italic text-emerald-400 tracking-tighter font-mono">₭ {Number(selectedItem.lak_amount).toLocaleString()}</p>
-                                            <p class="text-slate-500 font-bold uppercase text-[10px] mt-4 tracking-widest">{selectedItem.currency} {selectedItem.amount} Paid</p>
-                                        </div>
-                                        <div class="space-y-8">
-                                            <div class="flex justify-between border-b pb-4"><p class="label-cap">{t.payer}</p><p class="font-black text-slate-800 uppercase">{selectedItem.payer}</p></div>
-                                            <div><p class="label-cap">{t.details}</p><div class="bg-emerald-50 p-8 rounded-[2rem] whitespace-pre-wrap font-bold text-slate-700 italic border-l-8 border-emerald-500">{selectedItem.details || '---'}</div></div>
-                                            <div><p class="label-cap">{t.memo}</p><p class="font-bold text-slate-400 italic bg-slate-50 p-6 rounded-2xl">{selectedItem.memo || '---'}</p></div>
-                                        </div>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="label-cap mb-4 text-center">{t.receipt}</p>
-                                        {selectedItem.receipt_url ? <img src={selectedItem.receipt_url} class="w-full rounded-[4rem] shadow-2xl border-8 border-white" /> : <div class="h-96 border-8 border-dashed border-slate-50 rounded-[4rem] flex items-center justify-center text-slate-200 font-black uppercase text-2xl tracking-widest italic">No Receipt Image</div>}
-                                    </div>
-                                </div>
-                                <div class="mt-16 text-center pb-10"><button onClick={() => setView('list')} class="w-full max-w-xl bg-slate-900 text-white py-6 rounded-[2rem] font-black uppercase tracking-[0.5em]">{t.close}</button></div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* --- MODAL: FINANCE EDIT --- */}
+                    {/* --- MODAL: FINANCE EDIT (FULL FORM) --- */}
                     {view === 'edit-finance' && (
                         <div class="fixed inset-0 bg-white z-[60] overflow-y-auto p-12 animate-in slide-in-from-bottom duration-500">
                             <div class="max-w-3xl mx-auto pb-32">
-                                <h2 class="text-4xl font-black text-slate-900 italic tracking-tighter uppercase mb-12">{t.new} / {t.finance}</h2>
-                                <form onSubmit={saveFinance} class="space-y-8">
-                                    <div class="grid grid-cols-2 gap-6">
-                                        <div><label class="label-cap">Date</label><input type="date" class="form-input" value={fForm.date} onChange={e=>setFForm({...fForm, date:e.target.value})} /></div>
+                                <h2 class="text-5xl font-black text-slate-900 italic uppercase mb-16 tracking-tighter">{t.new} / {t.finance}</h2>
+                                <form onSubmit={saveFinance} class="space-y-10">
+                                    <div class="grid grid-cols-2 gap-8">
+                                        <div><label class="label-cap">Transaction Date</label><input type="date" class="form-input" value={fForm.date} onChange={e=>setFForm({...fForm, date:e.target.value})} /></div>
                                         <div><label class="label-cap">{t.payer}</label><select class="form-select" value={fForm.payer} onChange={e=>setFForm({...fForm, payer:e.target.value})}>{STAFFS.map(s=><option key={s}>{s}</option>)}</select></div>
                                     </div>
-                                    <div class="grid grid-cols-2 gap-6">
+                                    <div class="grid grid-cols-2 gap-8">
                                         <div><label class="label-cap">Category</label><select class="form-select" value={fForm.category} onChange={e=>setFForm({...fForm, category:e.target.value})}>{CATEGORIES.map(c=><option key={c} value={c}>{c.toUpperCase()}</option>)}</select></div>
                                         <div><label class="label-cap">{t.batch}</label><select class="form-select" value={fForm.batch} onChange={e=>setFForm({...fForm, batch:e.target.value})}>{[1,2,3].map(n=><option key={n} value={`Batch ${n}`}>Batch {n}</option>)}</select></div>
                                     </div>
-                                    <div><label class="label-cap">{t.item}</label><input type="text" class="form-input" onChange={e=>setFForm({...fForm, item:e.target.value})} required /></div>
-                                    <div class="grid grid-cols-3 gap-6">
-                                        <div class="col-span-2"><label class="label-cap text-emerald-600">{t.amount}</label><input type="number" step="0.01" class="form-input text-2xl font-black" onChange={e=>setFForm({...fForm, amount:e.target.value})} required /></div>
-                                        <div><label class="label-cap">Currency</label><select class="form-select text-xl" value={fForm.currency} onChange={e=>setFForm({...fForm, currency:e.target.value})}><option>LAK</option><option>USD</option><option>THB</option></select></div>
+                                    <div><label class="label-cap">{t.item}</label><input type="text" class="form-input text-2xl" placeholder="What did you buy?" onChange={e=>setFForm({...fForm, item:e.target.value})} required /></div>
+                                    
+                                    <div class="grid grid-cols-3 gap-8 bg-slate-900 p-10 rounded-[3rem] shadow-2xl">
+                                        <div class="col-span-2">
+                                            <label class="label-cap text-emerald-400">{t.amount}</label>
+                                            <input type="number" step="0.01" class="bg-transparent border-b-4 border-emerald-500 w-full text-white text-5xl font-black outline-none font-mono" onChange={e=>setFForm({...fForm, amount:e.target.value})} required />
+                                        </div>
+                                        <div>
+                                            <label class="label-cap text-emerald-400">Currency</label>
+                                            <select class="bg-slate-800 text-white w-full p-4 rounded-xl font-black text-xl" value={fForm.currency} onChange={e=>setFForm({...fForm, currency:e.target.value})}>
+                                                <option>LAK</option><option>USD</option><option>THB</option>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div><label class="label-cap">{t.details}</label><textarea class="form-textarea h-40" placeholder="e.g. 10 bags x 50,000 lak..." onChange={e=>setFForm({...fForm, details:e.target.value})}></textarea></div>
-                                    <div><label class="label-cap">{t.memo}</label><input type="text" class="form-input" onChange={e=>setFForm({...fForm, memo:e.target.value})} /></div>
-                                    <div class="bg-slate-50 p-8 rounded-[3rem] border-2 border-dashed border-slate-200">
-                                        <label class="label-cap mb-4">{t.receipt}</label>
-                                        <input type="file" accept="image/*" class="form-input" onChange={e=>handleFileUpload(e,'receipts','finance_receipt')} />
-                                        {uploading && <p class="text-[10px] font-black text-blue-500 animate-pulse mt-3 uppercase tracking-widest italic">Uploading image...</p>}
+
+                                    <div>
+                                        <label class="label-cap">{t.details} (Breakdown List)</label>
+                                        <textarea class="form-textarea h-48 bg-slate-50 border-none italic font-bold text-slate-600" placeholder="• Item A: 50,000 x 2&#10;• Item B: 20,000 x 5..." value={fForm.details} onChange={e=>setFForm({...fForm, details:e.target.value})}></textarea>
                                     </div>
-                                    <button type="submit" class="w-full bg-slate-900 text-white py-6 rounded-3xl font-black uppercase tracking-[0.4em] mt-10 shadow-2xl hover:bg-emerald-600 transition duration-500">{t.save}</button>
+
+                                    <div class="bg-slate-50 p-10 rounded-[3rem] border-4 border-dashed border-slate-200 text-center">
+                                        <label class="label-cap mb-6">{t.receipt}</label>
+                                        <input type="file" class="form-input mb-4" onChange={e=>handleFileUpload(e,'finance_receipt')} />
+                                        {fForm.receipt_url && <p class="text-emerald-500 font-black uppercase text-[10px]">✓ Image Uploaded Successfully</p>}
+                                    </div>
+
+                                    <button type="submit" class="w-full bg-slate-900 text-white py-8 rounded-[2.5rem] font-black uppercase tracking-[0.5em] text-xl shadow-2xl hover:bg-emerald-600 transition duration-500">
+                                        {isUploading ? 'WAITING FOR UPLOAD...' : t.save}
+                                    </button>
                                 </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- MODAL: WORKER DETAIL VIEW --- */}
+                    {view === 'detail-worker' && selectedItem && (
+                        <div class="fixed inset-0 bg-slate-950/95 backdrop-blur-xl z-[70] flex items-center justify-center p-6 md:p-12">
+                            <div class="bg-white w-full max-w-6xl rounded-[4rem] p-10 md:p-20 max-h-[90vh] overflow-y-auto modal-up relative shadow-2xl">
+                                <button onClick={() => setView('list')} class="absolute top-10 right-10 text-slate-300 hover:text-rose-500 text-5xl font-black transition">×</button>
+                                
+                                <div class="flex flex-col lg:flex-row gap-20">
+                                    <div class="w-full lg:w-1/3 text-center">
+                                        <img src={selectedItem.photo_url || 'https://via.placeholder.com/400'} class="w-80 h-80 rounded-[4rem] object-cover shadow-2xl border-8 border-white mb-10 mx-auto" />
+                                        <h2 class="text-5xl font-black text-slate-900 mb-4 leading-none tracking-tighter">{selectedItem.name}</h2>
+                                        <span class="px-8 py-3 bg-emerald-100 text-emerald-700 rounded-full font-black uppercase text-xs tracking-widest">Batch {selectedItem.batch_no}</span>
+                                        <button onClick={()=>{setWForm(selectedItem); setView('edit-worker');}} class="w-full mt-12 bg-slate-900 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-[0.3em]">Edit Profile</button>
+                                    </div>
+
+                                    <div class="flex-grow space-y-12">
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 bg-slate-50 p-10 rounded-[3rem]">
+                                            <div><label class="label-cap">{t.village}</label><p class="text-xl font-black text-slate-700 uppercase italic">{selectedItem.village || '-'}</p></div>
+                                            <div><label class="label-cap">{t.district}</label><p class="text-xl font-black text-slate-700 uppercase italic">{selectedItem.district || '-'}</p></div>
+                                            <div><label class="label-cap">{t.province}</label><p class="text-xl font-black text-slate-700 uppercase italic">{selectedItem.province || '-'}</p></div>
+                                        </div>
+
+                                        <div class={`p-10 rounded-[3rem] border-2 ${selectedItem.is_couple ? 'bg-rose-50 border-rose-100' : 'bg-slate-50 border-slate-100'}`}>
+                                            <label class="label-cap text-slate-400">Marital Status</label>
+                                            <p class={`text-3xl font-black italic uppercase ${selectedItem.is_couple ? 'text-rose-600' : 'text-slate-400'}`}>
+                                                {selectedItem.is_couple ? t.is_couple : t.single}
+                                            </p>
+                                            {selectedItem.is_couple && (
+                                                <div class="mt-6 bg-white p-6 rounded-2xl inline-block shadow-sm">
+                                                    <label class="label-cap text-rose-300">{t.spouse_name}</label>
+                                                    <p class="text-2xl font-black text-rose-900">{selectedItem.spouse_name}</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                                            <div><label class="label-cap">{t.family}</label><div class="bg-slate-50 p-8 rounded-[2rem] whitespace-pre-wrap font-bold text-slate-600 leading-relaxed italic">{selectedItem.family || 'No info'}</div></div>
+                                            <div><label class="label-cap">{t.history}</label><div class="bg-slate-50 p-8 rounded-[2rem] whitespace-pre-wrap font-bold text-slate-600 leading-relaxed italic">{selectedItem.work_history || 'No info'}</div></div>
+                                        </div>
+
+                                        <div>
+                                            <label class="label-cap">{t.passport}</label>
+                                            {selectedItem.passport_url ? (
+                                                <img src={selectedItem.passport_url} class="w-full rounded-[4rem] shadow-2xl mt-6 border-8 border-slate-50" />
+                                            ) : (
+                                                <div class="p-24 border-4 border-dashed border-slate-100 text-center font-black text-slate-200 uppercase rounded-[4rem] text-2xl tracking-widest italic">No Passport Scan</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* --- MODAL: FINANCE DETAIL VIEW --- */}
+                    {view === 'detail-finance' && selectedItem && (
+                        <div class="fixed inset-0 bg-slate-950/95 backdrop-blur-xl z-[70] flex items-end">
+                            <div class="bg-white w-full rounded-t-[6rem] p-12 md:p-20 max-h-[95vh] overflow-y-auto modal-up shadow-2xl">
+                                <div class="w-24 h-3 bg-slate-100 rounded-full mx-auto mb-16 cursor-pointer" onClick={() => setView('list')}></div>
+                                <div class="max-w-6xl mx-auto flex flex-col lg:flex-row gap-20 pb-20">
+                                    <div class="flex-1">
+                                        <div class="flex gap-3 mb-6">
+                                            <span class="status-badge bg-emerald-100 text-emerald-700">{selectedItem.category}</span>
+                                            <span class="status-badge bg-slate-900 text-white">{selectedItem.batch}</span>
+                                        </div>
+                                        <h2 class="text-6xl font-black text-slate-900 italic tracking-tighter mb-10 leading-none uppercase">{selectedItem.item}</h2>
+                                        
+                                        <div class="bg-slate-950 p-12 rounded-[4rem] mb-12 shadow-2xl relative overflow-hidden">
+                                            <div class="absolute -right-10 -top-10 text-slate-900 text-9xl font-black italic">LAK</div>
+                                            <p class="text-xs font-black text-emerald-400 uppercase tracking-[0.3em] mb-4 relative z-10">Total Amount in LAK</p>
+                                            <p class="text-7xl font-black italic text-white tracking-tighter font-mono relative z-10">₭ {Number(selectedItem.lak_amount).toLocaleString()}</p>
+                                            <p class="mt-6 text-slate-500 font-bold uppercase tracking-widest relative z-10">Paid: {selectedItem.currency} {selectedItem.amount}</p>
+                                        </div>
+
+                                        <div class="space-y-10">
+                                            <div class="flex justify-between border-b border-slate-100 pb-6"><label class="label-cap">{t.payer}</label><p class="font-black text-slate-800 text-xl uppercase tracking-widest">{selectedItem.payer}</p></div>
+                                            <div>
+                                                <label class="label-cap">{t.details}</label>
+                                                <div class="bg-slate-50 p-10 rounded-[3rem] whitespace-pre-wrap font-bold text-slate-700 italic border-l-[12px] border-emerald-500 text-lg leading-relaxed shadow-inner">
+                                                    {selectedItem.details || 'No detailed breakdown recorded.'}
+                                                </div>
+                                            </div>
+                                            {selectedItem.memo && <div><label class="label-cap">{t.memo}</label><p class="font-bold text-slate-400 italic bg-slate-50 p-8 rounded-3xl">{selectedItem.memo}</p></div>}
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <label class="label-cap mb-8 text-center text-slate-300">Official Receipt Image (領収書)</label>
+                                        {selectedItem.receipt_url ? (
+                                            <img src={selectedItem.receipt_url} class="w-full rounded-[5rem] shadow-2xl border-[12px] border-white sticky top-0" />
+                                        ) : (
+                                            <div class="h-[600px] border-8 border-dashed border-slate-50 rounded-[5rem] flex items-center justify-center text-slate-200 font-black uppercase text-3xl tracking-widest italic text-center px-10">No receipt photo<br/>uploaded</div>
+                                        )}
+                                    </div>
+                                </div>
+                                <div class="text-center pb-10"><button onClick={() => setView('list')} class="w-full max-w-2xl bg-slate-900 text-white py-8 rounded-[3rem] font-black uppercase tracking-[0.5em] text-xl hover:bg-emerald-600 transition duration-500">Close Transaction Details</button></div>
                             </div>
                         </div>
                     )}
