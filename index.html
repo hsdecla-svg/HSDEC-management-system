@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Global Hub - Ultimate</title>
+    <title>HSDEC Global Hub - Ultimate Fixed</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -13,10 +13,9 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+KR:wght@400;700;900&display=swap');
         body { font-family: 'Inter', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; background: #f8fafc; color: #0f172a; overflow-x: hidden; }
         .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; outline: none; background: white; font-size: 16px; transition: 0.2s; }
-        .form-input:focus { border-color: #10b981; }
         .sidebar-btn { padding: 0.8rem; border-radius: 1.25rem; transition: 0.3s; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 3.5rem; height: 3.5rem; color: #64748b; }
-        .active-btn { background: #10b981 !important; color: white !important; box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3); }
-        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; letter-spacing: 0.05em; }
+        .active-btn { background: #10b981 !important; color: white !important; }
+        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; }
         .modal-full { position: fixed; inset: 0; background: #ffffff; z-index: 1000; overflow-y: auto; padding: 20px; }
         @media (max-width: 1024px) {
             .nav-container { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; flex-direction: row !important; width: 100% !important; z-index: 100; background: #0f172a; padding: 0 10px !important; }
@@ -69,21 +68,24 @@
                 setFinanceLogs(f || []);
             }
 
+            // --- 画像アップロード修正版 ---
             const handleFileUpload = async (e, field) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 setIsUploading(true);
                 
+                // ファイル名をクリーンにする
                 const cleanFileName = `${Date.now()}_${file.name.replace(/[^a-z0-9.]/gi, '_')}`;
-                const { data, error } = await supabase.storage
-                    .from('workers') // ここがバケット名と100%一致している必要があります
-                    .upload(cleanFileName, file);
                 
+                const { data, error } = await supabase.storage
+                    .from('workers')
+                    .upload(cleanFileName, file);
+
                 if (error) {
                     console.error("Upload Error:", error);
                     alert("Upload Failed: " + error.message);
                 } else {
-                    const { data: urlData } = supabase.storage.from('workers').getPublicUrl(fileName);
+                    const { data: urlData } = supabase.storage.from('workers').getPublicUrl(cleanFileName);
                     if (view.includes('worker')) setWForm(prev => ({ ...prev, [field]: urlData.publicUrl }));
                     else setFForm(prev => ({ ...prev, receipt_url: urlData.publicUrl }));
                 }
@@ -134,7 +136,7 @@
                                         <div key={bn} onClick={() => setSelectedBatch(bn)} class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 active:scale-95 transition cursor-pointer">
                                             <p class="text-xs font-black text-slate-400 uppercase tracking-widest">{t.batch}</p>
                                             <p class="text-5xl font-black text-slate-800 italic">{bn}</p>
-                                            <p class="text-emerald-500 font-bold mt-2">{workers.filter(w=>w.batch_no == bn).length} registered</p>
+                                            <p class="text-emerald-500 font-bold mt-2">{workers.filter(w=>w.batch_no == bn).length} People</p>
                                         </div>
                                     ))}
                                 </div>
@@ -142,9 +144,9 @@
                                 <div class="space-y-3">
                                     <button onClick={() => setSelectedBatch(null)} class="text-[10px] font-black text-slate-400 mb-4 uppercase flex items-center gap-1">← {t.back}</button>
                                     {workers.filter(w => w.batch_no == selectedBatch).map(w => (
-                                        <div key={w.id} onClick={()=>{setSelectedItem(w); setView('detail-worker');}} class="bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm active:bg-slate-50">
+                                        <div key={w.id} onClick={()=>{setSelectedItem(w); setView('detail-worker');}} class="bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm">
                                             <div>
-                                                <p class="font-black text-slate-800 text-lg leading-none mb-1">{w.name}</p>
+                                                <p class="font-black text-slate-800 text-lg mb-1">{w.name}</p>
                                                 <p class="text-[10px] font-bold text-slate-400 uppercase">{w.village}, {w.province}</p>
                                             </div>
                                             {w.is_couple && <span class="bg-rose-100 text-rose-500 text-[9px] font-black px-2 py-1 rounded-md uppercase italic">{t.couple}</span>}
@@ -161,16 +163,16 @@
                                 {financeLogs.map(log => (
                                     <div key={log.id} onClick={()=>{setSelectedItem(log); setView('detail-finance');}} class="bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm">
                                         <div><p class="text-[10px] font-black text-slate-400 uppercase mb-1">{log.date}</p><p class="font-black text-slate-800">{log.item}</p></div>
-                                        <p class="font-black font-mono">₭{Number(log.lak_amount).toLocaleString()}</p>
+                                        <p class="font-black font-mono italic">₭{Number(log.lak_amount).toLocaleString()}</p>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </main>
 
-                    {/* DETAIL MODAL (PHOTOS ARE HERE) */}
+                    {/* 詳細表示モーダル */}
                     {(view === 'detail-worker' || view === 'detail-finance') && selectedItem && (
-                        <div class="modal-full">
+                        <div class="modal-full animate-in slide-in-from-bottom duration-300">
                             <div class="max-w-2xl mx-auto pb-24">
                                 <div class="flex justify-between items-center mb-8">
                                     <button onClick={()=>setView('list')} class="text-slate-400 font-black text-xs uppercase italic">← {t.back}</button>
@@ -181,19 +183,16 @@
                                 </div>
 
                                 {view === 'detail-worker' ? (
-                                    <div class="space-y-6">
-                                        <div class="text-center">
-                                            <img src={selectedItem.photo_url || 'https://via.placeholder.com/150'} class="w-40 h-40 mx-auto rounded-[2rem] object-cover shadow-xl border-4 border-white mb-4" />
-                                            <h2 class="text-3xl font-black">{selectedItem.name}</h2>
-                                            <p class="text-xs font-black text-slate-400 uppercase mt-1 italic">Batch {selectedItem.batch_no}</p>
-                                        </div>
-                                        <div class="space-y-4">
-                                            <div class="bg-slate-50 p-5 rounded-2xl"><label class="label-cap">Address</label><p class="font-bold">{selectedItem.village}, {selectedItem.district}, {selectedItem.province}</p></div>
+                                    <div class="space-y-6 text-center">
+                                        <img src={selectedItem.photo_url || 'https://via.placeholder.com/150?text=No+Photo'} class="w-40 h-40 mx-auto rounded-[2rem] object-cover shadow-xl border-4 border-white mb-4" />
+                                        <h2 class="text-4xl font-black">{selectedItem.name}</h2>
+                                        <div class="text-left space-y-4 mt-8">
+                                            <div class="bg-slate-50 p-5 rounded-2xl"><label class="label-cap">Origin</label><p class="font-bold">{selectedItem.village}, {selectedItem.district}, {selectedItem.province}</p></div>
                                             {selectedItem.is_couple && <div class="bg-rose-50 p-5 rounded-2xl"><label class="label-cap text-rose-400">Spouse</label><p class="font-black uppercase">{selectedItem.spouse_name}</p></div>}
-                                            <div class="bg-slate-50 p-5 rounded-2xl"><label class="label-cap">{t.family}</label><p class="whitespace-pre-wrap italic text-slate-600">{selectedItem.family || '-'}</p></div>
-                                            <div class="bg-slate-50 p-5 rounded-2xl"><label class="label-cap">{t.history}</label><p class="whitespace-pre-wrap italic text-slate-600">{selectedItem.work_history || '-'}</p></div>
+                                            <div class="bg-slate-50 p-5 rounded-2xl"><label class="label-cap">{t.family}</label><p class="whitespace-pre-wrap italic text-slate-600 font-medium">{selectedItem.family || '-'}</p></div>
+                                            <div class="bg-slate-50 p-5 rounded-2xl"><label class="label-cap">{t.history}</label><p class="whitespace-pre-wrap italic text-slate-600 font-medium">{selectedItem.work_history || '-'}</p></div>
                                             <label class="label-cap">Passport</label>
-                                            <img src={selectedItem.passport_url || 'https://via.placeholder.com/400?text=No+Passport'} class="w-full rounded-2xl shadow-lg" />
+                                            {selectedItem.passport_url ? <img src={selectedItem.passport_url} class="w-full rounded-2xl shadow-lg border-4 border-white" /> : <div class="p-10 border-2 border-dashed rounded-2xl text-slate-300 font-black">No Passport</div>}
                                         </div>
                                     </div>
                                 ) : (
@@ -205,14 +204,14 @@
                                         </div>
                                         <div class="bg-slate-50 p-5 rounded-2xl"><label class="label-cap">{t.details}</label><p class="whitespace-pre-wrap font-bold italic">{selectedItem.details || '-'}</p></div>
                                         <label class="label-cap">Receipt</label>
-                                        <img src={selectedItem.receipt_url || 'https://via.placeholder.com/400?text=No+Receipt'} class="w-full rounded-2xl shadow-lg" />
+                                        {selectedItem.receipt_url ? <img src={selectedItem.receipt_url} class="w-full rounded-2xl shadow-lg" /> : <div class="p-10 border-2 border-dashed rounded-2xl text-slate-300 font-black">No Receipt</div>}
                                     </div>
                                 )}
                             </div>
                         </div>
                     )}
 
-                    {/* EDIT MODAL (FOR BOTH NEW & EDIT) */}
+                    {/* 編集・新規登録モーダル */}
                     {(view === 'edit-worker' || view === 'edit-finance') && (
                         <div class="modal-full">
                             <div class="max-w-xl mx-auto pb-24">
@@ -225,8 +224,8 @@
                                                 <div><label class="label-cap">Batch</label><select class="form-select" value={wForm.batch_no} onChange={e=>setWForm({...wForm, batch_no:Number(e.target.value)})}>{[1,2,3].map(n=><option key={n} value={n}>Batch {n}</option>)}</select></div>
                                                 <div><label class="label-cap">Village</label><input type="text" class="form-input" value={wForm.village} onChange={e=>setWForm({...wForm, village:e.target.value})} /></div>
                                             </div>
-                                            <div class="bg-slate-50 p-4 rounded-xl space-y-3">
-                                                <div class="flex items-center gap-2"><input type="checkbox" checked={wForm.is_couple} onChange={e=>setWForm({...wForm, is_couple:e.target.checked})} /> <span class="font-black text-xs uppercase">{t.couple}</span></div>
+                                            <div class="p-4 bg-slate-50 rounded-xl space-y-3">
+                                                <div class="flex items-center gap-2"><input type="checkbox" checked={wForm.is_couple} onChange={e=>setWForm({...wForm, is_couple:e.target.checked})} /> <span class="font-black text-xs uppercase">{t.couple} Mode</span></div>
                                                 {wForm.is_couple && <input type="text" class="form-input" placeholder="Spouse Name" value={wForm.spouse_name} onChange={e=>setWForm({...wForm, spouse_name:e.target.value})} />}
                                             </div>
                                             <textarea class="form-textarea h-24" placeholder={t.family} value={wForm.family} onChange={e=>setWForm({...wForm, family:e.target.value})}></textarea>
@@ -238,13 +237,13 @@
                                         </>
                                     ) : (
                                         <>
-                                            <input type="text" class="form-input text-lg" placeholder="Item" value={fForm.item} onChange={e=>setFForm({...fForm, item:e.target.value})} required />
+                                            <input type="text" class="form-input text-lg" placeholder="Item Name" value={fForm.item} onChange={e=>setFForm({...fForm, item:e.target.value})} required />
                                             <input type="number" class="form-input font-mono" placeholder="Amount (LAK)" value={fForm.amount} onChange={e=>setFForm({...fForm, amount:e.target.value})} required />
                                             <textarea class="form-textarea h-32" placeholder={t.details} value={fForm.details} onChange={e=>setFForm({...fForm, details:e.target.value})}></textarea>
                                             <div><label class="label-cap">Receipt Photo</label><input type="file" onChange={e=>handleFileUpload(e, 'receipt_url')} class="text-[10px]"/></div>
                                         </>
                                     )}
-                                    <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase shadow-xl" disabled={isUploading}>{isUploading ? 'Uploading...' : t.save}</button>
+                                    <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black uppercase" disabled={isUploading}>{isUploading ? 'Saving...' : t.save}</button>
                                 </form>
                             </div>
                         </div>
