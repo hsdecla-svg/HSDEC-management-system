@@ -3,25 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Global Management System</title>
+    <title>HSDEC Global Hub - Ultimate Edition</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Noto+Sans+Lao:wght@400;700&family=Noto+Sans+KR:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; background: #f1f5f9; overflow-x: hidden; }
-        .form-input, .form-select { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; outline: none; background: white; transition: 0.3s; }
-        .form-input:focus, .form-select:focus { border-color: #10b981; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); }
-        .label-text { font-size: 11px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 6px; display: block; letter-spacing: 0.05em; }
-        .nav-active { background: #10b981 !important; color: white !important; }
-        .batch-card { transition: 0.3s; cursor: pointer; background: white; border-radius: 2rem; border: 2px solid transparent; }
-        .batch-card:hover { border-color: #10b981; transform: translateY(-5px); }
+        body { font-family: 'Inter', 'Noto Sans Lao', 'Noto Sans KR', sans-serif; background: #f8fafc; }
+        .form-input, .form-select { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; outline: none; background: white; }
+        .form-input:focus { border-color: #10b981; }
         .doc-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; }
         .modal-up { animation: slideUp 0.3s ease-out; }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .glass-nav { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(10px); }
     </style>
 </head>
 <body>
@@ -30,42 +26,36 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // --- Configuration ---
         const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const STAFFS = ["Mr. Chanthaviphone", "Ms. Sengmala", "Mr. Takashi", "Ms. Mim", "Ms. Chansouk", "Other"];
         const CATEGORIES = ["food", "gasoline", "item", "other"];
-        const METHODS = ["Cash", "QR", "Other"];
-        const BATCH_LIST = ["Batch 1", "Batch 2", "Batch 3"];
+        const BATCHES = ["Batch 1", "Batch 2", "Batch 3"];
 
         const i18n = {
-            en: { workers: "Workers", finance: "Finance", total: "Total", batch: "Batch", search: "Search...", new: "New", save: "Save", close: "Close" },
-            jp: { workers: "労働者", finance: "会計", total: "合計", batch: "期生", search: "検索...", new: "新規", save: "保存", close: "閉じる" },
-            lao: { workers: "ຄົນງານ", finance: "ການເງິນ", total: "ລວມ", batch: "ລຸ້ນ", search: "ຄົ້ນຫາ", new: "ເພີ່ມໃໝ່", save: "ບັນທຶກ", close: "ປິດ" },
-            kr: { workers: "근로자", finance: "회계", total: "합계", batch: "기수", search: "검색", new: "신규", save: "저장", close: "닫기" }
+            en: { workers: "Workers", finance: "Finance", batch: "Batch", name: "Name", status: "Status", save: "Save", close: "Close", total: "Total" },
+            jp: { workers: "労働者", finance: "会計管理", batch: "期生", name: "氏名", status: "状況", save: "保存", close: "閉じる", total: "合計" },
+            lao: { workers: "ຄົນງານ", finance: "ການເງິນ", batch: "ລຸ້ນ", name: "ຊື່", status: "ສະຖານະ", save: "ບັນທຶກ", close: "ປິດ", total: "ລວມ" },
+            kr: { workers: "근로자", finance: "회계", batch: "기수", name: "성명", status: "현황", save: "저장", close: "닫기", total: "합계" }
         };
 
         function App() {
             const [lang, setLang] = useState('en');
-            const [mode, setMode] = useState('worker'); // worker or finance
-            const [view, setView] = useState('list'); // list or edit or detail
-            const [selectedBatch, setSelectedBatch] = useState(null);
+            const [mode, setMode] = useState('worker');
+            const [view, setView] = useState('list');
             const [workers, setWorkers] = useState([]);
             const [financeLogs, setFinanceLogs] = useState([]);
-            const [selectedLog, setSelectedLog] = useState(null);
+            const [selectedBatch, setSelectedBatch] = useState(null);
+            const [selectedItem, setSelectedItem] = useState(null); // Worker or Finance Log
             const [monthFilter, setMonthFilter] = useState(new Date().toISOString().slice(0, 7));
             const [catFilter, setCatFilter] = useState('all');
             const [rates, setRates] = useState({ USD: 22000, THB: 650 });
             const [uploading, setUploading] = useState(false);
             
-            const [form, setForm] = useState({
-                date: new Date().toISOString().split('T')[0],
-                item: '', amount: '', currency: 'LAK', category: 'food',
-                payer: STAFFS[0], payment_method: 'Cash', batch: 'Batch 1',
-                details: '', memo: '', receipt_url: ''
-            });
+            const [finForm, setFinForm] = useState({ date: new Date().toISOString().split('T')[0], item: '', amount: '', currency: 'LAK', category: 'food', payer: STAFFS[0], payment_method: 'Cash', batch: 'Batch 1', details: '', memo: '', receipt_url: '' });
+            const [workerForm, setWorkerForm] = useState({ name: '', batch_no: 1, has_passport: false, has_contract: false, has_health_check: false });
 
             const t = i18n[lang];
 
@@ -74,7 +64,6 @@
             async function fetchData() {
                 const { data: w } = await supabase.from('workers').select('*').order('name');
                 setWorkers(w || []);
-
                 let fQuery = supabase.from('finance_logs').select('*').ilike('date', `${monthFilter}%`);
                 if (catFilter !== 'all') fQuery = fQuery.eq('category', catFilter);
                 const { data: f } = await fQuery.order('date', { ascending: false });
@@ -89,10 +78,23 @@
                 } catch(e) {}
             }
 
-            const totalLak = financeLogs.reduce((sum, l) => sum + Number(l.lak_amount || 0), 0);
-            const batchNumbers = [...new Set(workers.map(w => w.batch_no))].sort((a,b)=>a-b);
+            // --- Handlers ---
+            const handleWorkerUpdate = async (e) => {
+                e.preventDefault();
+                await supabase.from('workers').upsert([workerForm]);
+                setView('list'); fetchData();
+            };
 
-            async function handleFileUpload(e) {
+            const handleFinanceSave = async (e) => {
+                e.preventDefault();
+                let lak = Number(finForm.amount);
+                if(finForm.currency === 'USD') lak *= rates.USD;
+                if(finForm.currency === 'THB') lak *= rates.THB;
+                await supabase.from('finance_logs').insert([{...finForm, lak_amount: Math.round(lak)}]);
+                setView('list'); fetchData();
+            };
+
+            const handleFileUpload = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 setUploading(true);
@@ -100,58 +102,65 @@
                 const { data } = await supabase.storage.from('receipts').upload(fileName, file);
                 if (data) {
                     const { data: url } = supabase.storage.from('receipts').getPublicUrl(fileName);
-                    setForm({ ...form, receipt_url: url.publicUrl });
+                    setFinForm({ ...finForm, receipt_url: url.publicUrl });
                 }
                 setUploading(false);
-            }
+            };
 
             return (
-                <div class="flex h-screen w-screen bg-slate-50 overflow-hidden">
-                    {/* Sidebar Nav */}
-                    <nav class="w-20 bg-slate-900 flex flex-col items-center py-10 gap-8 shrink-0">
+                <div class="flex h-screen w-screen overflow-hidden">
+                    {/* Sidebar */}
+                    <nav class="w-20 bg-slate-900 flex flex-col items-center py-10 gap-8 glass-nav z-20">
                         <div class="text-emerald-500 font-black italic text-2xl mb-4">H.</div>
-                        <button onClick={() => {setMode('worker'); setView('list');}} class={`p-4 rounded-2xl ${mode === 'worker' ? 'bg-emerald-500 text-white' : 'text-slate-500 hover:text-white transition'}`}>
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                        <button onClick={() => {setMode('worker'); setView('list'); setSelectedBatch(null);}} class={`p-4 rounded-2xl ${mode === 'worker' ? 'bg-emerald-500 text-white' : 'text-slate-500 hover:text-white'}`}>
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                         </button>
-                        <button onClick={() => {setMode('finance'); setView('list');}} class={`p-4 rounded-2xl ${mode === 'finance' ? 'bg-emerald-500 text-white' : 'text-slate-500 hover:text-white transition'}`}>
+                        <button onClick={() => {setMode('finance'); setView('list');}} class={`p-4 rounded-2xl ${mode === 'finance' ? 'bg-emerald-500 text-white' : 'text-slate-500 hover:text-white'}`}>
                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         </button>
-                        <div class="mt-auto space-y-4">
+                        <div class="mt-auto flex flex-col gap-4">
                             {['en','jp','lao','kr'].map(l => (
-                                <button key={l} onClick={() => setLang(l)} class={`block text-[10px] font-black uppercase ${lang === l ? 'text-emerald-400 border-b-2 border-emerald-400' : 'text-slate-600'}`}>{l}</button>
+                                <button key={l} onClick={() => setLang(l)} class={`text-[10px] font-black uppercase ${lang === l ? 'text-emerald-400' : 'text-slate-600'}`}>{l}</button>
                             ))}
                         </div>
                     </nav>
 
-                    {/* Main Content */}
-                    <main class="flex-grow overflow-y-auto p-6 md:p-12">
-                        {mode === 'worker' ? (
+                    {/* Content Area */}
+                    <main class="flex-grow overflow-y-auto p-6 md:p-12 relative">
+                        
+                        {/* --- WORKER MODE --- */}
+                        {mode === 'worker' && (
                             <div class="max-w-5xl mx-auto">
-                                <h2 class="text-4xl font-black text-slate-900 mb-10 tracking-tighter italic uppercase">{t.workers}</h2>
+                                <div class="flex justify-between items-center mb-10">
+                                    <h2 class="text-4xl font-black text-slate-900 tracking-tighter italic uppercase">{t.workers}</h2>
+                                    <button onClick={() => {setWorkerForm({name:'', batch_no:1, has_passport:false, has_contract:false, has_health_check:false}); setView('edit-worker');}} class="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold">+ {t.new}</button>
+                                </div>
+
                                 {selectedBatch === null ? (
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                        {batchNumbers.map(bn => (
-                                            <div key={bn} onClick={() => setSelectedBatch(bn)} class="batch-card p-10 shadow-sm text-center">
-                                                <div class="w-16 h-16 bg-slate-100 text-slate-800 rounded-2xl flex items-center justify-center text-2xl font-black mx-auto mb-6 italic"># {bn}</div>
-                                                <h3 class="text-2xl font-black text-slate-800">{t.batch} {bn}</h3>
-                                                <p class="text-slate-400 font-bold mt-2 uppercase text-xs">{workers.filter(w=>w.batch_no == bn).length} Members</p>
+                                        {[1, 2, 3].map(bn => (
+                                            <div key={bn} onClick={() => setSelectedBatch(bn)} class="bg-white p-10 rounded-[2.5rem] shadow-sm text-center border-2 border-transparent hover:border-emerald-500 transition cursor-pointer">
+                                                <div class="text-4xl font-black text-slate-200 mb-4">0{bn}</div>
+                                                <h3 class="text-2xl font-black text-slate-800 tracking-tight">{t.batch} {bn}</h3>
+                                                <p class="text-slate-400 font-bold mt-2 uppercase text-xs tracking-widest">{workers.filter(w=>w.batch_no == bn).length} Members</p>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
                                     <div class="animate-in slide-in-from-right duration-300">
-                                        <button onClick={() => setSelectedBatch(null)} class="mb-8 text-emerald-600 font-black text-xs uppercase flex items-center gap-2 tracking-widest">← Back to Groups</button>
-                                        <h3 class="text-3xl font-black text-slate-900 mb-8 italic underline decoration-8 decoration-emerald-100 underline-offset-8">BATCH {selectedBatch}</h3>
-                                        <div class="bg-white rounded-[2.5rem] shadow-sm overflow-hidden border border-slate-100">
+                                        <button onClick={() => setSelectedBatch(null)} class="mb-8 text-emerald-600 font-black text-xs uppercase flex items-center gap-2">← Back to Batches</button>
+                                        <div class="bg-white rounded-[3rem] shadow-sm overflow-hidden border border-slate-100">
                                             <table class="w-full text-left">
-                                                <thead class="bg-slate-50 border-b"><tr class="text-[10px] font-black text-slate-400 uppercase tracking-widest"><th class="p-8">Name</th><th class="p-8">Passport</th><th class="p-8">Contract</th><th class="p-8">Health</th></tr></thead>
-                                                <tbody class="divide-y divide-slate-50 font-bold">
+                                                <thead class="bg-slate-50 border-b text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                    <tr><th class="p-8">Name</th><th class="p-8 text-center">Passport</th><th class="p-8 text-center">Contract</th><th class="p-8 text-center">Health</th></tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-slate-50 font-bold text-slate-700">
                                                     {workers.filter(w => w.batch_no == selectedBatch).map(w => (
-                                                        <tr key={w.id} class="hover:bg-slate-50 transition">
-                                                            <td class="p-8 text-slate-900 text-lg font-black">{w.name}</td>
-                                                            <td class="p-8"><span class={`doc-dot ${w.has_passport ? 'bg-emerald-500' : 'bg-rose-400'}`}></span> {w.has_passport ? 'Ready' : 'Missing'}</td>
-                                                            <td class="p-8"><span class={`doc-dot ${w.has_contract ? 'bg-emerald-500' : 'bg-rose-400'}`}></span> {w.has_contract ? 'Ready' : 'Missing'}</td>
-                                                            <td class="p-8"><span class={`doc-dot ${w.has_health_check ? 'bg-emerald-500' : 'bg-rose-400'}`}></span> {w.has_health_check ? 'Done' : 'Pending'}</td>
+                                                        <tr key={w.id} onClick={() => {setWorkerForm(w); setView('edit-worker');}} class="hover:bg-slate-50 transition cursor-pointer">
+                                                            <td class="p-8 text-slate-900 font-black text-lg">{w.name}</td>
+                                                            <td class="p-8 text-center"><span class={`doc-dot ${w.has_passport ? 'bg-emerald-500' : 'bg-rose-400'}`}></span></td>
+                                                            <td class="p-8 text-center"><span class={`doc-dot ${w.has_contract ? 'bg-emerald-500' : 'bg-rose-400'}`}></span></td>
+                                                            <td class="p-8 text-center"><span class={`doc-dot ${w.has_health_check ? 'bg-emerald-500' : 'bg-rose-400'}`}></span></td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
@@ -160,109 +169,128 @@
                                     </div>
                                 )}
                             </div>
-                        ) : (
-                            /* Finance Mode */
+                        )}
+
+                        {/* --- FINANCE MODE --- */}
+                        {mode === 'finance' && (
                             <div class="max-w-5xl mx-auto">
                                 <div class="flex justify-between items-center mb-10">
                                     <h2 class="text-4xl font-black text-slate-900 tracking-tighter italic uppercase">{t.finance}</h2>
-                                    <button onClick={() => setView('edit')} class="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black shadow-xl hover:bg-emerald-600 transition tracking-widest">+ {t.new}</button>
+                                    <button onClick={() => setView('edit-finance')} class="bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black shadow-xl tracking-widest">+ {t.new}</button>
                                 </div>
-
-                                {view === 'list' ? (
-                                    <>
-                                        <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10 bg-white p-10 rounded-[3rem] shadow-sm items-end border-b-8 border-emerald-500">
-                                            <div><label class="label-text">Month</label><input type="month" class="form-input" value={monthFilter} onChange={e => setMonthFilter(e.target.value)} /></div>
-                                            <div><label class="label-text">Category</label><select class="form-select" value={catFilter} onChange={e => setCatFilter(e.target.value)}><option value="all">All</option>{CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-                                            <div class="md:col-span-2 text-right">
-                                                <p class="text-[10px] font-black text-emerald-500 uppercase tracking-[0.3em] mb-1">{t.total}</p>
-                                                <p class="text-5xl font-black text-slate-900 italic tracking-tighter font-mono">₭ {totalLak.toLocaleString()}</p>
+                                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10 bg-white p-8 rounded-[2.5rem] shadow-sm items-end border-b-8 border-emerald-500">
+                                    <div class="md:col-span-1">
+                                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Month</label>
+                                        <input type="month" class="form-input" value={monthFilter} onChange={e => setMonthFilter(e.target.value)} />
+                                    </div>
+                                    <div class="md:col-span-1">
+                                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Category</label>
+                                        <select class="form-select" value={catFilter} onChange={e => setCatFilter(e.target.value)}>
+                                            <option value="all">All Items</option>
+                                            {CATEGORIES.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                                        </select>
+                                    </div>
+                                    <div class="md:col-span-2 text-right">
+                                        <p class="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">{t.total}</p>
+                                        <p class="text-5xl font-black text-slate-900 italic tracking-tighter font-mono">₭ {financeLogs.reduce((s,l)=>s+Number(l.lak_amount||0),0).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                                <div class="space-y-4">
+                                    {financeLogs.map(log => (
+                                        <div key={log.id} onClick={() => { setSelectedItem(log); setView('detail-finance'); }} class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex justify-between items-center cursor-pointer hover:scale-[1.01] transition">
+                                            <div>
+                                                <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">{log.date} • {log.category}</p>
+                                                <p class="font-black text-slate-800 text-xl">{log.item}</p>
+                                                <p class="text-[11px] font-bold text-emerald-600 uppercase">{log.payer} • {log.batch}</p>
                                             </div>
+                                            <p class="font-black text-2xl italic text-slate-900 tracking-tighter italic">₭ {Number(log.lak_amount).toLocaleString()}</p>
                                         </div>
-                                        <div class="space-y-4">
-                                            {financeLogs.map(log => (
-                                                <div key={log.id} onClick={() => { setSelectedLog(log); setView('detail'); }} class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex justify-between items-center cursor-pointer hover:scale-[1.01] transition">
-                                                    <div>
-                                                        <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest">{log.date} • {log.category}</p>
-                                                        <p class="font-black text-slate-800 text-xl">{log.item}</p>
-                                                        <p class="text-[11px] font-bold text-emerald-600 uppercase">{log.payer} • {log.payment_method}</p>
-                                                    </div>
-                                                    <div class="text-right">
-                                                        <p class="font-black text-2xl italic text-slate-900 tracking-tighter">₭ {Number(log.lak_amount).toLocaleString()}</p>
-                                                        <span class="text-[10px] bg-slate-100 px-3 py-1 rounded-full font-black text-slate-500 uppercase">{log.batch}</span>
-                                                    </div>
-                                                </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* --- MODALS (Detail / Edit) --- */}
+                        
+                        {/* Worker Edit Modal */}
+                        {view === 'edit-worker' && (
+                            <div class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-6">
+                                <form onSubmit={handleWorkerUpdate} class="bg-white w-full max-w-lg rounded-[3rem] p-10 modal-up">
+                                    <h3 class="text-2xl font-black mb-8 text-slate-900 uppercase italic tracking-tighter">Edit Worker Info</h3>
+                                    <div class="space-y-6 mb-10">
+                                        <div><label class="text-[10px] font-black text-slate-400 uppercase block mb-2">Full Name</label><input type="text" class="form-input" value={workerForm.name} onChange={e=>setWorkerForm({...workerForm, name:e.target.value})} required /></div>
+                                        <div><label class="text-[10px] font-black text-slate-400 uppercase block mb-2">Batch Number</label><select class="form-select" value={workerForm.batch_no} onChange={e=>setWorkerForm({...workerForm, batch_no:Number(e.target.value)})}>{[1,2,3].map(n=><option key={n} value={n}>Batch {n}</option>)}</select></div>
+                                        <div class="flex flex-col gap-4 bg-slate-50 p-6 rounded-2xl">
+                                            {['has_passport', 'has_contract', 'has_health_check'].map(key => (
+                                                <label key={key} class="flex items-center justify-between cursor-pointer">
+                                                    <span class="text-sm font-black uppercase text-slate-600">{key.replace('has_','').replace('_',' ')}</span>
+                                                    <input type="checkbox" class="w-6 h-6 accent-emerald-500" checked={workerForm[key]} onChange={e=>setWorkerForm({...workerForm, [key]:e.target.checked})} />
+                                                </label>
                                             ))}
                                         </div>
-                                    </>
-                                ) : view === 'detail' && selectedLog ? (
-                                    <div class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-end">
-                                        <div class="bg-white w-full rounded-t-[4rem] p-10 max-h-[95vh] overflow-y-auto modal-up shadow-2xl">
-                                            <div class="w-16 h-2 bg-slate-200 rounded-full mx-auto mb-10 cursor-pointer" onClick={() => setView('list')}></div>
-                                            <div class="flex flex-col md:flex-row gap-10">
-                                                <div class="flex-1">
-                                                    <div class="mb-8">
-                                                        <p class="text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] mb-2">{selectedLog.category} / {selectedLog.batch}</p>
-                                                        <h2 class="text-4xl font-black text-slate-900 italic tracking-tighter">{selectedLog.item}</h2>
-                                                        <p class="text-slate-400 font-black mt-2 underline">Paid by: {selectedLog.payer} via {selectedLog.payment_method}</p>
-                                                    </div>
-                                                    <div class="bg-slate-900 p-8 rounded-[3rem] text-center mb-8 shadow-2xl">
-                                                        <p class="text-5xl font-black italic text-emerald-400 tracking-tighter">₭ {Number(selectedLog.lak_amount).toLocaleString()}</p>
-                                                        <p class="text-xs text-slate-500 mt-3 font-bold uppercase tracking-widest">Original: {selectedLog.currency} {selectedLog.amount}</p>
-                                                    </div>
-                                                    <div class="space-y-6 text-sm">
-                                                        <div><p class="label-text">Breakdown Details</p><div class="bg-slate-50 p-6 rounded-2xl whitespace-pre-wrap font-bold text-slate-700 italic border-l-4 border-emerald-500">{selectedLog.details || "No details provided."}</div></div>
-                                                        <div><p class="label-text">Memo</p><p class="font-bold text-slate-500 bg-blue-50 p-6 rounded-2xl">{selectedLog.memo || "---"}</p></div>
-                                                    </div>
-                                                </div>
-                                                <div class="flex-1">
-                                                    {selectedLog.receipt_url ? (
-                                                        <div class="sticky top-0">
-                                                            <p class="label-text mb-4 text-center">Receipt Image</p>
-                                                            <img src={selectedLog.receipt_url} class="w-full rounded-[3rem] shadow-2xl border-8 border-slate-50" />
-                                                        </div>
-                                                    ) : (
-                                                        <div class="h-64 border-4 border-dashed border-slate-100 rounded-[3rem] flex items-center justify-center text-slate-200 font-black uppercase">No Photo Attached</div>
-                                                    )}
-                                                </div>
+                                    </div>
+                                    <div class="flex gap-4">
+                                        <button type="button" onClick={()=>setView('list')} class="flex-1 font-black text-slate-400 uppercase text-xs">Cancel</button>
+                                        <button type="submit" class="flex-[2] bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-xl uppercase tracking-widest">Update Info</button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
+                        {/* Finance Detail Modal */}
+                        {view === 'detail-finance' && selectedItem && (
+                            <div class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-end">
+                                <div class="bg-white w-full rounded-t-[4rem] p-10 max-h-[95vh] overflow-y-auto modal-up">
+                                    <div class="w-16 h-2 bg-slate-200 rounded-full mx-auto mb-10 cursor-pointer" onClick={() => setView('list')}></div>
+                                    <div class="flex flex-col md:flex-row gap-12">
+                                        <div class="flex-1">
+                                            <p class="text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] mb-2">{selectedItem.category} / {selectedItem.batch}</p>
+                                            <h2 class="text-4xl font-black text-slate-900 italic tracking-tighter mb-6">{selectedItem.item}</h2>
+                                            <div class="bg-slate-900 p-8 rounded-[3rem] text-center mb-8 shadow-2xl">
+                                                <p class="text-5xl font-black italic text-emerald-400 tracking-tighter">₭ {Number(selectedItem.lak_amount).toLocaleString()}</p>
+                                                <p class="text-xs text-slate-500 mt-3 font-bold uppercase">Original: {selectedItem.currency} {selectedItem.amount}</p>
                                             </div>
-                                            <button onClick={() => setView('list')} class="w-full bg-slate-900 text-white py-6 rounded-3xl font-black shadow-xl mt-12 hover:bg-emerald-600 transition tracking-[0.3em] uppercase">Close Details</button>
+                                            <div class="space-y-6">
+                                                <div><p class="text-[10px] font-black text-slate-400 uppercase mb-2">Paid By</p><p class="font-black text-slate-800 text-lg">{selectedItem.payer} ({selectedItem.payment_method})</p></div>
+                                                <div><p class="text-[10px] font-black text-slate-400 uppercase mb-2">Breakdown Details</p><div class="bg-slate-50 p-6 rounded-2xl whitespace-pre-wrap font-bold text-slate-600 text-sm italic leading-relaxed border-l-4 border-emerald-500">{selectedItem.details || "No details provided."}</div></div>
+                                                <div><p class="text-[10px] font-black text-slate-400 uppercase mb-2">Memo</p><p class="font-bold text-slate-400 italic bg-blue-50 p-4 rounded-xl">{selectedItem.memo || "No memo."}</p></div>
+                                            </div>
+                                        </div>
+                                        <div class="flex-1">
+                                            <p class="text-[10px] font-black text-slate-400 uppercase mb-4 text-center">Receipt Image</p>
+                                            {selectedItem.receipt_url ? <img src={selectedItem.receipt_url} class="w-full rounded-[3rem] shadow-2xl border-8 border-slate-50" /> : <div class="h-64 border-4 border-dashed border-slate-100 rounded-[3rem] flex items-center justify-center text-slate-200 font-black uppercase">No Photo</div>}
                                         </div>
                                     </div>
-                                ) : (
-                                    /* Edit/New View */
-                                    <div class="animate-in fade-in duration-500 bg-white p-10 rounded-[3rem] shadow-sm border border-slate-100 max-w-3xl mx-auto">
-                                        <h2 class="text-3xl font-black mb-10 text-slate-900 italic uppercase">New Record Entry</h2>
-                                        <form class="space-y-8" onSubmit={async e => {
-                                            e.preventDefault();
-                                            let lak = Number(form.amount);
-                                            if(form.currency === 'USD') lak *= rates.USD;
-                                            if(form.currency === 'THB') lak *= rates.THB;
-                                            await supabase.from('finance_logs').insert([{...form, lak_amount: Math.round(lak)}]);
-                                            setView('list'); fetchData();
-                                        }}>
-                                            <div class="grid grid-cols-2 gap-6">
-                                                <div><label class="label-text">Date</label><input type="date" class="form-input" value={form.date} onChange={e=>setForm({...form, date:e.target.value})} /></div>
-                                                <div><label class="label-text">Payer Name</label><select class="form-select" value={form.payer} onChange={e=>setForm({...form, payer:e.target.value})}>{STAFFS.map(s=><option key={s}>{s}</option>)}</select></div>
-                                            </div>
-                                            <div class="grid grid-cols-2 gap-6">
-                                                <div><label class="label-text">Category</label><select class="form-select uppercase" onChange={e=>setForm({...form, category:e.target.value})}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
-                                                <div><label class="label-text">Target Batch</label><select class="form-select" onChange={e=>setForm({...form, batch:e.target.value})}>{BATCH_LIST.map(b=><option key={b}>{b}</option>)}</select></div>
-                                            </div>
-                                            <div><label class="label-text">Item Name</label><input type="text" class="form-input" placeholder="What did you buy?" onChange={e=>setForm({...form, item:e.target.value})} required /></div>
-                                            <div class="grid grid-cols-3 gap-6">
-                                                <div class="col-span-2"><label class="label-text">Amount</label><input type="number" step="0.01" class="form-input text-2xl font-black" onChange={e=>setForm({...form, amount:e.target.value})} required /></div>
-                                                <div><label class="label-text">Currency</label><select class="form-select text-xl" onChange={e=>setForm({...form, currency:e.target.value})}><option>LAK</option><option>USD</option><option>THB</option></select></div>
-                                            </div>
-                                            <div><label class="label-text">Payment Method</label><select class="form-select" onChange={e=>setForm({...form, payment_method:e.target.value})}>{METHODS.map(m=><option key={m}>{m}</option>)}</select></div>
-                                            <div><label class="label-text">Breakdown Details (Qty x Price)</label><textarea class="form-input h-32" placeholder="- Item A 2pcs = 50,000" onChange={e=>setForm({...form, details:e.target.value})}></textarea></div>
-                                            <div><label class="label-text">Attach Receipt Photo</label><input type="file" accept="image/*" class="form-input" onChange={handleFileUpload} />{uploading && <p class="text-xs text-blue-500 font-bold mt-2 animate-pulse">Uploading to Cloud...</p>}</div>
-                                            <div class="flex gap-4 pt-10 border-t">
-                                                <button type="button" onClick={()=>setView('list')} class="flex-1 font-black text-slate-400 uppercase text-xs">Cancel</button>
-                                                <button type="submit" class="flex-[2] bg-slate-900 text-white py-6 rounded-2xl font-black shadow-xl uppercase tracking-widest hover:bg-emerald-600 transition">Save Log</button>
-                                            </div>
-                                        </form>
+                                    <button onClick={() => setView('list')} class="w-full bg-slate-900 text-white py-6 rounded-3xl font-black shadow-xl mt-12 uppercase tracking-[0.3em]">Close</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Finance Edit Modal */}
+                        {view === 'edit-finance' && (
+                            <div class="fixed inset-0 bg-white z-50 overflow-y-auto p-10 animate-in fade-in">
+                                <h2 class="text-3xl font-black mb-10 text-slate-900 italic uppercase">New Record</h2>
+                                <form class="max-w-3xl mx-auto space-y-6 pb-20" onSubmit={handleFinanceSave}>
+                                    <div class="grid grid-cols-2 gap-6">
+                                        <div><label class="text-[10px] font-black text-slate-400 uppercase block mb-2">Date</label><input type="date" class="form-input" value={finForm.date} onChange={e=>setFinForm({...finForm, date:e.target.value})} /></div>
+                                        <div><label class="text-[10px] font-black text-slate-400 uppercase block mb-2">Payer</label><select class="form-select" value={finForm.payer} onChange={e=>setFinForm({...finForm, payer:e.target.value})}>{STAFFS.map(s=><option key={s}>{s}</option>)}</select></div>
                                     </div>
-                                )}
+                                    <div class="grid grid-cols-2 gap-6">
+                                        <div><label class="text-[10px] font-black text-slate-400 uppercase block mb-2">Category</label><select class="form-select uppercase" onChange={e=>setFinForm({...finForm, category:e.target.value})}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></div>
+                                        <div><label class="text-[10px] font-black text-slate-400 uppercase block mb-2">Batch</label><select class="form-select" onChange={e=>setFinForm({...finForm, batch:e.target.value})}>{BATCHES.map(b=><option key={b}>{b}</option>)}</select></div>
+                                    </div>
+                                    <div><label class="text-[10px] font-black text-slate-400 uppercase block mb-2">Item Name</label><input type="text" class="form-input" placeholder="e.g. Gasoline for Van" onChange={e=>setFinForm({...finForm, item:e.target.value})} required /></div>
+                                    <div class="grid grid-cols-3 gap-6">
+                                        <div class="col-span-2"><label class="text-[10px] font-black text-slate-400 uppercase block mb-2">Amount</label><input type="number" step="0.01" class="form-input text-2xl font-black" onChange={e=>setFinForm({...finForm, amount:e.target.value})} required /></div>
+                                        <div><label class="text-[10px] font-black text-slate-400 uppercase block mb-2">Currency</label><select class="form-select" onChange={e=>setFinForm({...finForm, currency:e.target.value})}><option>LAK</option><option>USD</option><option>THB</option></select></div>
+                                    </div>
+                                    <div><label class="text-[10px] font-black text-slate-400 uppercase block mb-2">Breakdown Details</label><textarea class="form-input h-32" placeholder="- Qty x Price" onChange={e=>setFinForm({...finForm, details:e.target.value})}></textarea></div>
+                                    <div><label class="text-[10px] font-black text-slate-400 uppercase block mb-2">Attach Photo</label><input type="file" accept="image/*" class="form-input" onChange={handleFileUpload} />{uploading && <p class="text-xs text-blue-500 font-bold mt-2 animate-pulse">Uploading...</p>}</div>
+                                    <div class="flex gap-4 pt-10 border-t">
+                                        <button type="button" onClick={()=>setView('list')} class="flex-1 font-black text-slate-400 uppercase text-xs">Cancel</button>
+                                        <button type="submit" class="flex-[2] bg-slate-900 text-white py-6 rounded-2xl font-black shadow-xl uppercase tracking-widest">Save Record</button>
+                                    </div>
+                                </form>
                             </div>
                         )}
                     </main>
