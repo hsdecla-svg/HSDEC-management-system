@@ -36,6 +36,23 @@
 
         function FinanceApp() {
             const [user, setUser] = useState(null);
+            // ページを開いた瞬間に index でのログイン情報をチェック
+useEffect(() => {
+    const savedUser = localStorage.getItem('hsdec_user');
+    if (savedUser) {
+        const found = JSON.parse(savedUser);
+        setUser(found);
+        // worker管理なら初期フォームに名前を入れるなどの処理
+        if (typeof setWForm === 'function') setWForm(prev => ({...prev, guarantor: found.name}));
+        if (typeof setFForm === 'function') setFForm(prev => ({...prev, staff_name: found.name}));
+    }
+}, []);
+
+// ログアウト処理（indexに戻る）
+const handleLogout = () => {
+    localStorage.removeItem('hsdec_user');
+    window.location.href = 'index.html';
+};
             const [loginForm, setLoginForm] = useState({ id: '', pw: '' });
             const [view, setView] = useState('list');
             const [records, setRecords] = useState([]);
