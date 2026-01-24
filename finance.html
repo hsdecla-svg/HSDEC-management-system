@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Finance | Secure</title>
+    <title>HSDEC Finance | Secure Management</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -12,9 +12,11 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; }
-        .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 700; background: white; outline: none; }
+        .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 700; background: white; outline: none; transition: border-color 0.2s; }
+        .form-input:focus { border-color: #3b82f6; }
         .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; }
         .modal-full { position: fixed; inset: 0; background: #f8fafc; z-index: 1000; overflow-y: auto; padding: 20px; }
+        .amount-display { font-family: 'Inter', sans-serif; font-weight: 900; letter-spacing: -0.05em; }
     </style>
 </head>
 <body>
@@ -25,96 +27,117 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const USERS = [
-            { id: "Takashi", pw: "Tks83446423", name: "Mr. Takashi", role: "admin" },
-            { id: "Chansouk", pw: "97372185", name: "Ms. Chansouk", role: "staff" },
-            { id: "Mim", pw: "78277996", name: "Ms. Mim", role: "staff" },
-            { id: "Chanthaviphone", pw: "96086112", name: "Mr. Chanthaviphone", role: "vv" },
-            { id: "Sengmala", pw: "22886998", name: "Ms. Sengmala", role: "sv" },
-            { id: "Guest", pw: "HSDEC2025", name: "Guest User", role: "guest" }
-        ];
-
         function FinanceApp() {
             const [user, setUser] = useState(null);
-            // ページを開いた瞬間に index でのログイン情報をチェック
-useEffect(() => {
-    const savedUser = localStorage.getItem('hsdec_user');
-    if (savedUser) {
-        const found = JSON.parse(savedUser);
-        setUser(found);
-        // worker管理なら初期フォームに名前を入れるなどの処理
-        if (typeof setWForm === 'function') setWForm(prev => ({...prev, guarantor: found.name}));
-        if (typeof setFForm === 'function') setFForm(prev => ({...prev, staff_name: found.name}));
-    }
-}, []);
-
-// ログアウト処理（indexに戻る）
-const handleLogout = () => {
-    localStorage.removeItem('hsdec_user');
-    window.location.href = 'index.html';
-};
-            const [loginForm, setLoginForm] = useState({ id: '', pw: '' });
             const [view, setView] = useState('list');
             const [records, setRecords] = useState([]);
             const [fForm, setFForm] = useState({});
 
-            const handleLogin = (e) => {
-                e.preventDefault();
-                const found = USERS.find(u => u.id === loginForm.id && u.pw === loginForm.pw);
-                if (found) setUser(found); else alert("Invalid ID/PW");
-            };
+            // 🔑 自動ログインチェック（全ページ共通ロジック）
+            useEffect(() => {
+                const savedUser = localStorage.getItem('hsdec_user');
+                if (savedUser) {
+                    setUser(JSON.parse(savedUser));
+                } else {
+                    window.location.href = 'index.html'; // ログインしてなければ戻す
+                }
+            }, []);
+
+            useEffect(() => { if(user) fetchRecords(); }, [user]);
 
             const fetchRecords = async () => {
                 const { data } = await supabase.from('finance').select('*').order('date', { ascending: false });
                 if (data) setRecords(data);
             };
 
-            useEffect(() => { if(user) fetchRecords(); }, [user]);
-
             const canEdit = user && ['admin', 'staff'].includes(user.role);
-            const canDelete = user && user.role === 'admin';
+            const canDelete = user && user.role === 'admin'; // Takashiさんのみ削除可能
 
-            return (!user) ? (
-                <div className="flex items-center justify-center min-h-screen p-6">
-                    <form onSubmit={handleLogin} className="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-sm border border-slate-100">
-                        <h1 className="text-3xl font-black italic mb-8 text-center tracking-tighter uppercase">Finance</h1>
-                        <div className="space-y-4">
-                            <div><label className="label-cap">ID</label><input type="text" className="form-input" onChange={e => setLoginForm({...loginForm, id: e.target.value})} /></div>
-                            <div><label className="label-cap">PW</label><input type="password" className="form-input text-center" onChange={e => setLoginForm({...loginForm, pw: e.target.value})} /></div>
-                            <button className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black">LOGIN</button>
+            const handleSave = async (e) => {
+                e.preventDefault();
+                if (!canEdit) return;
+                
+                // 単位価格 * 数量を自動計算して保存
+                const payload = {
+                    ...fForm,
+                    staff_name: user.name, // ログイン中の名前を自動セット
+                    total: (Number(fForm.unit_price || 0) * Number(fForm.quantity || 1))
+                };
+
+                const { error } = await supabase.from('finance').upsert([payload]);
+                if(!error) { setView('list'); fetchRecords(); }
+                else alert(error.message);
+            };
+
+            if (!user) return null;
+
+            return (
+                <div className="max-w-4xl mx-auto p-4 pb-20">
+                    <header className="flex justify-between items-center py-8">
+                        <div>
+                            <h1 className="text-3xl font-black italic tracking-tighter leading-none">FINANCE</h1>
+                            <p className="text-[10px] font-black text-blue-500 uppercase mt-1">Operator: {user.name}</p>
                         </div>
-                    </form>
-                </div>
-            ) : (
-                <div className="max-w-4xl mx-auto p-4">
-                    <header className="flex justify-between items-center py-6">
-                        <div><h1 className="text-xl font-black italic leading-none">FINANCE</h1><p className="text-[9px] font-black text-blue-500 uppercase">{user.name}</p></div>
-                        {canEdit && <button onClick={() => { setFForm({type:'Expense', date: new Date().toISOString().split('T')[0], method:'Cash', quantity:1}); setView('edit'); }} className="bg-black text-white px-5 py-2 rounded-xl font-black text-xs">+ NEW</button>}
+                        <div className="flex gap-2">
+                            {canEdit && (
+                                <button onClick={() => { 
+                                    setFForm({type:'Expense', date: new Date().toISOString().split('T')[0], method:'Cash', quantity:1, unit_price: 0}); 
+                                    setView('edit'); 
+                                }} className="bg-black text-white px-6 py-3 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">+ NEW RECORD</button>
+                            )}
+                            <button onClick={() => window.location.href='index.html'} className="bg-white border px-4 py-3 rounded-2xl font-black text-[10px] uppercase">Portal</button>
+                        </div>
                     </header>
-                    <div className="space-y-2">
+
+                    <div className="grid grid-cols-1 gap-3">
                         {records.map(r => (
-                            <div key={r.id} onClick={() => { setFForm(r); setView('edit'); }} className="bg-white p-4 rounded-2xl border flex justify-between items-center cursor-pointer">
-                                <div><p className="font-black text-sm">{r.item_name}</p><p className="text-[9px] text-slate-400 font-bold uppercase">{r.date} · {r.staff_name}</p></div>
-                                <p className={`font-black ${r.type === 'Income' ? 'text-emerald-500' : 'text-rose-500'}`}>{r.total.toLocaleString()}</p>
+                            <div key={r.id} onClick={() => { setFForm(r); setView('edit'); }} className="bg-white p-5 rounded-[1.5rem] border flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-all shadow-sm">
+                                <div>
+                                    <p className="font-black text-slate-800 text-base">{r.item_name}</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase">{r.date} · {r.staff_name} · {r.method}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className={`amount-display text-lg ${r.type === 'Income' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                        {r.type === 'Income' ? '+' : '-'}{Number(r.total).toLocaleString()}
+                                    </p>
+                                    <p className="text-[9px] font-black text-slate-300 uppercase">{r.type}</p>
+                                </div>
                             </div>
                         ))}
                     </div>
+
                     {view === 'edit' && (
                         <div className="modal-full">
                             <div className="max-w-xl mx-auto">
-                                <div className="flex justify-between mb-8"><button onClick={() => setView('list')} className="text-slate-400 font-black text-xs">Close</button></div>
-                                <form onSubmit={async (e) => {
-                                    e.preventDefault();
-                                    const { error } = await supabase.from('finance').upsert([{...fForm, staff_name: user.name, total: (fForm.unit_price * fForm.quantity)}]);
-                                    if(!error) { setView('list'); fetchRecords(); }
-                                }} className="space-y-4">
+                                <div className="flex justify-between items-center mb-8">
+                                    <button onClick={() => setView('list')} className="text-slate-400 font-black text-xs uppercase tracking-widest">← Back to List</button>
+                                    <p className="font-black italic text-sm">TRANSACTION DETAIL</p>
+                                </div>
+
+                                <form onSubmit={handleSave} className="space-y-6">
                                     <div className="grid grid-cols-2 gap-4">
-                                        <input type="text" className="form-input" value={fForm.item_name} placeholder="Item" readOnly={!canEdit} onChange={e => setFForm({...fForm, item_name: e.target.value})} />
-                                        <input type="number" className="form-input" value={fForm.unit_price} placeholder="Price" readOnly={!canEdit} onChange={e => setFForm({...fForm, unit_price: e.target.value})} />
+                                        <div><label className="label-cap">Date</label><input type="date" className="form-input" value={fForm.date} disabled={!canEdit} onChange={e => setFForm({...fForm, date: e.target.value})} required /></div>
+                                        <div><label className="label-cap">Type</label><select className="form-select" value={fForm.type} disabled={!canEdit} onChange={e => setFForm({...fForm, type: e.target.value})}><option value="Expense">Expense (支出)</option><option value="Income">Income (収入)</option></select></div>
                                     </div>
-                                    <textarea className="form-textarea h-24" placeholder="Memo" value={fForm.note} readOnly={!canEdit} onChange={e => setFForm({...fForm, note: e.target.value})}></textarea>
-                                    {canEdit && <button className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black">SAVE</button>}
-                                    {canDelete && fForm.id && <button type="button" onClick={async () => { if(confirm("Delete?")) { await supabase.from('finance').delete().eq('id', fForm.id); setView('list'); fetchRecords(); }}} className="w-full bg-rose-50 text-rose-500 py-3 rounded-2xl font-black text-xs mt-2">DELETE</button>}
+
+                                    <div><label className="label-cap">Item Name</label><input type="text" className="form-input" value={fForm.item_name} placeholder="Lunch, Transport, etc." disabled={!canEdit} onChange={e => setFForm({...fForm, item_name: e.target.value})} required /></div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="label-cap">Unit Price</label><input type="number" className="form-input" value={fForm.unit_price} placeholder="0" disabled={!canEdit} onChange={e => setFForm({...fForm, unit_price: e.target.value})} required /></div>
+                                        <div><label className="label-cap">Quantity</label><input type="number" className="form-input" value={fForm.quantity} placeholder="1" disabled={!canEdit} onChange={e => setFForm({...fForm, quantity: e.target.value})} required /></div>
+                                    </div>
+
+                                    <div className="bg-blue-50 p-6 rounded-2xl flex justify-between items-center">
+                                        <span className="font-black text-xs text-blue-600 uppercase">Estimated Total</span>
+                                        <span className="amount-display text-2xl text-blue-700">{(Number(fForm.unit_price || 0) * Number(fForm.quantity || 1)).toLocaleString()}</span>
+                                    </div>
+
+                                    <div><label className="label-cap">Memo / Note</label><textarea className="form-textarea h-32" placeholder="Details..." value={fForm.note || ''} disabled={!canEdit} onChange={e => setFForm({...fForm, note: e.target.value})}></textarea></div>
+
+                                    {canEdit && <button className="w-full bg-blue-600 text-white py-6 rounded-3xl font-black text-xl shadow-xl active:scale-95 transition-all">SAVE TRANSACTION</button>}
+                                    {canDelete && fForm.id && (
+                                        <button type="button" onClick={async () => { if(confirm("Delete this record?")) { await supabase.from('finance').delete().eq('id', fForm.id); setView('list'); fetchRecords(); }}} className="w-full bg-rose-50 text-rose-500 py-3 rounded-2xl font-black text-xs mt-2 uppercase">Delete Permanent</button>
+                                    )}
                                 </form>
                             </div>
                         </div>
