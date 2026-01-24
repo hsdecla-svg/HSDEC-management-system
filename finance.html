@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Finance | HSDEC</title>
+    <title>Finance Management | HSDEC</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -11,8 +11,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
-        .form-input { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; outline: none; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #1e293b; }
+        .form-input, .form-select { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; outline: none; background: white; }
+        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; }
+        .stat-card { background: #0f172a; border-radius: 2rem; padding: 2.5rem; color: white; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
 <body>
@@ -23,58 +25,129 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        const STAFFS = ["Mr. Chanthaviphone", "Ms. Sengmala", "Mr. Takashi", "Ms. Chansouk", "Ms. Mim"];
+        const CATEGORIES = ["Transportation", "Utilities", "Salaries", "Food/Welfare", "Office", "Other"];
+
         function FinanceApp() {
             const [view, setView] = useState('list');
             const [logs, setLogs] = useState([]);
-            const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
-            const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], item: '', lak_amount: 0, quantity: 1, unit_price: 0 });
+            const [monthFilter, setMonthFilter] = useState(new Date().toISOString().slice(0, 7));
+            
+            const initialForm = { 
+                date: new Date().toISOString().split('T')[0], 
+                item: '', 
+                category: CATEGORIES[0], 
+                unit_price: 0, 
+                quantity: 1, 
+                lak_amount: 0, 
+                payer: STAFFS[0],
+                note: ''
+            };
+            const [fForm, setFForm] = useState(initialForm);
 
-            useEffect(() => { fetchLogs(); }, [month]);
+            useEffect(() => { fetchLogs(); }, [monthFilter]);
 
             async function fetchLogs() {
-                const { data } = await supabase.from('finance_logs').select('*').order('date', { ascending: false });
-                if (data) setLogs(data.filter(l => l.date && l.date.startsWith(month)));
+                const { data, error } = await supabase.from('finance_logs').select('*').order('date', { ascending: false });
+                if (data) {
+                    const filtered = data.filter(l => l.date && l.date.startsWith(monthFilter));
+                    setLogs(filtered);
+                }
             }
 
-            const save = async (e) => {
+            const handleSubmit = async (e) => {
                 e.preventDefault();
-                const { error } = await supabase.from('finance_logs').upsert([form]);
+                const { error } = await supabase.from('finance_logs').upsert([fForm]);
                 if (error) alert(error.message);
                 else { setView('list'); fetchLogs(); }
             };
 
+            const calculateTotal = (price, qty) => {
+                const total = Number(price) * Number(qty);
+                setFForm(prev => ({ ...prev, unit_price: price, quantity: qty, lak_amount: total }));
+            };
+
             return (
-                <div class="max-w-3xl mx-auto p-4 pb-20">
-                    <header class="flex justify-between items-center py-8">
-                        <h1 class="text-3xl font-black italic tracking-tighter text-blue-600">FINANCE</h1>
-                        <button onClick={() => setView('edit')} class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold">+ RECORD</button>
+                <div class="max-w-4xl mx-auto p-4 pb-20">
+                    <header class="flex justify-between items-center py-8 border-b mb-8">
+                        <div>
+                            <h1 class="text-3xl font-black italic tracking-tighter text-blue-600">FINANCE LOG</h1>
+                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right md:text-left">HSDEC Business Accounting</p>
+                        </div>
+                        <button onClick={() => { setFForm(initialForm); setView('edit'); }} class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">+ NEW RECORD</button>
                     </header>
 
-                    <input type="month" class="form-input !w-auto mb-6" value={month} onChange={e => setMonth(e.target.value)} />
+                    <div class="flex items-center gap-4 mb-8">
+                        <label class="label-cap !mb-0">Filter Month:</label>
+                        <input type="month" class="form-input !w-auto !py-2 !px-4" value={monthFilter} onChange={e => setMonthFilter(e.target.value)} />
+                    </div>
 
-                    <div class="bg-slate-900 p-10 rounded-[2.5rem] text-white flex justify-between items-center mb-8 shadow-2xl">
-                        <p class="text-[10px] font-black uppercase opacity-40 tracking-[0.2em]">Total Spend</p>
-                        <p class="text-4xl font-black font-mono text-emerald-400">₭{logs.reduce((s, l) => s + Number(l.lak_amount || 0), 0).toLocaleString()}</p>
+                    <div class="stat-card mb-10 relative overflow-hidden">
+                        <div class="relative z-10 flex justify-between items-center">
+                            <div>
+                                <p class="text-[10px] font-black uppercase opacity-50 tracking-[0.2em] mb-2">Monthly Total ({monthFilter})</p>
+                                <p class="text-5xl font-black font-mono text-emerald-400 italic">₭{logs.reduce((s, l) => s + Number(l.lak_amount || 0), 0).toLocaleString()}</p>
+                            </div>
+                            <div class="text-right hidden md:block">
+                                <p class="text-[10px] font-black uppercase opacity-50 mb-1">Items</p>
+                                <p class="text-2xl font-black italic">{logs.length}</p>
+                            </div>
+                        </div>
+                        <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl"></div>
                     </div>
 
                     <div class="space-y-3">
-                        {logs.map(l => (
-                            <div key={l.id} class="bg-white p-6 rounded-2xl flex justify-between items-center shadow-sm border border-slate-100">
-                                <div><p class="text-[10px] font-black text-slate-300 uppercase">{l.date}</p><p class="font-black text-slate-800 text-lg">{l.item}</p></div>
-                                <p class="font-black font-mono text-xl text-blue-600 italic">₭{Number(l.lak_amount).toLocaleString()}</p>
+                        {logs.map(log => (
+                            <div key={log.id} onClick={() => { setFForm(log); setView('edit'); }} class="bg-white p-6 rounded-[1.5rem] flex flex-wrap md:flex-nowrap items-center justify-between shadow-sm border border-slate-100 hover:border-blue-300 transition-all cursor-pointer">
+                                <div class="w-full md:w-auto mb-4 md:mb-0">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-[9px] font-black bg-blue-50 text-blue-500 px-2 py-0.5 rounded uppercase tracking-tighter">{log.category}</span>
+                                        <span class="text-[9px] font-bold text-slate-300 uppercase">{log.date}</span>
+                                    </div>
+                                    <p class="font-black text-slate-800 text-lg">{log.item} <span class="text-slate-400 font-normal text-sm">x{log.quantity}</span></p>
+                                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Paid by: {log.payer}</p>
+                                </div>
+                                <div class="text-right w-full md:w-auto border-t md:border-none pt-3 md:pt-0">
+                                    <p class="font-black font-mono text-2xl text-blue-600">₭{Number(log.lak_amount).toLocaleString()}</p>
+                                </div>
                             </div>
                         ))}
                     </div>
 
                     {view === 'edit' && (
-                        <div class="fixed inset-0 bg-white z-[100] p-6 overflow-y-auto">
-                            <div class="max-w-md mx-auto">
-                                <button onClick={() => setView('list')} class="text-slate-400 font-black text-xs mb-8">← CANCEL</button>
-                                <form onSubmit={save} class="space-y-4">
-                                    <input type="date" class="form-input" value={form.date} onChange={e => setForm({...form, date:e.target.value})} />
-                                    <input type="text" class="form-input" placeholder="Item Name" value={form.item} onChange={e => setForm({...form, item:e.target.value})} required />
-                                    <input type="number" class="form-input" placeholder="Amount (LAK)" value={form.lak_amount} onChange={e => setForm({...form, lak_amount:e.target.value})} />
-                                    <button type="submit" class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black shadow-xl">SAVE RECORD</button>
+                        <div class="fixed inset-0 bg-white z-[1000] p-6 overflow-y-auto">
+                            <div class="max-w-xl mx-auto pb-24">
+                                <div class="flex justify-between items-center mb-10">
+                                    <button onClick={() => setView('list')} class="text-slate-400 font-black text-xs uppercase tracking-widest">Cancel</button>
+                                    <h2 class="font-black italic text-xl">FINANCE RECORD</h2>
+                                </div>
+
+                                <form onSubmit={handleSubmit} class="space-y-6">
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div><label class="label-cap">Date</label><input type="date" class="form-input" value={fForm.date} onChange={e => setFForm({...fForm, date: e.target.value})} /></div>
+                                        <div><label class="label-cap">Category</label><select class="form-select" value={fForm.category} onChange={e => setFForm({...fForm, category: e.target.value})}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                                    </div>
+
+                                    <div><label class="label-cap">Item Name / Description</label><input type="text" class="form-input" placeholder="e.g. Office Electricity" value={fForm.item} onChange={e => setFForm({...fForm, item: e.target.value})} required /></div>
+
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div><label class="label-cap">Unit Price (LAK)</label><input type="number" class="form-input" value={fForm.unit_price} onChange={e => calculateTotal(e.target.value, fForm.quantity)} /></div>
+                                        <div><label class="label-cap">Quantity</label><input type="number" class="form-input" value={fForm.quantity} onChange={e => calculateTotal(fForm.unit_price, e.target.value)} /></div>
+                                    </div>
+
+                                    <div class="bg-slate-900 p-8 rounded-[2rem] text-center shadow-xl">
+                                        <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Amount</p>
+                                        <p class="text-3xl font-black font-mono text-emerald-400 italic">₭{Number(fForm.lak_amount).toLocaleString()}</p>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div><label class="label-cap">Staff (Payer)</label><select class="form-select" value={fForm.payer} onChange={e => setFForm({...fForm, payer: e.target.value})}>{STAFFS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                                        <div><label class="label-cap">Note</label><input type="text" class="form-input" placeholder="Optional notes" value={fForm.note} onChange={e => setFForm({...fForm, note: e.target.value})} /></div>
+                                    </div>
+
+                                    <button type="submit" class="w-full bg-blue-600 text-white py-6 rounded-3xl font-black text-xl shadow-2xl shadow-blue-200 mt-8 active:scale-[0.98] transition-all">
+                                        SAVE TRANSACTION
+                                    </button>
                                 </form>
                             </div>
                         </div>
