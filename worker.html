@@ -77,8 +77,26 @@
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
-                const { error } = await supabase.from('workers').upsert([wForm]);
-                if (error) alert(error.message); else { setView('list'); fetchWorkers(); }
+
+                // 【修正ポイント】数字項目が空（""）の場合、null または 0 に変換してエラーを防ぐ
+                const cleanForm = {
+                    ...wForm,
+                    age: wForm.age === "" ? null : Number(wForm.age),
+                    weight: wForm.weight === "" ? null : Number(wForm.weight),
+                    height: wForm.height === "" ? null : Number(wForm.height),
+                    batch_no: Number(wForm.batch_no) || 1
+                };
+
+                const { error } = await supabase.from('workers').upsert([cleanForm]);
+                
+                if (error) {
+                    console.error(error);
+                    alert("Save Error: " + error.message);
+                } else {
+                    alert("Saved successfully!");
+                    setView('list');
+                    fetchWorkers();
+                }
             };
 
             return (
