@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Worker Full DB | HSDEC</title>
+    <title>HSDEC Worker Master</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -12,9 +12,9 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #1e293b; }
-        .form-input, .form-select { border: 2px solid #e2e8f0; padding: 10px; border-radius: 10px; width: 100%; font-weight: 700; background: white; }
+        .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 10px; border-radius: 10px; width: 100%; font-weight: 700; background: white; }
         .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; display: block; }
-        .section-title { font-size: 11px; font-weight: 900; color: #64748b; background: #f1f5f9; padding: 8px 12px; border-radius: 6px; margin-top: 20px; margin-bottom: 10px; text-transform: uppercase; border-left: 4px solid #10b981; }
+        .section-title { font-size: 11px; font-weight: 900; color: #1e293b; background: #f1f5f9; padding: 8px 12px; border-radius: 8px; margin: 20px 0 10px 0; text-transform: uppercase; border-left: 5px solid #10b981; }
         .modal-full { position: fixed; inset: 0; background: #ffffff; z-index: 1000; overflow-y: auto; padding: 20px; }
     </style>
 </head>
@@ -32,34 +32,34 @@
             const [selectedBatch, setSelectedBatch] = useState(null);
             const [isUploading, setIsUploading] = useState(false);
 
-            // 【重要】ここが以前の全項目です。ここに無いと表示されません。
             const initialForm = {
-                name: '', batch_no: 1, gender: 'Male', age: '', photo_url: '',
-                village: '', city: '', province: '',
-                has_id: 'Have', id_number: '', id_photo_url: '',
-                has_passport: 'Have', passport_number: '', passport_photo_url: '',
-                weight: '', height: '', arm_strength: '', eyesight_left: '', eyesight_right: '',
-                is_couple: false, spouse_name: '', is_reentry: false, reentry_company: '', reentry_period: '',
-                education: '', phone: '', emergency_contact: '', note: ''
+                gender: 'Male', name: '', birthday: '', age: '',
+                place_of_birth: '', current_address: '',
+                village: '', district: '', province: '',
+                education: '', foreign_language: '', occupation: '',
+                lives_with: '', children: '', worked_abroad: '', work_experience: '',
+                guarantor: '', census_dependent: '', id_number: '', passport_number: '',
+                diseases: '', allergies: '', weight: '', height: '',
+                whatsapp: '', contact_number: '', arm_strength: '', eyesight: '', tattoos: '',
+                photo_url: '', batch_no: 1, note: ''
             };
             const [wForm, setWForm] = useState(initialForm);
 
             useEffect(() => { fetchWorkers(); }, []);
-
             async function fetchWorkers() {
                 const { data } = await supabase.from('workers').select('*').order('name');
                 if (data) setWorkers(data);
             }
 
-            const handleFileUpload = async (e, field) => {
+            const handleFileUpload = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 setIsUploading(true);
-                const name = `${Date.now()}_${field}_${file.name.replace(/[^a-z0-9.]/gi, '_')}`;
+                const name = `${Date.now()}_${file.name}`;
                 const { error } = await supabase.storage.from('workers').upload(name, file);
                 if (!error) {
                     const { data } = supabase.storage.from('workers').getPublicUrl(name);
-                    setWForm(prev => ({ ...prev, [field]: data.publicUrl }));
+                    setWForm(prev => ({ ...prev, photo_url: data.publicUrl }));
                 }
                 setIsUploading(false);
             };
@@ -67,38 +67,40 @@
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 const { error } = await supabase.from('workers').upsert([wForm]);
-                if (error) alert(error.message);
-                else { setView('list'); fetchWorkers(); }
+                if (error) alert(error.message); else { setView('list'); fetchWorkers(); }
             };
 
             return (
                 <div class="max-w-4xl mx-auto p-4 pb-20">
                     <header class="flex justify-between items-center py-6 border-b mb-6">
-                        <h1 class="text-2xl font-black italic tracking-tighter">WORKER MASTER</h1>
-                        <button onClick={() => { setWForm(initialForm); setView('edit'); }} class="bg-black text-white px-6 py-2 rounded-xl font-black text-xs">+ NEW</button>
+                        <h1 class="text-2xl font-black italic tracking-tighter">HSDEC WORKERS</h1>
+                        <button onClick={() => { setWForm(initialForm); setView('edit'); }} class="bg-emerald-600 text-white px-6 py-2 rounded-xl font-black text-xs shadow-lg">+ NEW REGISTRATION</button>
                     </header>
 
                     {selectedBatch === null ? (
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {[1, 2, 3].map(bn => (
-                                <div key={bn} onClick={() => setSelectedBatch(bn)} class="bg-white p-10 rounded-[2rem] shadow-sm border border-slate-100 cursor-pointer hover:shadow-lg transition-all text-center">
-                                    <p class="text-5xl font-black italic text-slate-800">B-{bn}</p>
-                                    <p class="text-emerald-500 font-black mt-2 text-[10px] uppercase">{workers.filter(w => w.batch_no === bn).length} REGISTERED</p>
+                                <div key={bn} onClick={() => setSelectedBatch(bn)} class="bg-white p-10 rounded-[2rem] shadow-sm border border-slate-100 cursor-pointer hover:shadow-xl transition-all text-center">
+                                    <p class="text-4xl font-black italic text-slate-800">BATCH {bn}</p>
+                                    <p class="text-emerald-500 font-black mt-2 text-[10px]">{workers.filter(w => w.batch_no === bn).length} MEMBERS</p>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div class="space-y-2">
-                            <button onClick={() => setSelectedBatch(null)} class="text-[10px] font-black text-slate-300 mb-4 uppercase">← BATCH LIST</button>
+                        <div class="space-y-3">
+                            <button onClick={() => setSelectedBatch(null)} class="text-[10px] font-black text-slate-300 mb-4 uppercase">← BACK TO BATCH LIST</button>
                             {workers.filter(w => w.batch_no == selectedBatch).map(w => (
-                                <div key={w.id} onClick={() => { setWForm(w); setView('edit'); }} class="bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm border border-slate-100 cursor-pointer">
+                                <div key={w.id} onClick={() => { setWForm(w); setView('edit'); }} class="bg-white p-4 rounded-3xl flex items-center justify-between shadow-sm border border-slate-100 cursor-pointer">
                                     <div class="flex items-center gap-4">
-                                        <img src={w.photo_url || 'https://via.placeholder.com/150'} class="w-14 h-14 rounded-xl object-cover" />
-                                        <div><p class="font-black text-lg">{w.name}</p><p class="text-[10px] text-slate-400 font-bold uppercase">{w.province}</p></div>
+                                        <img src={w.photo_url || 'https://via.placeholder.com/150'} class="w-16 h-16 rounded-2xl object-cover bg-slate-50" />
+                                        <div>
+                                            <p class="font-black text-lg text-slate-800">{w.name}</p>
+                                            <p class="text-[10px] text-slate-400 font-bold uppercase">{w.village}, {w.district}, {w.province}</p>
+                                        </div>
                                     </div>
-                                    <div class="flex gap-2">
-                                        {w.is_couple && <span class="bg-rose-500 text-white text-[8px] font-black px-2 py-1 rounded">COUPLE</span>}
-                                        {w.is_reentry && <span class="bg-blue-500 text-white text-[8px] font-black px-2 py-1 rounded">RE-ENTRY</span>}
+                                    <div class="text-right">
+                                        <p class="text-[10px] font-black text-emerald-600 uppercase">{w.gender} / Age {w.age}</p>
+                                        <p class="text-[9px] font-bold text-slate-300 italic">WhatsApp: {w.whatsapp}</p>
                                     </div>
                                 </div>
                             ))}
@@ -107,56 +109,86 @@
 
                     {view === 'edit' && (
                         <div class="modal-full">
-                            <div class="max-w-2xl mx-auto">
-                                <div class="flex justify-between items-center mb-8"><button onClick={() => setView('list')} class="text-slate-400 font-black text-xs">CANCEL</button><h2 class="font-black italic">WORKER DATA</h2></div>
-                                <form onSubmit={handleSubmit} class="space-y-4 pb-20">
-                                    <div class="section-title">Face Photo</div>
-                                    <div class="flex items-center gap-6 bg-slate-50 p-6 rounded-[2rem]">
-                                        <img src={wForm.photo_url || 'https://via.placeholder.com/150'} class="w-24 h-24 rounded-2xl object-cover shadow-lg" />
-                                        <input type="file" onChange={(e) => handleFileUpload(e, 'photo_url')} class="text-xs" />
-                                    </div>
-
-                                    <div class="section-title">Personal Information</div>
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div><label class="label-cap">Name</label><input type="text" class="form-input" value={wForm.name} onChange={e => setWForm({...wForm, name: e.target.value})} required /></div>
-                                        <div class="grid grid-cols-2 gap-4">
-                                            <div><label class="label-cap">Batch</label><select class="form-select" value={wForm.batch_no} onChange={e => setWForm({...wForm, batch_no: Number(e.target.value)})}>{[1,2,3].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
-                                            <div><label class="label-cap">Gender</label><select class="form-select" value={wForm.gender} onChange={e => setWForm({...wForm, gender: e.target.value})}><option>Male</option><option>Female</option></select></div>
+                            <div class="max-w-2xl mx-auto pb-32">
+                                <div class="flex justify-between items-center mb-8">
+                                    <button onClick={() => setView('list')} class="text-slate-400 font-black text-xs uppercase">Cancel</button>
+                                    <h2 class="font-black italic text-slate-800 tracking-tight">WORKER REGISTRATION FORM</h2>
+                                </div>
+                                
+                                <form onSubmit={handleSubmit}>
+                                    <div class="section-title">Photo & Batch</div>
+                                    <div class="flex items-center gap-6 bg-slate-50 p-6 rounded-[2rem] mb-6">
+                                        <img src={wForm.photo_url || 'https://via.placeholder.com/150'} class="w-32 h-32 rounded-3xl object-cover bg-white shadow-xl" />
+                                        <div class="flex-1">
+                                            <label class="label-cap">Face Photo Upload</label>
+                                            <input type="file" onChange={handleFileUpload} class="text-xs mb-4" />
+                                            <label class="label-cap">Assign Batch</label>
+                                            <select class="form-select" value={wForm.batch_no} onChange={e => setWForm({...wForm, batch_no: Number(e.target.value)})}>{[1,2,3].map(n=><option key={n} value={n}>Batch {n}</option>)}</select>
                                         </div>
                                     </div>
 
-                                    <div class="section-title">Body & Health</div>
-                                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                    <div class="section-title">Personal Data</div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div><label class="label-cap">Gender</label><select class="form-select" value={wForm.gender} onChange={e => setWForm({...wForm, gender: e.target.value})}><option>Male</option><option>Female</option></select></div>
+                                        <div><label class="label-cap">First and Last Name</label><input type="text" class="form-input" value={wForm.name} onChange={e => setWForm({...wForm, name: e.target.value})} required /></div>
+                                        <div><label class="label-cap">Date of Birth</label><input type="date" class="form-input" value={wForm.birthday} onChange={e => setWForm({...wForm, birthday: e.target.value})} /></div>
                                         <div><label class="label-cap">Age</label><input type="number" class="form-input" value={wForm.age} onChange={e => setWForm({...wForm, age: e.target.value})} /></div>
-                                        <div><label class="label-cap">Height</label><input type="number" class="form-input" value={wForm.height} onChange={e => setWForm({...wForm, height: e.target.value})} /></div>
-                                        <div><label class="label-cap">Weight</label><input type="number" class="form-input" value={wForm.weight} onChange={e => setWForm({...wForm, weight: e.target.value})} /></div>
-                                        <div><label class="label-cap">Eye(L)</label><input type="text" class="form-input" value={wForm.eyesight_left} onChange={e => setWForm({...wForm, eyesight_left: e.target.value})} /></div>
-                                        <div><label class="label-cap">Eye(R)</label><input type="text" class="form-input" value={wForm.eyesight_right} onChange={e => setWForm({...wForm, eyesight_right: e.target.value})} /></div>
                                     </div>
 
-                                    <div class="section-title">History</div>
-                                    <div class="flex gap-4 p-4 bg-slate-50 rounded-xl">
-                                        <label class="flex items-center gap-2 font-black text-xs uppercase"><input type="checkbox" checked={wForm.is_couple} onChange={e => setWForm({...wForm, is_couple: e.target.checked})} /> Couple</label>
-                                        <label class="flex items-center gap-2 font-black text-xs uppercase"><input type="checkbox" checked={wForm.is_reentry} onChange={e => setWForm({...wForm, is_reentry: e.target.checked})} /> Re-entry</label>
+                                    <div class="section-title">Address & Origin</div>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div><label class="label-cap">Village</label><input type="text" class="form-input" value={wForm.village} onChange={e => setWForm({...wForm, village: e.target.value})} /></div>
+                                        <div><label class="label-cap">District</label><input type="text" class="form-input" value={wForm.district} onChange={e => setWForm({...wForm, district: e.target.value})} /></div>
+                                        <div><label class="label-cap">Province</label><input type="text" class="form-input" value={wForm.province} onChange={e => setWForm({...wForm, province: e.target.value})} /></div>
                                     </div>
-                                    {wForm.is_couple && <input type="text" class="form-input" placeholder="Spouse Name" value={wForm.spouse_name} onChange={e => setWForm({...wForm, spouse_name: e.target.value})} />}
-                                    {wForm.is_reentry && <div class="grid grid-cols-2 gap-3"><input type="text" class="form-input" placeholder="Prev Company" value={wForm.reentry_company} onChange={e => setWForm({...wForm, reentry_company: e.target.value})} /><input type="text" class="form-input" placeholder="Period" value={wForm.reentry_period} onChange={e => setWForm({...wForm, reentry_period: e.target.value})} /></div>}
+                                    <div class="grid grid-cols-1 gap-4 mt-4">
+                                        <div><label class="label-cap">Place of Birth</label><input type="text" class="form-input" value={wForm.place_of_birth} onChange={e => setWForm({...wForm, place_of_birth: e.target.value})} /></div>
+                                        <div><label class="label-cap">Current Address</label><input type="text" class="form-input" value={wForm.current_address} onChange={e => setWForm({...wForm, current_address: e.target.value})} /></div>
+                                    </div>
 
-                                    <div class="section-title">Documents (Passport/ID)</div>
+                                    <div class="section-title">Education & Language & Occupation</div>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div><label class="label-cap">Education</label><input type="text" class="form-input" value={wForm.education} onChange={e => setWForm({...wForm, education: e.target.value})} /></div>
+                                        <div><label class="label-cap">Foreign Language</label><input type="text" class="form-input" value={wForm.foreign_language} onChange={e => setWForm({...wForm, foreign_language: e.target.value})} /></div>
+                                        <div><label class="label-cap">Occupation</label><input type="text" class="form-input" value={wForm.occupation} onChange={e => setWForm({...wForm, occupation: e.target.value})} /></div>
+                                    </div>
+
+                                    <div class="section-title">Family & Background</div>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div class="bg-slate-50 p-4 rounded-xl">
-                                            <label class="label-cap">ID Card Number</label>
-                                            <input type="text" class="form-input mb-2" value={wForm.id_number} onChange={e => setWForm({...wForm, id_number: e.target.value})} />
-                                            <input type="file" onChange={(e) => handleFileUpload(e, 'id_photo_url')} class="text-[10px]" />
-                                        </div>
-                                        <div class="bg-slate-50 p-4 rounded-xl">
-                                            <label class="label-cap">Passport Number</label>
-                                            <input type="text" class="form-input mb-2" value={wForm.passport_number} onChange={e => setWForm({...wForm, passport_number: e.target.value})} />
-                                            <input type="file" onChange={(e) => handleFileUpload(e, 'passport_photo_url')} class="text-[10px]" />
-                                        </div>
+                                        <div><label class="label-cap">Lives with</label><input type="text" class="form-input" value={wForm.lives_with} onChange={e => setWForm({...wForm, lives_with: e.target.value})} /></div>
+                                        <div><label class="label-cap">Children</label><input type="text" class="form-input" value={wForm.children} onChange={e => setWForm({...wForm, children: e.target.value})} /></div>
+                                        <div><label class="label-cap">Have you ever worked abroad?</label><input type="text" class="form-input" value={wForm.worked_abroad} onChange={e => setWForm({...wForm, worked_abroad: e.target.value})} /></div>
+                                        <div><label class="label-cap">Work Experience</label><input type="text" class="form-input" value={wForm.work_experience} onChange={e => setWForm({...wForm, work_experience: e.target.value})} /></div>
                                     </div>
 
-                                    <button type="submit" class="w-full bg-emerald-500 text-white py-5 rounded-[2rem] font-black shadow-xl mt-8">SAVE TO SYSTEM</button>
+                                    <div class="section-title">Documents & Security</div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div><label class="label-cap">Guarantor</label><input type="text" class="form-input" value={wForm.guarantor} onChange={e => setWForm({...wForm, guarantor: e.target.value})} /></div>
+                                        <div><label class="label-cap">Census Dependent</label><input type="text" class="form-input" value={wForm.census_dependent} onChange={e => setWForm({...wForm, census_dependent: e.target.value})} /></div>
+                                        <div><label class="label-cap">Identity Card</label><input type="text" class="form-input" value={wForm.id_number} onChange={e => setWForm({...wForm, id_number: e.target.value})} /></div>
+                                        <div><label class="label-cap">Passport</label><input type="text" class="form-input" value={wForm.passport_number} onChange={e => setWForm({...wForm, passport_number: e.target.value})} /></div>
+                                    </div>
+
+                                    <div class="section-title">Physical & Health</div>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div><label class="label-cap">Weight (kg)</label><input type="number" class="form-input" value={wForm.weight} onChange={e => setWForm({...wForm, weight: e.target.value})} /></div>
+                                        <div><label class="label-cap">Height (cm)</label><input type="number" class="form-input" value={wForm.height} onChange={e => setWForm({...wForm, height: e.target.value})} /></div>
+                                        <div><label class="label-cap">Arm Strength</label><input type="text" class="form-input" value={wForm.arm_strength} onChange={e => setWForm({...wForm, arm_strength: e.target.value})} /></div>
+                                        <div><label class="label-cap">Eyesight</label><input type="text" class="form-input" value={wForm.eyesight} onChange={e => setWForm({...wForm, eyesight: e.target.value})} /></div>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                                        <div><label class="label-cap">Identified Diseases</label><input type="text" class="form-input" value={wForm.diseases} onChange={e => setWForm({...wForm, diseases: e.target.value})} /></div>
+                                        <div><label class="label-cap">Allergies</label><input type="text" class="form-input" value={wForm.allergies} onChange={e => setWForm({...wForm, allergies: e.target.value})} /></div>
+                                        <div><label class="label-cap">Tattoos</label><input type="text" class="form-input" value={wForm.tattoos} onChange={e => setWForm({...wForm, tattoos: e.target.value})} /></div>
+                                    </div>
+
+                                    <div class="section-title">Contact Information</div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div><label class="label-cap">WhatsApp</label><input type="text" class="form-input" value={wForm.whatsapp} onChange={e => setWForm({...wForm, whatsapp: e.target.value})} /></div>
+                                        <div><label class="label-cap">Contact Number</label><input type="text" class="form-input" value={wForm.contact_number} onChange={e => setWForm({...wForm, contact_number: e.target.value})} /></div>
+                                    </div>
+
+                                    <button type="submit" class="w-full bg-emerald-600 text-white py-6 rounded-[2rem] font-black text-xl shadow-2xl mt-12 mb-20 active:scale-95 transition-all">SAVE COMPLETE PROFILE</button>
                                 </form>
                             </div>
                         </div>
