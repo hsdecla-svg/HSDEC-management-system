@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Worker Master | HSDEC</title>
+    <title>Worker Full DB | HSDEC</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -11,11 +11,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
-        .form-input, .form-select { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 700; outline: none; background: white; }
-        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; }
-        .section-title { font-size: 11px; font-weight: 900; color: #64748b; background: #f1f5f9; padding: 10px 16px; border-radius: 8px; margin: 24px 0 12px 0; text-transform: uppercase; }
-        .modal-full { position: fixed; inset: 0; background: #ffffff; z-index: 1000; overflow-y: auto; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #1e293b; }
+        .form-input, .form-select { border: 2px solid #e2e8f0; padding: 10px; border-radius: 10px; width: 100%; font-weight: 700; background: white; }
+        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; display: block; }
+        .section-title { font-size: 11px; font-weight: 900; color: #64748b; background: #f1f5f9; padding: 8px 12px; border-radius: 6px; margin-top: 20px; margin-bottom: 10px; text-transform: uppercase; border-left: 4px solid #10b981; }
+        .modal-full { position: fixed; inset: 0; background: #ffffff; z-index: 1000; overflow-y: auto; padding: 20px; }
     </style>
 </head>
 <body>
@@ -32,13 +32,14 @@
             const [selectedBatch, setSelectedBatch] = useState(null);
             const [isUploading, setIsUploading] = useState(false);
 
+            // 【重要】ここが以前の全項目です。ここに無いと表示されません。
             const initialForm = {
                 name: '', batch_no: 1, gender: 'Male', age: '', photo_url: '',
                 village: '', city: '', province: '',
-                has_id: 'Have', id_number: '', id_photo: '',
-                has_passport: 'Have', passport_number: '', passport_photo: '',
-                weight: '', height: '', arm_strength: '', eyesight: '',
-                is_couple: false, spouse_name: '', is_reentry: false, last_return_date: '',
+                has_id: 'Have', id_number: '', id_photo_url: '',
+                has_passport: 'Have', passport_number: '', passport_photo_url: '',
+                weight: '', height: '', arm_strength: '', eyesight_left: '', eyesight_right: '',
+                is_couple: false, spouse_name: '', is_reentry: false, reentry_company: '', reentry_period: '',
                 education: '', phone: '', emergency_contact: '', note: ''
             };
             const [wForm, setWForm] = useState(initialForm);
@@ -72,35 +73,32 @@
 
             return (
                 <div class="max-w-4xl mx-auto p-4 pb-20">
-                    <header class="flex justify-between items-center py-8">
-                        <h1 class="text-3xl font-black italic tracking-tighter">WORKER LIST</h1>
-                        <button onClick={() => { setWForm(initialForm); setView('edit'); }} class="bg-black text-white px-8 py-3 rounded-2xl font-black text-xs">+ ADD WORKER</button>
+                    <header class="flex justify-between items-center py-6 border-b mb-6">
+                        <h1 class="text-2xl font-black italic tracking-tighter">WORKER MASTER</h1>
+                        <button onClick={() => { setWForm(initialForm); setView('edit'); }} class="bg-black text-white px-6 py-2 rounded-xl font-black text-xs">+ NEW</button>
                     </header>
 
                     {selectedBatch === null ? (
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {[1, 2, 3].map(bn => (
-                                <div key={bn} onClick={() => setSelectedBatch(bn)} class="bg-white p-12 rounded-[2.5rem] shadow-sm border border-slate-100 cursor-pointer hover:border-emerald-500 transition-all">
-                                    <p class="text-6xl font-black italic text-slate-800">B-{bn}</p>
-                                    <p class="text-emerald-500 font-black mt-4 uppercase tracking-widest text-[10px]">{workers.filter(w => w.batch_no === bn).length} REGISTERED</p>
+                                <div key={bn} onClick={() => setSelectedBatch(bn)} class="bg-white p-10 rounded-[2rem] shadow-sm border border-slate-100 cursor-pointer hover:shadow-lg transition-all text-center">
+                                    <p class="text-5xl font-black italic text-slate-800">B-{bn}</p>
+                                    <p class="text-emerald-500 font-black mt-2 text-[10px] uppercase">{workers.filter(w => w.batch_no === bn).length} REGISTERED</p>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div class="space-y-3">
-                            <button onClick={() => setSelectedBatch(null)} class="text-[10px] font-black text-slate-400 mb-6 uppercase">← Back to Batches</button>
+                        <div class="space-y-2">
+                            <button onClick={() => setSelectedBatch(null)} class="text-[10px] font-black text-slate-300 mb-4 uppercase">← BATCH LIST</button>
                             {workers.filter(w => w.batch_no == selectedBatch).map(w => (
-                                <div key={w.id} onClick={() => { setWForm(w); setView('edit'); }} class="bg-white p-4 rounded-3xl flex items-center justify-between shadow-sm border border-slate-100 cursor-pointer">
-                                    <div class="flex items-center gap-5">
-                                        <img src={w.photo_url || 'https://via.placeholder.com/150'} class="w-16 h-16 rounded-2xl object-cover bg-slate-50" />
-                                        <div>
-                                            <p class="font-black text-xl text-slate-800">{w.name}</p>
-                                            <p class="text-[10px] text-slate-400 font-bold uppercase">{w.province} · Age {w.age}</p>
-                                        </div>
+                                <div key={w.id} onClick={() => { setWForm(w); setView('edit'); }} class="bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm border border-slate-100 cursor-pointer">
+                                    <div class="flex items-center gap-4">
+                                        <img src={w.photo_url || 'https://via.placeholder.com/150'} class="w-14 h-14 rounded-xl object-cover" />
+                                        <div><p class="font-black text-lg">{w.name}</p><p class="text-[10px] text-slate-400 font-bold uppercase">{w.province}</p></div>
                                     </div>
                                     <div class="flex gap-2">
                                         {w.is_couple && <span class="bg-rose-500 text-white text-[8px] font-black px-2 py-1 rounded">COUPLE</span>}
-                                        {w.is_reentry && <span class="bg-emerald-500 text-white text-[8px] font-black px-2 py-1 rounded">RE-ENTRY</span>}
+                                        {w.is_reentry && <span class="bg-blue-500 text-white text-[8px] font-black px-2 py-1 rounded">RE-ENTRY</span>}
                                     </div>
                                 </div>
                             ))}
@@ -108,17 +106,17 @@
                     )}
 
                     {view === 'edit' && (
-                        <div class="modal-full p-6">
-                            <div class="max-w-2xl mx-auto pb-32">
-                                <button onClick={() => setView('list')} class="text-slate-400 font-black text-xs mb-10 uppercase">Cancel</button>
-                                <form onSubmit={handleSubmit} class="space-y-4">
+                        <div class="modal-full">
+                            <div class="max-w-2xl mx-auto">
+                                <div class="flex justify-between items-center mb-8"><button onClick={() => setView('list')} class="text-slate-400 font-black text-xs">CANCEL</button><h2 class="font-black italic">WORKER DATA</h2></div>
+                                <form onSubmit={handleSubmit} class="space-y-4 pb-20">
                                     <div class="section-title">Face Photo</div>
                                     <div class="flex items-center gap-6 bg-slate-50 p-6 rounded-[2rem]">
-                                        <img src={wForm.photo_url || 'https://via.placeholder.com/150'} class="w-32 h-32 rounded-3xl object-cover bg-white shadow-xl" />
-                                        <input type="file" onChange={(e) => handleFileUpload(e, 'photo_url')} class="text-xs font-black" />
+                                        <img src={wForm.photo_url || 'https://via.placeholder.com/150'} class="w-24 h-24 rounded-2xl object-cover shadow-lg" />
+                                        <input type="file" onChange={(e) => handleFileUpload(e, 'photo_url')} class="text-xs" />
                                     </div>
 
-                                    <div class="section-title">Personal Data</div>
+                                    <div class="section-title">Personal Information</div>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div><label class="label-cap">Name</label><input type="text" class="form-input" value={wForm.name} onChange={e => setWForm({...wForm, name: e.target.value})} required /></div>
                                         <div class="grid grid-cols-2 gap-4">
@@ -127,33 +125,38 @@
                                         </div>
                                     </div>
 
-                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div class="section-title">Body & Health</div>
+                                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
                                         <div><label class="label-cap">Age</label><input type="number" class="form-input" value={wForm.age} onChange={e => setWForm({...wForm, age: e.target.value})} /></div>
                                         <div><label class="label-cap">Height</label><input type="number" class="form-input" value={wForm.height} onChange={e => setWForm({...wForm, height: e.target.value})} /></div>
                                         <div><label class="label-cap">Weight</label><input type="number" class="form-input" value={wForm.weight} onChange={e => setWForm({...wForm, weight: e.target.value})} /></div>
-                                        <div><label class="label-cap">Eyesight</label><input type="text" class="form-input" value={wForm.eyesight} onChange={e => setWForm({...wForm, eyesight: e.target.value})} /></div>
+                                        <div><label class="label-cap">Eye(L)</label><input type="text" class="form-input" value={wForm.eyesight_left} onChange={e => setWForm({...wForm, eyesight_left: e.target.value})} /></div>
+                                        <div><label class="label-cap">Eye(R)</label><input type="text" class="form-input" value={wForm.eyesight_right} onChange={e => setWForm({...wForm, eyesight_right: e.target.value})} /></div>
                                     </div>
 
-                                    <div class="section-title">Background</div>
-                                    <div class="flex gap-4 p-4 bg-slate-50 rounded-2xl">
+                                    <div class="section-title">History</div>
+                                    <div class="flex gap-4 p-4 bg-slate-50 rounded-xl">
                                         <label class="flex items-center gap-2 font-black text-xs uppercase"><input type="checkbox" checked={wForm.is_couple} onChange={e => setWForm({...wForm, is_couple: e.target.checked})} /> Couple</label>
                                         <label class="flex items-center gap-2 font-black text-xs uppercase"><input type="checkbox" checked={wForm.is_reentry} onChange={e => setWForm({...wForm, is_reentry: e.target.checked})} /> Re-entry</label>
                                     </div>
                                     {wForm.is_couple && <input type="text" class="form-input" placeholder="Spouse Name" value={wForm.spouse_name} onChange={e => setWForm({...wForm, spouse_name: e.target.value})} />}
+                                    {wForm.is_reentry && <div class="grid grid-cols-2 gap-3"><input type="text" class="form-input" placeholder="Prev Company" value={wForm.reentry_company} onChange={e => setWForm({...wForm, reentry_company: e.target.value})} /><input type="text" class="form-input" placeholder="Period" value={wForm.reentry_period} onChange={e => setWForm({...wForm, reentry_period: e.target.value})} /></div>}
 
-                                    <div class="section-title">Documents</div>
+                                    <div class="section-title">Documents (Passport/ID)</div>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div class="bg-slate-50 p-4 rounded-2xl">
+                                        <div class="bg-slate-50 p-4 rounded-xl">
                                             <label class="label-cap">ID Card Number</label>
-                                            <input type="text" class="form-input" value={wForm.id_number} onChange={e => setWForm({...wForm, id_number: e.target.value})} />
+                                            <input type="text" class="form-input mb-2" value={wForm.id_number} onChange={e => setWForm({...wForm, id_number: e.target.value})} />
+                                            <input type="file" onChange={(e) => handleFileUpload(e, 'id_photo_url')} class="text-[10px]" />
                                         </div>
-                                        <div class="bg-slate-50 p-4 rounded-2xl">
+                                        <div class="bg-slate-50 p-4 rounded-xl">
                                             <label class="label-cap">Passport Number</label>
-                                            <input type="text" class="form-input" value={wForm.passport_number} onChange={e => setWForm({...wForm, passport_number: e.target.value})} />
+                                            <input type="text" class="form-input mb-2" value={wForm.passport_number} onChange={e => setWForm({...wForm, passport_number: e.target.value})} />
+                                            <input type="file" onChange={(e) => handleFileUpload(e, 'passport_photo_url')} class="text-[10px]" />
                                         </div>
                                     </div>
 
-                                    <button type="submit" class="w-full bg-emerald-500 text-white py-6 rounded-3xl font-black text-xl shadow-2xl mt-10" disabled={isUploading}>SAVE COMPLETE DATA</button>
+                                    <button type="submit" class="w-full bg-emerald-500 text-white py-5 rounded-[2rem] font-black shadow-xl mt-8">SAVE TO SYSTEM</button>
                                 </form>
                             </div>
                         </div>
