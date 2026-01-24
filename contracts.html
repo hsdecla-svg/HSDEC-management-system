@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Contract Management | HSDEC</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #fdf2f2; color: #1e293b; }
+        .form-input, .form-select { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; outline: none; background: white; }
+        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; }
+        .status-badge { font-size: 10px; font-weight: 900; padding: 4px 10px; border-radius: 99px; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const CONTRACT_TYPES = ["Employment", "Training", "Guarantee", "Insurance", "Other"];
+        const STATUSES = ["Draft", "Waiting for Signature", "Signed", "Completed"];
+
+        function ContractApp() {
+            const [view, setView] = useState('list');
+            const [contracts, setContracts] = useState([]);
+            const [isUploading, setIsUploading] = useState(false);
+            
+            const initialForm = { worker_name: '', contract_type: CONTRACT_TYPES[0], status: STATUSES[0], signed_date: '', file_url: '' };
+            const [cForm, setCForm] = useState(initialForm);
+
+            useEffect(() => { fetchContracts(); }, []);
+
+            async function fetchContracts() {
+                const { data } = await supabase.from('contracts').select('*').order('created_at', { ascending: false });
+                if (data) setContracts(data);
+            }
+
+            const handleFileUpload = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setIsUploading(true);
+                const cleanName = `${Date.now()}_doc_${file.name.replace(/[^a-z0-9.]/gi, '_')}`;
+                const { error } = await supabase.storage.from('workers').upload(cleanName, file);
+                if (!error) {
+                    const { data: urlData } = supabase.storage.from('workers').getPublicUrl(cleanName);
+                    setCForm(prev => ({ ...prev, file_url: urlData.publicUrl }));
+                }
+                setIsUploading(false);
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const { error } = await supabase.from('contracts').upsert([cForm]);
+                if (error) alert(error.message);
+                else { setView('list'); fetchContracts(); }
+            };
+
+            return (
+                <div class="max-w-3xl mx-auto p-4 pb-24">
+                    <header class="flex justify-between items-center mb-8 py-6">
+                        <div>
+                            <h1 class="text-3xl font-black italic text-rose-600 tracking-tighter">CONTRACTS</h1>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Document Management</p>
+                        </div>
+                        <button onClick={() => { setCForm(initialForm); setView('edit'); }} class="bg-rose-600 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-rose-200">+ ADD DOC</button>
+                    </header>
+
+                    {view === 'list' ? (
+                        <div class="space-y-3">
+                            {contracts.map(c => (
+                                <div key={c.id} class="bg-white p-5 rounded-2xl flex items-center justify-between shadow-sm border border-rose-100 transition-all hover:border-rose-300">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-12 h-12 bg-rose-50 rounded-xl flex items-center justify-center text-rose-500">
+                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        </div>
+                                        <div>
+                                            <p class="font-black text-slate-800">{c.worker_name}</p>
+                                            <p class="text-[10px] font-bold text-slate-400 uppercase">{c.contract_type} · {c.signed_date || 'No date'}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <span class={`status-badge ${c.status === 'Completed' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>{c.status}</span>
+                                        {c.file_url && <a href={c.file_url} target="_blank" class="p-2 bg-slate-100 rounded-lg text-slate-500 hover:bg-slate-200"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div class="fixed inset-0 bg-white z-[100] p-6 overflow-y-auto">
+                            <div class="max-w-xl mx-auto pb-20">
+                                <button onClick={() => setView('list')} class="text-slate-400 font-black text-xs uppercase mb-8">← Cancel</button>
+                                <form onSubmit={handleSubmit} class="space-y-5">
+                                    <div><label class="label-cap">Worker Full Name</label><input type="text" class="form-input" placeholder="Enter worker name" value={cForm.worker_name} onChange={e => setCForm({...cForm, worker_name: e.target.value})} required /></div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div><label class="label-cap">Contract Type</label><select class="form-select" value={cForm.contract_type} onChange={e => setCForm({...cForm, contract_type: e.target.value})}>{CONTRACT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                                        <div><label class="label-cap">Status</label><select class="form-select" value={cForm.status} onChange={e => setCForm({...cForm, status: e.target.value})}>{STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                                    </div>
+                                    <div><label class="label-cap">Signed Date</label><input type="date" class="form-input" value={cForm.signed_date} onChange={e => setCForm({...cForm, signed_date: e.target.value})} /></div>
+                                    <div>
+                                        <label class="label-cap">Upload Signed Document (Photo/PDF)</label>
+                                        <div class="flex items-center gap-4 bg-slate-50 p-6 rounded-2xl border-2 border-dashed border-rose-200">
+                                            <input type="file" onChange={handleFileUpload} class="text-xs" />
+                                            {cForm.file_url && <span class="text-emerald-500 font-bold text-xs">✓ Loaded</span>}
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="w-full bg-rose-600 text-white py-5 rounded-2xl font-black uppercase shadow-xl disabled:opacity-50" disabled={isUploading}>
+                                        {isUploading ? 'Uploading Document...' : 'Save Contract Record'}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ContractApp />);
+    </script>
+</body>
+</html>
