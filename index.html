@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Portal</title>
+    <title>HSDEC Login Portal</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; overflow: hidden; }
-        .user-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s; cursor: pointer; }
-        .user-card:hover { background: #3b82f6; transform: translateY(-5px); border-color: #60a5fa; }
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; }
     </style>
 </head>
 <body>
@@ -20,42 +18,74 @@
     <script type="text/babel">
         const { useState } = React;
 
-        const USERS = [
-            { id: 1, name: "TAKASHI", role: "admin", emoji: "⚡️" },
-            { id: 2, name: "CHANSOUK", role: "staff", emoji: "⭐" },
-            { id: 3, name: "SOUKSAMONE", role: "staff", emoji: "🔹" },
-            { id: 4, name: "GUEST_VV", role: "vv", emoji: "📍" }
+        const USER_DB = [
+            { name: "Takashi", pw: "Tks83446423", role: "admin" },
+            { name: "Chansouk", pw: "97372185", role: "staff" },
+            { name: "Mim", pw: "78277996", role: "staff" },
+            { name: "Chanthaviphone", pw: "96086112", role: "vv" },
+            { name: "Sengmala", pw: "22886998", role: "sv" },
+            { name: "Guest", pw: "HSDEC2025", role: "guest" }
         ];
 
-        function Portal() {
-            const handleLogin = (user) => {
-                // ここでログイン情報を保存し、worker.htmlへ繋ぐ
-                localStorage.setItem('hsdec_user', JSON.stringify(user));
-                alert(`Welcome, ${user.name}!`);
-                window.location.href = 'worker.html'; 
+        function Login() {
+            const [selectedUser, setSelectedUser] = useState("");
+            const [inputPw, setInputPw] = useState("");
+
+            const handleLogin = () => {
+                const user = USER_DB.find(u => u.name === selectedUser && u.pw === inputPw);
+                if (user) {
+                    localStorage.setItem('hsdec_user', JSON.stringify({
+                        name: user.name,
+                        role: user.role
+                    }));
+                    window.location.href = 'worker.html';
+                } else {
+                    alert("Incorrect Password!");
+                }
             };
 
             return (
-                <div className="h-screen flex flex-col items-center justify-center p-6 text-center">
-                    <h1 className="text-5xl font-black italic tracking-tighter mb-2">HSDEC SYSTEM</h1>
-                    <p className="text-blue-400 font-bold text-xs tracking-[0.3em] mb-12 uppercase">Select your identity to enter</p>
-                    
-                    <div className="grid grid-cols-2 gap-4 w-full max-w-md">
-                        {USERS.map(u => (
-                            <div key={u.id} onClick={() => handleLogin(u)} className="user-card p-6 rounded-3xl">
-                                <div className="text-3xl mb-2">{u.emoji}</div>
-                                <div className="font-black text-sm uppercase">{u.name}</div>
-                                <div className="text-[10px] opacity-50 font-bold uppercase">{u.role}</div>
+                <div className="h-screen flex items-center justify-center p-6">
+                    <div className="w-full max-w-sm bg-white/10 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-xl">
+                        <h1 className="text-3xl font-black italic mb-8 text-center uppercase tracking-tighter">HSDEC Access</h1>
+                        
+                        <div className="space-y-6">
+                            <div>
+                                <label className="text-[10px] font-black uppercase text-blue-400 ml-1">Select User</label>
+                                <select 
+                                    className="w-full bg-slate-800 p-4 rounded-2xl outline-none border border-slate-700 font-bold"
+                                    value={selectedUser}
+                                    onChange={(e) => setSelectedUser(e.target.value)}
+                                >
+                                    <option value="">-- Choose Name --</option>
+                                    {USER_DB.map(u => <option key={u.name} value={u.name}>{u.name} ({u.role.toUpperCase()})</option>)}
+                                </select>
                             </div>
-                        ))}
+
+                            <div>
+                                <label className="text-[10px] font-black uppercase text-blue-400 ml-1">Password</label>
+                                <input 
+                                    type="password" 
+                                    className="w-full bg-slate-800 p-4 rounded-2xl outline-none border border-slate-700 font-bold"
+                                    placeholder="••••••••"
+                                    value={inputPw}
+                                    onChange={(e) => setInputPw(e.target.value)}
+                                />
+                            </div>
+
+                            <button 
+                                onClick={handleLogin}
+                                className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all"
+                            >
+                                Enter System
+                            </button>
+                        </div>
                     </div>
-                    
-                    <button onClick={() => { localStorage.clear(); location.reload(); }} className="mt-12 text-[10px] font-bold opacity-30 hover:opacity-100 uppercase tracking-widest">Clear Session</button>
                 </div>
             );
         }
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<Portal />);
+        root.render(<Login />);
     </script>
 </body>
 </html>
