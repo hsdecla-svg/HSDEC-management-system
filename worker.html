@@ -78,14 +78,41 @@
             const handleSubmit = async (e) => {
                 e.preventDefault();
 
-                // 【修正ポイント】数字項目が空（""）の場合、null または 0 に変換してエラーを防ぐ
-                const cleanForm = {
-                    ...wForm,
-                    age: wForm.age === "" ? null : Number(wForm.age),
-                    weight: wForm.weight === "" ? null : Number(wForm.weight),
-                    height: wForm.height === "" ? null : Number(wForm.height),
-                    batch_no: Number(wForm.batch_no) || 1
-                };
+                // すべての項目をチェックし、空文字("")を安全な形に変換する
+                const payload = { ...wForm };
+
+                // 1. 数字であるべき項目を強制変換（空なら null）
+                const numericFields = ['age', 'weight', 'height', 'batch_no'];
+                numericFields.forEach(field => {
+                    payload[field] = (payload[field] === "" || payload[field] === null) 
+                                     ? null 
+                                     : Number(payload[field]);
+                });
+
+                // 2. チェックボックス項目（もしDB側が数字型でもエラーにならないよう 0 か 1 に変換）
+                const booleanFields = [
+                    'is_couple', 'is_reentry', 'id_card', 'census', 'cert_address', 
+                    'mobile_phone', 'land_title', 'pic_3x4', 'pic_35x46', 
+                    'penalty_notice', 'agri_cert', 'health_cert', 'dollar_book'
+                ];
+                booleanFields.forEach(field => {
+                    // DBがBoolean型なら true/false、Integer型なら 1/0 として送る
+                    payload[field] = payload[field] ? 1 : 0; 
+                });
+
+                console.log("Sending payload:", payload); // デバッグ用
+
+                const { error } = await supabase.from('workers').upsert([payload]);
+                
+                if (error) {
+                    console.error("Supabase Error Details:", error);
+                    alert("保存エラー: " + error.message + "\n詳細: " + error.details);
+                } else {
+                    alert("Saved successfully! / 保存完了しました");
+                    setView('list');
+                    fetchWorkers();
+                }
+            };
 
                 const { error } = await supabase.from('workers').upsert([cleanForm]);
                 
