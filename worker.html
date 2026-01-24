@@ -78,17 +78,16 @@
                 e.preventDefault();
                 const payload = { ...wForm };
 
-                // 1. int4 (整数型) のエラー対策
-                ['age', 'weight', 'height', 'batch_no'].forEach(f => {
+                // 整数型エラー対策 + batch_no が空なら 1 に強制
+                ['age', 'weight', 'height'].forEach(f => {
                     payload[f] = (payload[f] === "" || payload[f] === null) ? null : parseInt(payload[f], 10);
                 });
+                
+                // バッチ番号が空なら 1 に、そうでなければ数値化
+                payload.batch_no = (payload.batch_no === "" || payload.batch_no === null) ? 1 : parseInt(payload.batch_no, 10);
 
-                // 2. date (日付型) のエラー対策 【重要：ここで解決！】
-                if (payload.birthday === "") {
-                    payload.birthday = null;
-                }
+                if (payload.birthday === "") payload.birthday = null;
 
-                // 3. bool 型の確実な変換
                 const boolFields = Object.keys(DOC_LABELS).concat(['is_couple', 'is_reentry']);
                 boolFields.forEach(f => { payload[f] = Boolean(payload[f]); });
 
@@ -98,9 +97,33 @@
                 } else {
                     alert("Saved Successfully!");
                     setView('list');
-                    fetchWorkers();
+                    fetchWorkers(); // リストを再読み込み
+                    setSelectedBatch(payload.batch_no); // 保存したバッチを自動表示
                 }
             };
+
+            return (
+                <div className="max-w-4xl mx-auto p-4 pb-20">
+                    {/* ... ヘッダー ... */}
+
+                    {selectedBatch === null ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {[1, 2, 3].map(bn => (
+                                <div key={bn} onClick={() => setSelectedBatch(bn)} className="bg-white p-8 rounded-[2rem] shadow-sm cursor-pointer hover:bg-emerald-50 border border-slate-100 text-center">
+                                    <p className="text-4xl font-black italic">B-{bn}</p>
+                                    <p className="text-emerald-500 font-black text-[10px] uppercase">{workers.filter(w => w.batch_no === bn).length} MEMBERS</p>
+                                </div>
+                            ))}
+                            {/* バッチ未設定の人を表示する救済ボタン */}
+                            <div onClick={() => setSelectedBatch("none")} className="bg-slate-200 p-8 rounded-[2rem] shadow-sm cursor-pointer hover:bg-slate-300 text-center">
+                                <p className="text-xl font-black italic text-slate-500">NO BATCH</p>
+                                <p className="text-slate-400 font-black text-[10px] uppercase">{workers.filter(w => !w.batch_no).length} MEMBERS</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <button onClick={() => setSelectedBatch(null)} className="text-[10px] font-black text-slate-400 mb-2 uppercase">← BACK TO BATCH LIST</button>
+                            {workers.filter(w => selectedBatch === "none" ? !w.batch_no : w.batch_no == selectedBatch).map(w => (
 
             return (
                 <div className="max-w-4xl mx-auto p-4 pb-20">
