@@ -12,8 +12,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #f8fafc; }
-        .form-input, .form-select { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; outline: none; }
-        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; }
+        .form-input { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; outline: none; }
     </style>
 </head>
 <body>
@@ -24,84 +23,58 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const STAFFS = ["Mr. Chanthaviphone", "Ms. Sengmala", "Mr. Takashi", "Ms. Chansouk", "Ms. Mim"];
-        const CATEGORIES = ["Transportation", "Utilities", "Salaries", "Welfare", "Other"];
-
         function FinanceApp() {
             const [view, setView] = useState('list');
             const [logs, setLogs] = useState([]);
-            const [monthFilter, setMonthFilter] = useState(new Date().toISOString().slice(0, 7));
-            const initialForm = { date: new Date().toISOString().split('T')[0], item: '', category: CATEGORIES[0], unit_price: 0, quantity: 1, lak_amount: 0, payer: STAFFS[0] };
-            const [fForm, setFForm] = useState(initialForm);
+            const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+            const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], item: '', lak_amount: 0, quantity: 1, unit_price: 0 });
 
-            useEffect(() => { fetchLogs(); }, [monthFilter]);
+            useEffect(() => { fetchLogs(); }, [month]);
 
             async function fetchLogs() {
                 const { data } = await supabase.from('finance_logs').select('*').order('date', { ascending: false });
-                if (data) {
-                    const filtered = data.filter(l => l.date && l.date.startsWith(monthFilter));
-                    setLogs(filtered);
-                }
+                if (data) setLogs(data.filter(l => l.date && l.date.startsWith(month)));
             }
 
-            const handleSubmit = async (e) => {
+            const save = async (e) => {
                 e.preventDefault();
-                const { error } = await supabase.from('finance_logs').upsert([fForm]);
+                const { error } = await supabase.from('finance_logs').upsert([form]);
                 if (error) alert(error.message);
                 else { setView('list'); fetchLogs(); }
             };
 
             return (
-                <div class="max-w-4xl mx-auto p-4 pb-20">
-                    <header class="flex justify-between items-center mb-8 py-4">
-                        <h1 class="text-2xl font-black italic uppercase text-blue-600">Finance Log</h1>
-                        <button onClick={() => { setFForm(initialForm); setView('edit'); }} class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold">+ RECORD</button>
+                <div class="max-w-3xl mx-auto p-4 pb-20">
+                    <header class="flex justify-between items-center py-8">
+                        <h1 class="text-3xl font-black italic tracking-tighter text-blue-600">FINANCE</h1>
+                        <button onClick={() => setView('edit')} class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold">+ RECORD</button>
                     </header>
 
-                    <div class="flex gap-4 mb-6">
-                        <input type="month" class="form-input !w-auto" value={monthFilter} onChange={e => setMonthFilter(e.target.value)} />
-                    </div>
+                    <input type="month" class="form-input !w-auto mb-6" value={month} onChange={e => setMonth(e.target.value)} />
 
-                    <div class="bg-slate-900 p-8 rounded-[2rem] text-white flex justify-between items-center mb-8 shadow-xl">
-                        <p class="text-xs font-black uppercase opacity-60">Total {monthFilter}</p>
-                        <p class="text-3xl font-black font-mono text-emerald-400">₭{logs.reduce((s, l) => s + Number(l.lak_amount || 0), 0).toLocaleString()}</p>
+                    <div class="bg-slate-900 p-10 rounded-[2.5rem] text-white flex justify-between items-center mb-8 shadow-2xl">
+                        <p class="text-[10px] font-black uppercase opacity-40 tracking-[0.2em]">Total Spend</p>
+                        <p class="text-4xl font-black font-mono text-emerald-400">₭{logs.reduce((s, l) => s + Number(l.lak_amount || 0), 0).toLocaleString()}</p>
                     </div>
 
                     <div class="space-y-3">
-                        {logs.map(log => (
-                            <div key={log.id} class="bg-white p-5 rounded-2xl flex justify-between items-center shadow-sm border border-slate-100">
-                                <div>
-                                    <p class="text-[10px] font-black text-slate-400 uppercase">{log.date} · {log.category}</p>
-                                    <p class="font-black text-slate-800">{log.item} <span class="text-slate-400 text-xs">x{log.quantity}</span></p>
-                                </div>
-                                <p class="font-black font-mono text-lg italic text-blue-600">₭{Number(log.lak_amount).toLocaleString()}</p>
+                        {logs.map(l => (
+                            <div key={l.id} class="bg-white p-6 rounded-2xl flex justify-between items-center shadow-sm border border-slate-100">
+                                <div><p class="text-[10px] font-black text-slate-300 uppercase">{l.date}</p><p class="font-black text-slate-800 text-lg">{l.item}</p></div>
+                                <p class="font-black font-mono text-xl text-blue-600 italic">₭{Number(l.lak_amount).toLocaleString()}</p>
                             </div>
                         ))}
                     </div>
 
                     {view === 'edit' && (
-                        <div class="fixed inset-0 bg-white z-[2000] p-6 overflow-y-auto">
-                            <div class="max-w-xl mx-auto pb-24">
-                                <button onClick={() => setView('list')} class="text-slate-400 font-black text-xs uppercase mb-6">← Cancel</button>
-                                <form onSubmit={handleSubmit} class="space-y-4">
-                                    <div><label class="label-cap">Date</label><input type="date" class="form-input" value={fForm.date} onChange={e => setFForm({ ...fForm, date: e.target.value })} /></div>
-                                    <input type="text" class="form-input" placeholder="Item Name" value={fForm.item} onChange={e => setFForm({ ...fForm, item: e.target.value })} required />
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <input type="number" class="form-input" placeholder="Price (LAK)" value={fForm.unit_price} onChange={e => {
-                                            const p = e.target.value;
-                                            setFForm(prev => ({ ...prev, unit_price: p, lak_amount: p * prev.quantity }));
-                                        }} />
-                                        <input type="number" class="form-input" placeholder="Qty" value={fForm.quantity} onChange={e => {
-                                            const q = e.target.value;
-                                            setFForm(prev => ({ ...prev, quantity: q, lak_amount: prev.unit_price * q }));
-                                        }} />
-                                    </div>
-                                    <div class="bg-slate-900 p-6 rounded-2xl text-white text-right shadow-inner">
-                                        <p class="text-xs opacity-50 font-black">TOTAL AMOUNT</p>
-                                        <p class="text-2xl font-mono font-black text-emerald-400">₭{Number(fForm.lak_amount).toLocaleString()}</p>
-                                    </div>
-                                    <div><label class="label-cap">Payer</label><select class="form-select" value={fForm.payer} onChange={e => setFForm({ ...fForm, payer: e.target.value })}>{STAFFS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                                    <button type="submit" class="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase shadow-lg">SAVE RECORD</button>
+                        <div class="fixed inset-0 bg-white z-[100] p-6 overflow-y-auto">
+                            <div class="max-w-md mx-auto">
+                                <button onClick={() => setView('list')} class="text-slate-400 font-black text-xs mb-8">← CANCEL</button>
+                                <form onSubmit={save} class="space-y-4">
+                                    <input type="date" class="form-input" value={form.date} onChange={e => setForm({...form, date:e.target.value})} />
+                                    <input type="text" class="form-input" placeholder="Item Name" value={form.item} onChange={e => setForm({...form, item:e.target.value})} required />
+                                    <input type="number" class="form-input" placeholder="Amount (LAK)" value={form.lak_amount} onChange={e => setForm({...form, lak_amount:e.target.value})} />
+                                    <button type="submit" class="w-full bg-blue-600 text-white py-5 rounded-3xl font-black shadow-xl">SAVE RECORD</button>
                                 </form>
                             </div>
                         </div>
