@@ -1,1 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Worker Management | HSDEC</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+        .form-input, .form-select { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; outline: none; }
+        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; }
+        .section-title { font-size: 11px; font-weight: 900; color: #1e293b; background: #f1f5f9; padding: 8px 12px; border-radius: 8px; margin: 20px 0 10px 0; text-transform: uppercase; }
+        .modal-full { position: fixed; inset: 0; background: #ffffff; z-index: 1000; overflow-y: auto; padding: 20px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
+        const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        function WorkerApp() {
+            const [view, setView] = useState('list');
+            const [workers, setWorkers] = useState([]);
+            const [selectedBatch, setSelectedBatch] = useState(null);
+            const [selectedItem, setSelectedItem] = useState(null);
+            const [isUploading, setIsUploading] = useState(false);
+
+            const initialForm = { name: '', batch_no: 1, gender: 'Male', age: '', photo_url: '', village: '', city: '', province: '', has_id: 'Have', id_number: '', has_passport: 'Have', passport_number: '', weight: '', height: '', arm_strength: '', eyesight: '', is_couple: false, is_reentry: false };
+            const [wForm, setWForm] = useState(initialForm);
+
+            useEffect(() => { fetchWorkers(); }, []);
+
+            async function fetchWorkers() {
+                const { data } = await supabase.from('workers').select('*').order('name');
+                if (data) setWorkers(data);
+            }
+
+            const handleFileUpload = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setIsUploading(true);
+                const cleanName = `${Date.now()}_${file.name.replace(/[^a-z0-9.]/gi, '_')}`;
+                const { error } = await supabase.storage.from('workers').upload(cleanName, file);
+                if (!error) {
+                    const { data: urlData } = supabase.storage.from('workers').getPublicUrl(cleanName);
+                    setWForm(prev => ({ ...prev, photo_url: urlData.publicUrl }));
+                }
+                setIsUploading(false);
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const { error } = await supabase.from('workers').upsert([wForm]);
+                if (error) alert(error.message);
+                else { setView('list'); fetchWorkers(); }
+            };
+
+            return (
+                <div class="max-w-4xl mx-auto p-4 pb-20">
+                    <header class="flex justify-between items-center mb-8 py-4">
+                        <h1 class="text-2xl font-black italic uppercase">Worker Management</h1>
+                        <button onClick={() => { setWForm(initialForm); setView('edit'); }} class="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold">+ NEW</button>
+                    </header>
+
+                    {selectedBatch === null ? (
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {[1, 2, 3].map(bn => (
+                                <div key={bn} onClick={() => setSelectedBatch(bn)} class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 cursor-pointer hover:border-emerald-500 transition">
+                                    <p class="text-4xl font-black italic text-slate-800">Batch {bn}</p>
+                                    <p class="text-emerald-500 font-black mt-2 uppercase">{workers.filter(w => w.batch_no === bn).length} Members</p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div class="space-y-3">
+                            <button onClick={() => setSelectedBatch(null)} class="text-xs font-black text-slate-400 uppercase italic mb-4">← Back to Batches</button>
+                            {workers.filter(w => w.batch_no == selectedBatch).map(w => (
+                                <div key={w.id} onClick={() => { setSelectedItem(w); setView('detail'); }} class={`${w.is_couple ? 'bg-rose-50 border-rose-100' : w.is_reentry ? 'bg-emerald-50 border-emerald-100' : 'bg-white'} p-4 rounded-2xl flex items-center justify-between shadow-sm border cursor-pointer`}>
+                                    <div class="flex items-center gap-4">
+                                        <img src={w.photo_url || 'https://via.placeholder.com/150'} class="w-12 h-12 rounded-xl object-cover" />
+                                        <div><p class="font-black">{w.name}</p><p class="text-[10px] text-slate-400 uppercase font-bold">{w.village}, {w.province}</p></div>
+                                    </div>
+                                    <div class="flex gap-1">
+                                        {w.is_couple && <span class="bg-rose-500 text-white text-[8px] font-black px-2 py-1 rounded">COUPLE</span>}
+                                        {w.is_reentry && <span class="bg-emerald-500 text-white text-[8px] font-black px-2 py-1 rounded">RE-ENTRY</span>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {view === 'edit' && (
+                        <div class="modal-full">
+                            <div class="max-w-2xl mx-auto pb-24">
+                                <div class="flex justify-between items-center mb-6"><button onClick={() => setView('list')} class="text-slate-400 font-black text-xs">CANCEL</button><h2 class="font-black italic">WORKER ENTRY</h2></div>
+                                <form onSubmit={handleSubmit} class="space-y-4">
+                                    <div class="section-title">Face Photo</div>
+                                    <div class="flex items-center gap-4 bg-slate-50 p-4 rounded-3xl">
+                                        <img src={wForm.photo_url || 'https://via.placeholder.com/150'} class="w-20 h-20 rounded-2xl object-cover" />
+                                        <input type="file" onChange={handleFileUpload} class="text-xs" />
+                                    </div>
+                                    <input type="text" class="form-input" placeholder="Name" value={wForm.name} onChange={e => setWForm({ ...wForm, name: e.target.value })} required />
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div><label class="label-cap">Batch</label><select class="form-select" value={wForm.batch_no} onChange={e => setWForm({ ...wForm, batch_no: Number(e.target.value) })}>{[1, 2, 3].map(n => <option key={n} value={n}>Batch {n}</option>)}</select></div>
+                                        <div><label class="label-cap">Gender</label><select class="form-select" value={wForm.gender} onChange={e => setWForm({ ...wForm, gender: e.target.value })}><option>Male</option><option>Female</option></select></div>
+                                    </div>
+                                    <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-2xl font-black shadow-xl" disabled={isUploading}>{isUploading ? 'Uploading...' : 'SAVE DATA'}</button>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {view === 'detail' && (
+                        <div class="modal-full">
+                            <div class="max-w-xl mx-auto">
+                                <button onClick={() => setView('list')} class="text-slate-400 font-black text-xs mb-8 uppercase">← Back</button>
+                                <div class="text-center mb-8">
+                                    <img src={selectedItem.photo_url || 'https://via.placeholder.com/150'} class="w-40 h-40 mx-auto rounded-[2.5rem] object-cover shadow-2xl mb-4" />
+                                    <h2 class="text-3xl font-black italic">{selectedItem.name}</h2>
+                                    <p class="text-slate-400 font-bold uppercase">{selectedItem.gender} · Batch {selectedItem.batch_no}</p>
+                                </div>
+                                <div class="bg-slate-50 p-6 rounded-3xl space-y-4">
+                                    <div class="flex justify-between border-b pb-2"><span class="label-cap">Passport</span><span class="font-black">{selectedItem.passport_number || 'N/A'}</span></div>
+                                    <div class="flex justify-between border-b pb-2"><span class="label-cap">City</span><span class="font-black">{selectedItem.city}</span></div>
+                                </div>
+                                <button onClick={() => { setWForm(selectedItem); setView('edit'); }} class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black mt-8">EDIT</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<WorkerApp />);
+    </script>
+</body>
+</html>
