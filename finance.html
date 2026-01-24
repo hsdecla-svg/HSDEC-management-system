@@ -22,6 +22,21 @@
 <body>
     <div id="root"></div>
     <script type="text/babel">
+        // 共通のセキュリティ・チェック
+const [user, setUser] = useState(null);
+
+useEffect(() => {
+    const savedUser = localStorage.getItem('hsdec_user');
+    if (!savedUser) {
+        // ログインしてない場合はポータルへ強制送還
+        window.location.href = 'index.html'; 
+    } else {
+        setUser(JSON.parse(savedUser));
+    }
+}, []);
+
+// 権限の判定（例：AdminとStaffだけが編集できる）
+const canEdit = user && ['admin', 'staff'].includes(user.role);
         const { useState, useEffect } = React;
         const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
