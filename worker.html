@@ -78,24 +78,25 @@
                 e.preventDefault();
                 const payload = { ...wForm };
 
-                // int4 (整数型) のエラー対策
-                const int4Fields = ['age', 'weight', 'height', 'batch_no'];
-                int4Fields.forEach(field => {
-                    const value = payload[field];
-                    payload[field] = (value === "" || value === null) ? null : parseInt(value, 10);
+                // 1. int4 (整数型) のエラー対策
+                ['age', 'weight', 'height', 'batch_no'].forEach(f => {
+                    payload[f] = (payload[f] === "" || payload[f] === null) ? null : parseInt(payload[f], 10);
                 });
 
-                // bool 型の確実な変換
+                // 2. date (日付型) のエラー対策 【重要：ここで解決！】
+                if (payload.birthday === "") {
+                    payload.birthday = null;
+                }
+
+                // 3. bool 型の確実な変換
                 const boolFields = Object.keys(DOC_LABELS).concat(['is_couple', 'is_reentry']);
-                boolFields.forEach(field => {
-                    payload[field] = Boolean(payload[field]);
-                });
+                boolFields.forEach(f => { payload[f] = Boolean(payload[f]); });
 
                 const { error } = await supabase.from('workers').upsert([payload]);
                 if (error) {
                     alert("Error: " + error.message);
                 } else {
-                    alert("Saved!");
+                    alert("Saved Successfully!");
                     setView('list');
                     fetchWorkers();
                 }
@@ -177,25 +178,46 @@
                                     <div className="section-title">Personal Data</div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="col-span-2"><label className="label-cap">Name</label><input type="text" className="form-input" value={wForm.name} onChange={e => setWForm({...wForm, name: e.target.value})} required /></div>
+                                        <div><label className="label-cap">Date of Birth</label><input type="date" className="form-input" value={wForm.birthday} onChange={e => setWForm({...wForm, birthday: e.target.value})} /></div>
                                         <div><label className="label-cap">Age</label><input type="number" className="form-input" value={wForm.age} onChange={e => setWForm({...wForm, age: e.target.value})} /></div>
                                         <div><label className="label-cap">Gender</label><select className="form-select" value={wForm.gender} onChange={e => setWForm({...wForm, gender: e.target.value})}><option>Male</option><option>Female</option></select></div>
+                                        <div><label className="label-cap">Place of Birth</label><input type="text" className="form-input" value={wForm.place_of_birth} onChange={e => setWForm({...wForm, place_of_birth: e.target.value})} /></div>
                                     </div>
 
-                                    <div className="section-title">Location</div>
+                                    <div className="section-title">Address & Local Info</div>
                                     <div className="grid grid-cols-3 gap-3">
                                         <div><label className="label-cap">Village</label><input type="text" className="form-input" value={wForm.village} onChange={e => setWForm({...wForm, village: e.target.value})} /></div>
                                         <div><label className="label-cap">District</label><input type="text" className="form-input" value={wForm.district} onChange={e => setWForm({...wForm, district: e.target.value})} /></div>
                                         <div><label className="label-cap">Province</label><input type="text" className="form-input" value={wForm.province} onChange={e => setWForm({...wForm, province: e.target.value})} /></div>
                                     </div>
+                                    <div className="mt-4"><label className="label-cap">Current Address</label><input type="text" className="form-input" value={wForm.current_address} onChange={e => setWForm({...wForm, current_address: e.target.value})} /></div>
 
-                                    <div className="section-title">Others</div>
+                                    <div className="section-title">Education & Experience</div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="label-cap">Education</label><input type="text" className="form-input" value={wForm.education} onChange={e => setWForm({...wForm, education: e.target.value})} /></div>
+                                        <div><label className="label-cap">Foreign Language</label><input type="text" className="form-input" value={wForm.foreign_language} onChange={e => setWForm({...wForm, foreign_language: e.target.value})} /></div>
+                                        <div><label className="label-cap">Occupation</label><input type="text" className="form-input" value={wForm.occupation} onChange={e => setWForm({...wForm, occupation: e.target.value})} /></div>
+                                        <div><label className="label-cap">Experience</label><input type="text" className="form-input" value={wForm.work_experience} onChange={e => setWForm({...wForm, work_experience: e.target.value})} /></div>
+                                    </div>
+
+                                    <div className="section-title">Physical & Health</div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <div><label className="label-cap">Weight</label><input type="number" className="form-input" value={wForm.weight} onChange={e => setWForm({...wForm, weight: e.target.value})} /></div>
+                                        <div><label className="label-cap">Height</label><input type="number" className="form-input" value={wForm.height} onChange={e => setWForm({...wForm, height: e.target.value})} /></div>
+                                        <div><label className="label-cap">Arm Strength</label><input type="text" className="form-input" value={wForm.arm_strength} onChange={e => setWForm({...wForm, arm_strength: e.target.value})} /></div>
+                                        <div><label className="label-cap">Eyesight</label><input type="text" className="form-input" value={wForm.eyesight} onChange={e => setWForm({...wForm, eyesight: e.target.value})} /></div>
+                                    </div>
+
+                                    <div className="section-title">Contact & Identifiers</div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div><label className="label-cap">WhatsApp</label><input type="text" className="form-input" value={wForm.whatsapp} onChange={e => setWForm({...wForm, whatsapp: e.target.value})} /></div>
+                                        <div><label className="label-cap">ID Card #</label><input type="text" className="form-input" value={wForm.id_number} onChange={e => setWForm({...wForm, id_number: e.target.value})} /></div>
+                                        <div><label className="label-cap">Passport #</label><input type="text" className="form-input" value={wForm.passport_number} onChange={e => setWForm({...wForm, passport_number: e.target.value})} /></div>
                                         <div><label className="label-cap">Tattoos</label><input type="text" className="form-input" value={wForm.tattoos} onChange={e => setWForm({...wForm, tattoos: e.target.value})} /></div>
                                     </div>
                                     <textarea className="form-textarea h-32 mt-4" placeholder="Notes..." value={wForm.note} onChange={e => setWForm({...wForm, note: e.target.value})}></textarea>
 
-                                    <button type="submit" className="w-full bg-emerald-600 text-white py-6 rounded-[2.5rem] font-black text-xl shadow-2xl mt-12 mb-20">SAVE FULL DATA</button>
+                                    <button type="submit" className="w-full bg-emerald-600 text-white py-6 rounded-[2.5rem] font-black text-xl shadow-2xl mt-12 mb-20">SAVE PROFILE</button>
                                 </form>
                             </div>
                         </div>
