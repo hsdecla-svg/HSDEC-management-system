@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Finance | HSDEC</title>
+    <title>Finance Master | HSDEC</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -11,9 +11,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
-        .form-input, .form-select { border: 2px solid #e2e8f0; padding: 14px; border-radius: 12px; width: 100%; font-weight: 700; }
-        .stat-card { background: #0f172a; color: white; border-radius: 2.5rem; padding: 2.5rem; }
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #1e293b; }
+        .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 700; background: white; outline: none; }
+        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; }
+        .card-stat { background: white; padding: 20px; border-radius: 24px; border: 1px solid #e2e8f0; }
+        .modal-full { position: fixed; inset: 0; background: #f8fafc; z-index: 1000; overflow-y: auto; padding: 20px; }
+        .method-badge { font-size: 9px; font-weight: 900; padding: 2px 8px; border-radius: 6px; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -24,76 +27,138 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const STAFFS = ["Mr. Chanthaviphone", "Ms. Sengmala", "Mr. Takashi", "Ms. Chansouk", "Ms. Mim"];
+        const STAFFS = ["Staff A", "Staff B", "Staff C", "Management"];
+        const CATEGORIES = ["Food", "Transport", "Visa/Doc", "Salary", "Rent", "Utility", "Other"];
+        const METHODS = ["Cash", "QR Pay"];
 
         function FinanceApp() {
             const [view, setView] = useState('list');
-            const [logs, setLogs] = useState([]);
-            const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
-            const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], item: '', category: 'Food', unit_price: 0, quantity: 1, lak_amount: 0, payer: STAFFS[0] });
+            const [records, setRecords] = useState([]);
+            
+            const initialForm = {
+                type: 'Expense',
+                date: new Date().toISOString().split('T')[0],
+                staff_name: STAFFS[0],
+                category: CATEGORIES[0],
+                method: METHODS[0],
+                item_name: '',
+                unit_price: '',
+                quantity: 1,
+                total: 0,
+                note: ''
+            };
+            const [fForm, setFForm] = useState(initialForm);
 
-            useEffect(() => { fetchLogs(); }, [month]);
-
-            async function fetchLogs() {
-                const { data } = await supabase.from('finance_logs').select('*').order('date', { ascending: false });
-                if (data) setLogs(data.filter(l => l.date && l.date.startsWith(month)));
+            useEffect(() => { fetchRecords(); }, []);
+            async function fetchRecords() {
+                const { data } = await supabase.from('finance').select('*').order('date', { ascending: false });
+                if (data) setRecords(data);
             }
 
-            const calc = (p, q) => {
-                const total = Number(p) * Number(q);
-                setForm({...form, unit_price: p, quantity: q, lak_amount: total});
+            useEffect(() => {
+                const up = Number(fForm.unit_price) || 0;
+                const qty = Number(fForm.quantity) || 0;
+                setFForm(prev => ({ ...prev, total: up * qty }));
+            }, [fForm.unit_price, fForm.quantity]);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                const payload = { ...fForm, 
+                    unit_price: Number(fForm.unit_price) || 0,
+                    quantity: Number(fForm.quantity) || 0,
+                    total: Number(fForm.total) || 0
+                };
+                const { error } = await supabase.from('finance').upsert([payload]);
+                if (error) alert(error.message); else { setView('list'); fetchRecords(); }
             };
 
-            const save = async (e) => {
-                e.preventDefault();
-                const { error } = await supabase.from('finance_logs').upsert([form]);
-                if (error) alert(error.message); else { setView('list'); fetchLogs(); }
+            const handleDelete = async () => {
+                if (!fForm.id) return;
+                if (confirm("この取引を削除しますか？")) {
+                    await supabase.from('finance').delete().eq('id', fForm.id);
+                    setView('list'); fetchRecords();
+                }
             };
+
+            const totalIn = records.filter(r => r.type === 'Income').reduce((sum, r) => sum + r.total, 0);
+            const totalOut = records.filter(r => r.type === 'Expense').reduce((sum, r) => sum + r.total, 0);
 
             return (
-                <div class="max-w-3xl mx-auto p-4 pb-20">
-                    <header class="flex justify-between items-center py-8">
-                        <h1 class="text-4xl font-black italic text-blue-600">FINANCE</h1>
-                        <button onClick={() => setView('edit')} class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-xs shadow-xl">+ RECORD</button>
+                <div className="max-w-4xl mx-auto p-4 pb-20">
+                    <header className="flex justify-between items-center py-6 mb-4">
+                        <h1 className="text-2xl font-black italic tracking-tighter">FINANCE MASTER</h1>
+                        <button onClick={() => { setFForm(initialForm); setView('edit'); }} className="bg-blue-600 text-white px-6 py-2 rounded-xl font-black text-xs shadow-lg">+ NEW ENTRY</button>
                     </header>
 
-                    <input type="month" class="form-input !w-auto mb-6" value={month} onChange={e => setMonth(e.target.value)} />
-
-                    <div class="stat-card mb-10">
-                        <p class="text-[10px] font-black uppercase opacity-40 tracking-widest mb-2">Total Spend ({month})</p>
-                        <p class="text-5xl font-black font-mono text-emerald-400 italic">₭{logs.reduce((s,l)=>s+Number(l.lak_amount||0),0).toLocaleString()}</p>
+                    <div className="grid grid-cols-3 gap-3 mb-8">
+                        <div className="card-stat"><p className="label-cap">In</p><p className="text-lg font-black text-emerald-500">{totalIn.toLocaleString()}</p></div>
+                        <div className="card-stat"><p className="label-cap">Out</p><p className="text-lg font-black text-rose-500">{totalOut.toLocaleString()}</p></div>
+                        <div className="card-stat bg-slate-900 text-white border-none"><p className="label-cap text-slate-400">Balance</p><p className="text-lg font-black">{(totalIn - totalOut).toLocaleString()}</p></div>
                     </div>
 
-                    <div class="space-y-3">
-                        {logs.map(l => (
-                            <div key={l.id} class="bg-white p-6 rounded-3xl flex justify-between items-center shadow-sm border border-slate-100">
-                                <div>
-                                    <p class="text-[9px] font-black text-slate-300 uppercase">{l.date} · {l.payer}</p>
-                                    <p class="font-black text-slate-800 text-lg">{l.item} <span class="text-slate-300 text-xs">x{l.quantity}</span></p>
+                    <div className="space-y-3">
+                        {records.map(r => (
+                            <div key={r.id} onClick={() => { setFForm(r); setView('edit'); }} className="bg-white p-4 rounded-[1.5rem] border border-slate-100 flex items-center justify-between shadow-sm cursor-pointer hover:shadow-md transition-all">
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs ${r.type === 'Income' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                                        {r.type === 'Income' ? 'IN' : 'OUT'}
+                                    </div>
+                                    <div>
+                                        <p className="font-black text-slate-800 leading-none mb-1">{r.item_name}</p>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`method-badge ${r.method === 'QR Pay' ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600'}`}>{r.method}</span>
+                                            <p className="text-[9px] text-slate-400 font-bold uppercase">{r.date} · {r.staff_name}</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <p class="font-black font-mono text-xl text-blue-600">₭{Number(l.lak_amount).toLocaleString()}</p>
+                                <div className="text-right">
+                                    <p className={`font-black text-lg ${r.type === 'Income' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                        {r.type === 'Income' ? '+' : '-'}{r.total.toLocaleString()}
+                                    </p>
+                                    {r.note && <p className="text-[9px] text-blue-400 font-bold italic truncate max-w-[80px]">Memo...</p>}
+                                </div>
                             </div>
                         ))}
                     </div>
 
                     {view === 'edit' && (
-                        <div class="fixed inset-0 bg-white z-[1000] p-6 overflow-y-auto">
-                            <div class="max-w-xl mx-auto">
-                                <button onClick={() => setView('list')} class="text-slate-400 font-black text-xs mb-8 uppercase">Cancel</button>
-                                <form onSubmit={save} class="space-y-6">
-                                    <div class="grid grid-cols-2 gap-4">
-                                        <input type="date" class="form-input" value={form.date} onChange={e => setForm({...form, date:e.target.value})} />
-                                        <select class="form-select" value={form.payer} onChange={e => setForm({...form, payer:e.target.value})}>{STAFFS.map(s=><option key={s} value={s}>{s}</option>)}</select>
+                        <div className="modal-full">
+                            <div className="max-w-xl mx-auto pb-40">
+                                <div className="flex justify-between items-center mb-8">
+                                    <button onClick={() => setView('list')} className="text-slate-400 font-black text-xs uppercase">Cancel</button>
+                                    <h2 className="font-black italic text-slate-800">TRANSACTION DETAILS</h2>
+                                </div>
+                                <form onSubmit={handleSubmit} className="space-y-5">
+                                    <div className="flex gap-4 p-2 bg-slate-200 rounded-2xl">
+                                        <button type="button" onClick={() => setFForm({...fForm, type:'Income'})} className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${fForm.type === 'Income' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500'}`}>INCOME</button>
+                                        <button type="button" onClick={() => setFForm({...fForm, type:'Expense'})} className={`flex-1 py-3 rounded-xl font-black text-sm transition-all ${fForm.type === 'Expense' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500'}`}>EXPENSE</button>
                                     </div>
-                                    <input type="text" class="form-input" placeholder="Item Name" value={form.item} onChange={e => setForm({...form, item:e.target.value})} required />
-                                    <div class="grid grid-cols-2 gap-4">
-                                        <input type="number" class="form-input" placeholder="Unit Price" value={form.unit_price} onChange={e => calc(e.target.value, form.quantity)} />
-                                        <input type="number" class="form-input" placeholder="Qty" value={form.quantity} onChange={e => calc(form.unit_price, e.target.value)} />
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="label-cap">Date</label><input type="date" className="form-input" value={fForm.date} onChange={e => setFForm({...fForm, date: e.target.value})} /></div>
+                                        <div><label className="label-cap">Method</label><select className="form-select" value={fForm.method} onChange={e => setFForm({...fForm, method: e.target.value})}>{METHODS.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
                                     </div>
-                                    <div class="bg-slate-900 p-8 rounded-3xl text-center">
-                                        <p class="text-4xl font-black font-mono text-emerald-400">₭{Number(form.lak_amount).toLocaleString()}</p>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="label-cap">Category</label><select className="form-select" value={fForm.category} onChange={e => setFForm({...fForm, category: e.target.value})}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                                        <div><label className="label-cap">Staff</label><select className="form-select" value={fForm.staff_name} onChange={e => setFForm({...fForm, staff_name: e.target.value})}>{STAFFS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
                                     </div>
-                                    <button type="submit" class="w-full bg-blue-600 text-white py-6 rounded-3xl font-black text-xl shadow-xl">SAVE DATA</button>
+                                    
+                                    <div><label className="label-cap">Item Description</label><input type="text" className="form-input" value={fForm.item_name} onChange={e => setFForm({...fForm, item_name: e.target.value})} required /></div>
+
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div><label className="label-cap">Unit Price</label><input type="number" className="form-input" value={fForm.unit_price} onChange={e => setFForm({...fForm, unit_price: e.target.value})} /></div>
+                                        <div><label className="label-cap">Qty</label><input type="number" className="form-input" value={fForm.quantity} onChange={e => setFForm({...fForm, quantity: e.target.value})} /></div>
+                                        <div><label className="label-cap">Total</label><div className="form-input bg-slate-50 text-blue-600">{fForm.total.toLocaleString()}</div></div>
+                                    </div>
+
+                                    <div><label className="label-cap">Notes / Memo</label><textarea className="form-textarea h-24" value={fForm.note} onChange={e => setFForm({...fForm, note: e.target.value})} placeholder="Write details here..."></textarea></div>
+
+                                    <button type="submit" className="w-full bg-blue-600 text-white py-5 rounded-[2rem] font-black text-lg shadow-xl mt-4">SAVE TRANSACTION</button>
+                                    
+                                    {fForm.id && (
+                                        <button type="button" onClick={handleDelete} className="w-full bg-rose-50 text-rose-500 py-4 rounded-[2rem] font-black text-xs mt-2">DELETE RECORD</button>
+                                    )}
                                 </form>
                             </div>
                         </div>
