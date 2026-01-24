@@ -6,82 +6,106 @@
     <title>HSDEC Global Hub - Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; overflow-x: hidden; }
         .menu-card { 
-            background: rgba(255, 255, 255, 0.05); 
-            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.03); 
+            backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        .menu-card:hover { background: rgba(255, 255, 255, 0.1); transform: translateY(-5px); border-color: #10b981; }
+        .menu-card:hover { 
+            background: rgba(255, 255, 255, 0.08); 
+            transform: translateY(-8px); 
+            border-color: #10b981;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .icon-circle {
+            width: 56px; height: 56px; border-radius: 18px;
+            display: flex; items-center: center; justify-content: center;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-6">
 
     <div id="auth-section" class="w-full max-w-md">
         <div class="text-center mb-10">
-            <h1 class="text-4xl font-black italic text-emerald-500">HSDEC GLOBAL</h1>
-            <p class="text-slate-400 font-bold uppercase tracking-widest text-sm">Central Control System</p>
+            <h1 class="text-5xl font-black italic text-emerald-500 tracking-tighter">HSDEC</h1>
+            <p class="text-slate-500 font-black uppercase tracking-[0.3em] text-[10px] mt-2">Central Management System</p>
         </div>
-        <div class="bg-white/5 p-8 rounded-3xl border border-white/10 shadow-2xl">
-            <label class="block text-xs font-black text-slate-400 uppercase mb-2">Access Password</label>
-            <input type="password" id="pass" class="w-full bg-white/10 border-none p-4 rounded-xl mb-6 text-white text-center text-2xl focus:ring-2 focus:ring-emerald-500 outline-none">
-            <button onclick="login()" class="w-full bg-emerald-500 text-white py-4 rounded-xl font-black text-lg hover:bg-emerald-400 transition shadow-lg shadow-emerald-500/20">LOGIN SYSTEM</button>
-            <p id="error" class="text-rose-500 text-sm mt-4 text-center hidden font-bold">Invalid Password. Access Denied.</p>
+        <div class="bg-white/5 p-10 rounded-[2.5rem] border border-white/10 shadow-2xl">
+            <label class="block text-[10px] font-black text-slate-500 uppercase mb-4 tracking-widest">Access Password</label>
+            <input type="password" id="pass" placeholder="••••••••" class="w-full bg-slate-800/50 border-none p-5 rounded-2xl mb-8 text-white text-center text-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all">
+            <button onclick="login()" class="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-lg hover:bg-emerald-400 transition shadow-xl shadow-emerald-500/20 active:scale-95">ENTER SYSTEM</button>
+            <p id="error" class="text-rose-500 text-xs mt-6 text-center hidden font-black uppercase tracking-widest italic">Invalid Password. Access Denied.</p>
         </div>
     </div>
 
-    <div id="menu-section" class="w-full max-w-4xl hidden">
-        <div class="flex justify-between items-end mb-12">
+    <div id="menu-section" class="w-full max-w-5xl hidden">
+        <div class="flex justify-between items-end mb-16 px-4">
             <div>
-                <h2 class="text-4xl font-black italic">DASHBOARD</h2>
-                <p class="text-emerald-500 font-black uppercase text-sm">Welcome back, Administrator</p>
+                <h2 class="text-5xl font-black italic tracking-tighter">CONTROL HUB</h2>
+                <p class="text-emerald-500 font-black uppercase text-xs tracking-widest mt-2">Logged in as Administrator</p>
             </div>
-            <button onclick="location.reload()" class="text-xs font-black text-slate-500 hover:text-white uppercase">Logout</button>
+            <button onclick="location.reload()" class="text-[10px] font-black text-slate-500 hover:text-white uppercase border border-slate-700 px-4 py-2 rounded-full transition">Logout</button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <a href="worker.html" target="_blank" class="menu-card p-8 rounded-3xl block group">
-                <div class="text-emerald-500 mb-4"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg></div>
-                <h3 class="text-xl font-black">Workers</h3>
-                <p class="text-slate-400 text-sm mt-2 font-medium">労働者管理・名簿・バッチ管理</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4">
+            
+            <a href="worker.html" target="_blank" class="menu-card p-10 rounded-[2.5rem] block group">
+                <div class="icon-circle bg-emerald-500/10 text-emerald-500">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                </div>
+                <h3 class="text-2xl font-black tracking-tight">Workers</h3>
+                <p class="text-slate-500 text-sm mt-3 font-bold leading-relaxed">労働者・バッチ・名簿管理</p>
             </a>
 
-            <a href="finance.html" target="_blank" class="menu-card p-8 rounded-3xl block group">
-                <div class="text-blue-500 mb-4"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg></div>
-                <h3 class="text-xl font-black">Finance</h3>
-                <p class="text-slate-400 text-sm mt-2 font-medium">会計管理・収支ログ・月次計算</p>
+            <a href="finance.html" target="_blank" class="menu-card p-10 rounded-[2.5rem] block group">
+                <div class="icon-circle bg-blue-500/10 text-blue-500">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                </div>
+                <h3 class="text-2xl font-black tracking-tight">Finance</h3>
+                <p class="text-slate-500 text-sm mt-3 font-bold leading-relaxed">支出ログ・収支・自動計算</p>
             </a>
 
-            <a href="diary.html" target="_blank" class="menu-card p-8 rounded-3xl block group">
-                <div class="text-amber-500 mb-4"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></div>
-                <h3 class="text-xl font-black">Daily Diary</h3>
-                <p class="text-slate-400 text-sm mt-2 font-medium">業務日報・現場記録</p>
+            <a href="diary.html" target="_blank" class="menu-card p-10 rounded-[2.5rem] block group">
+                <div class="icon-circle bg-amber-500/10 text-amber-500">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                </div>
+                <h3 class="text-2xl font-black tracking-tight">Diary</h3>
+                <p class="text-slate-500 text-sm mt-3 font-bold leading-relaxed">日報作成・現場写真ログ</p>
             </a>
 
-            <a href="https://drive.google.com/..." target="_blank" class="menu-card p-8 rounded-3xl block group border-dashed">
-                <div class="text-sky-400 mb-4"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002-2z"/></svg></div>
-                <h3 class="text-xl font-black">Cloud Photo</h3>
-                <p class="text-slate-400 text-sm mt-2 font-medium">Google Driveへ写真アップ</p>
+            <a href="contracts.html" target="_blank" class="menu-card p-10 rounded-[2.5rem] block group">
+                <div class="icon-circle bg-rose-500/10 text-rose-500">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <h3 class="text-2xl font-black tracking-tight">Contracts</h3>
+                <p class="text-slate-500 text-sm mt-3 font-bold leading-relaxed">契約書類・ステータス管理</p>
             </a>
 
-            <a href="contracts.html" target="_blank" class="menu-card p-8 rounded-3xl block group">
-                <div class="text-rose-500 mb-4"><svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-                <h3 class="text-xl font-black">Contracts</h3>
-                <p class="text-slate-400 text-sm mt-2 font-medium">契約書作成・管理</p>
+            <a href="https://drive.google.com/YOUR_FOLDER_URL" target="_blank" class="menu-card p-10 rounded-[2.5rem] block group border-dashed">
+                <div class="icon-circle bg-sky-400/10 text-sky-400">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002-2z"/></svg>
+                </div>
+                <h3 class="text-2xl font-black tracking-tight">Cloud Photo</h3>
+                <p class="text-slate-500 text-sm mt-3 font-bold leading-relaxed">Google Drive 写真共有フォルダ</p>
             </a>
+
         </div>
     </div>
 
     <script>
         function login() {
             const pass = document.getElementById('pass').value;
-            // 簡易パスワード設定（後ほどSupabase Authにアップグレード可能）
+            // パスワード: HSDEC2025
             if (pass === "HSDEC2025") {
                 document.getElementById('auth-section').classList.add('hidden');
                 document.getElementById('menu-section').classList.remove('hidden');
             } else {
                 document.getElementById('error').classList.remove('hidden');
+                setTimeout(() => { document.getElementById('error').classList.add('hidden'); }, 2000);
             }
         }
     </script>
