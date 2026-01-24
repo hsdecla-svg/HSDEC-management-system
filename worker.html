@@ -77,17 +77,11 @@
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 const payload = { ...wForm };
-
-                // 整数型エラー対策 + batch_no が空なら 1 に強制
                 ['age', 'weight', 'height'].forEach(f => {
                     payload[f] = (payload[f] === "" || payload[f] === null) ? null : parseInt(payload[f], 10);
                 });
-                
-                // バッチ番号が空なら 1 に、そうでなければ数値化
                 payload.batch_no = (payload.batch_no === "" || payload.batch_no === null) ? 1 : parseInt(payload.batch_no, 10);
-
                 if (payload.birthday === "") payload.birthday = null;
-
                 const boolFields = Object.keys(DOC_LABELS).concat(['is_couple', 'is_reentry']);
                 boolFields.forEach(f => { payload[f] = Boolean(payload[f]); });
 
@@ -97,33 +91,10 @@
                 } else {
                     alert("Saved Successfully!");
                     setView('list');
-                    fetchWorkers(); // リストを再読み込み
-                    setSelectedBatch(payload.batch_no); // 保存したバッチを自動表示
+                    fetchWorkers();
+                    setSelectedBatch(payload.batch_no);
                 }
             };
-
-            return (
-                <div className="max-w-4xl mx-auto p-4 pb-20">
-                    {/* ... ヘッダー ... */}
-
-                    {selectedBatch === null ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {[1, 2, 3].map(bn => (
-                                <div key={bn} onClick={() => setSelectedBatch(bn)} className="bg-white p-8 rounded-[2rem] shadow-sm cursor-pointer hover:bg-emerald-50 border border-slate-100 text-center">
-                                    <p className="text-4xl font-black italic">B-{bn}</p>
-                                    <p className="text-emerald-500 font-black text-[10px] uppercase">{workers.filter(w => w.batch_no === bn).length} MEMBERS</p>
-                                </div>
-                            ))}
-                            {/* バッチ未設定の人を表示する救済ボタン */}
-                            <div onClick={() => setSelectedBatch("none")} className="bg-slate-200 p-8 rounded-[2rem] shadow-sm cursor-pointer hover:bg-slate-300 text-center">
-                                <p className="text-xl font-black italic text-slate-500">NO BATCH</p>
-                                <p className="text-slate-400 font-black text-[10px] uppercase">{workers.filter(w => !w.batch_no).length} MEMBERS</p>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <button onClick={() => setSelectedBatch(null)} className="text-[10px] font-black text-slate-400 mb-2 uppercase">← BACK TO BATCH LIST</button>
-                            {workers.filter(w => selectedBatch === "none" ? !w.batch_no : w.batch_no == selectedBatch).map(w => (
 
             return (
                 <div className="max-w-4xl mx-auto p-4 pb-20">
@@ -133,18 +104,22 @@
                     </header>
 
                     {selectedBatch === null ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             {[1, 2, 3].map(bn => (
-                                <div key={bn} onClick={() => setSelectedBatch(bn)} className="bg-white p-10 rounded-[2.5rem] shadow-sm cursor-pointer hover:bg-emerald-50 transition-all text-center border border-slate-100">
-                                    <p className="text-5xl font-black italic">B-{bn}</p>
-                                    <p className="text-emerald-500 font-black mt-2 text-[10px] uppercase tracking-widest">{workers.filter(w => w.batch_no === bn).length} MEMBERS</p>
+                                <div key={bn} onClick={() => setSelectedBatch(bn)} className="bg-white p-8 rounded-[2rem] shadow-sm cursor-pointer hover:bg-emerald-50 border border-slate-100 text-center">
+                                    <p className="text-4xl font-black italic">B-{bn}</p>
+                                    <p className="text-emerald-500 font-black text-[10px] uppercase">{workers.filter(w => w.batch_no === bn).length} MEMBERS</p>
                                 </div>
                             ))}
+                            <div onClick={() => setSelectedBatch("none")} className="bg-slate-200 p-8 rounded-[2rem] shadow-sm cursor-pointer hover:bg-slate-300 border border-slate-300 text-center">
+                                <p className="text-xl font-black italic text-slate-500 uppercase">No Batch</p>
+                                <p className="text-slate-400 font-black text-[10px] uppercase">{workers.filter(w => !w.batch_no).length} MEMBERS</p>
+                            </div>
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <button onClick={() => setSelectedBatch(null)} className="text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest">← Back</button>
-                            {workers.filter(w => w.batch_no == selectedBatch).map(w => (
+                            <button onClick={() => setSelectedBatch(null)} className="text-[10px] font-black text-slate-400 mb-2 uppercase">← Back to List</button>
+                            {workers.filter(w => selectedBatch === "none" ? !w.batch_no : w.batch_no == selectedBatch).map(w => (
                                 <div key={w.id} onClick={() => { setWForm(w); setView('edit'); }} 
                                      className={`p-5 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between shadow-sm border cursor-pointer transition-all ${w.is_couple ? 'bg-rose-50 border-rose-200' : w.is_reentry ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200'}`}>
                                     <div className="flex items-center gap-5">
@@ -198,48 +173,15 @@
                                         ))}
                                     </div>
 
-                                    <div className="section-title">Personal Data</div>
+                                    <div className="section-title">Data Entry</div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="col-span-2"><label className="label-cap">Name</label><input type="text" className="form-input" value={wForm.name} onChange={e => setWForm({...wForm, name: e.target.value})} required /></div>
+                                        <div><label className="label-cap">Batch #</label><input type="number" className="form-input" value={wForm.batch_no} onChange={e => setWForm({...wForm, batch_no: e.target.value})} /></div>
                                         <div><label className="label-cap">Date of Birth</label><input type="date" className="form-input" value={wForm.birthday} onChange={e => setWForm({...wForm, birthday: e.target.value})} /></div>
                                         <div><label className="label-cap">Age</label><input type="number" className="form-input" value={wForm.age} onChange={e => setWForm({...wForm, age: e.target.value})} /></div>
-                                        <div><label className="label-cap">Gender</label><select className="form-select" value={wForm.gender} onChange={e => setWForm({...wForm, gender: e.target.value})}><option>Male</option><option>Female</option></select></div>
-                                        <div><label className="label-cap">Place of Birth</label><input type="text" className="form-input" value={wForm.place_of_birth} onChange={e => setWForm({...wForm, place_of_birth: e.target.value})} /></div>
-                                    </div>
-
-                                    <div className="section-title">Address & Local Info</div>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div><label className="label-cap">Village</label><input type="text" className="form-input" value={wForm.village} onChange={e => setWForm({...wForm, village: e.target.value})} /></div>
-                                        <div><label className="label-cap">District</label><input type="text" className="form-input" value={wForm.district} onChange={e => setWForm({...wForm, district: e.target.value})} /></div>
-                                        <div><label className="label-cap">Province</label><input type="text" className="form-input" value={wForm.province} onChange={e => setWForm({...wForm, province: e.target.value})} /></div>
-                                    </div>
-                                    <div className="mt-4"><label className="label-cap">Current Address</label><input type="text" className="form-input" value={wForm.current_address} onChange={e => setWForm({...wForm, current_address: e.target.value})} /></div>
-
-                                    <div className="section-title">Education & Experience</div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="label-cap">Education</label><input type="text" className="form-input" value={wForm.education} onChange={e => setWForm({...wForm, education: e.target.value})} /></div>
-                                        <div><label className="label-cap">Foreign Language</label><input type="text" className="form-input" value={wForm.foreign_language} onChange={e => setWForm({...wForm, foreign_language: e.target.value})} /></div>
-                                        <div><label className="label-cap">Occupation</label><input type="text" className="form-input" value={wForm.occupation} onChange={e => setWForm({...wForm, occupation: e.target.value})} /></div>
-                                        <div><label className="label-cap">Experience</label><input type="text" className="form-input" value={wForm.work_experience} onChange={e => setWForm({...wForm, work_experience: e.target.value})} /></div>
-                                    </div>
-
-                                    <div className="section-title">Physical & Health</div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                        <div><label className="label-cap">Weight</label><input type="number" className="form-input" value={wForm.weight} onChange={e => setWForm({...wForm, weight: e.target.value})} /></div>
-                                        <div><label className="label-cap">Height</label><input type="number" className="form-input" value={wForm.height} onChange={e => setWForm({...wForm, height: e.target.value})} /></div>
-                                        <div><label className="label-cap">Arm Strength</label><input type="text" className="form-input" value={wForm.arm_strength} onChange={e => setWForm({...wForm, arm_strength: e.target.value})} /></div>
-                                        <div><label className="label-cap">Eyesight</label><input type="text" className="form-input" value={wForm.eyesight} onChange={e => setWForm({...wForm, eyesight: e.target.value})} /></div>
-                                    </div>
-
-                                    <div className="section-title">Contact & Identifiers</div>
-                                    <div className="grid grid-cols-2 gap-4">
                                         <div><label className="label-cap">WhatsApp</label><input type="text" className="form-input" value={wForm.whatsapp} onChange={e => setWForm({...wForm, whatsapp: e.target.value})} /></div>
-                                        <div><label className="label-cap">ID Card #</label><input type="text" className="form-input" value={wForm.id_number} onChange={e => setWForm({...wForm, id_number: e.target.value})} /></div>
-                                        <div><label className="label-cap">Passport #</label><input type="text" className="form-input" value={wForm.passport_number} onChange={e => setWForm({...wForm, passport_number: e.target.value})} /></div>
-                                        <div><label className="label-cap">Tattoos</label><input type="text" className="form-input" value={wForm.tattoos} onChange={e => setWForm({...wForm, tattoos: e.target.value})} /></div>
                                     </div>
                                     <textarea className="form-textarea h-32 mt-4" placeholder="Notes..." value={wForm.note} onChange={e => setWForm({...wForm, note: e.target.value})}></textarea>
-
                                     <button type="submit" className="w-full bg-emerald-600 text-white py-6 rounded-[2.5rem] font-black text-xl shadow-2xl mt-12 mb-20">SAVE PROFILE</button>
                                 </form>
                             </div>
