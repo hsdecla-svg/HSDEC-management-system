@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Worker Master | Complete</title>
+    <title>HSDEC Worker | Full Secure</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -27,6 +27,15 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        const USERS = [
+            { id: "Takashi", pw: "Tks83446423", name: "Mr. Takashi", role: "admin" },
+            { id: "Chansouk", pw: "97372185", name: "Ms. Chansouk", role: "staff" },
+            { id: "Mim", pw: "78277996", name: "Ms. Mim", role: "staff" },
+            { id: "Chanthaviphone", pw: "96086112", name: "Mr. Chanthaviphone", role: "vv" },
+            { id: "Sengmala", pw: "22886998", name: "Ms. Sengmala", role: "sv" },
+            { id: "Guest", pw: "HSDEC2025", name: "Guest User", role: "guest" }
+        ];
+
         const DOC_LABELS = {
             id_card: "ID Card", census: "Census", cert_address: "Cert Address",
             mobile_phone: "Mobile", land_title: "Land Title", pic_3x4: "Pic 3*4",
@@ -35,17 +44,18 @@
         };
 
         function WorkerApp() {
-            const [view, setView] = useState('list');
+            const [user, setUser] = useState(null);
+            const [loginForm, setLoginForm] = useState({ id: '', pw: '' });
             const [workers, setWorkers] = useState([]);
-            const [selectedBatch, setSelectedBatch] = useState(null);
-            const [isUploading, setIsUploading] = useState(false);
+            const [view, setView] = useState('list');
+            const [selectedBatch, setSelectedBatch] = useState("all");
 
             const initialForm = {
                 gender: 'Male', name: '', birthday: '', age: '',
                 place_of_birth: '', current_address: '', village: '', district: '', province: '',
                 education: '', foreign_language: '', occupation: '', lives_with: '', children: '',
-                worked_abroad: '', work_experience: '', guarantor: '', census_dependent: '',
-                id_number: '', passport_number: '', diseases: '', allergies: '', weight: '', height: '',
+                worked_abroad: '', work_experience: '', guarantor: '', id_number: '', 
+                passport_number: '', diseases: '', allergies: '', weight: '', height: '',
                 whatsapp: '', contact_number: '', arm_strength: '', eyesight: '', tattoos: '',
                 photo_url: '', batch_no: 1, note: '',
                 is_couple: false, is_reentry: false,
@@ -55,134 +65,143 @@
             };
             const [wForm, setWForm] = useState(initialForm);
 
-            useEffect(() => { fetchWorkers(); }, []);
-            async function fetchWorkers() {
+            const handleLogin = (e) => {
+                e.preventDefault();
+                const found = USERS.find(u => u.id === loginForm.id && u.pw === loginForm.pw);
+                if (found) setUser(found); else alert("Invalid ID/PW");
+            };
+
+            const fetchWorkers = async () => {
                 const { data } = await supabase.from('workers').select('*').order('name');
                 if (data) setWorkers(data);
-            }
+            };
+
+            useEffect(() => { if(user) fetchWorkers(); }, [user]);
+
+            const canRegister = user?.role === 'admin';
+            const canEdit = ['admin', 'staff'].includes(user?.role);
+            const canDelete = user?.role === 'admin';
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
+                if (!canEdit) return;
                 const payload = { ...wForm };
-                ['age', 'weight', 'height'].forEach(f => {
-                    payload[f] = (payload[f] === "" || payload[f] === null) ? null : parseInt(payload[f], 10);
+                ['age', 'weight', 'height', 'batch_no'].forEach(f => {
+                    payload[f] = payload[f] ? parseInt(payload[f]) : null;
                 });
-                payload.batch_no = (payload.batch_no === "" || payload.batch_no === null) ? 1 : parseInt(payload.batch_no, 10);
-                if (payload.birthday === "") payload.birthday = null;
-                const boolFields = Object.keys(DOC_LABELS).concat(['is_couple', 'is_reentry']);
-                boolFields.forEach(f => { payload[f] = Boolean(payload[f]); });
-
                 const { error } = await supabase.from('workers').upsert([payload]);
-                if (error) alert("Error: " + error.message);
-                else { alert("Saved!"); setView('list'); fetchWorkers(); }
+                if (!error) { alert("Saved!"); setView('list'); fetchWorkers(); }
             };
 
-            const handleDelete = async () => {
-                if (!wForm.id) return;
-                if (confirm("Delete this worker? / 削除しますか？")) {
-                    const { error } = await supabase.from('workers').delete().eq('id', wForm.id);
-                    if (error) alert(error.message);
-                    else { alert("Deleted"); setView('list'); fetchWorkers(); }
-                }
-            };
+            if (!user) return (
+                <div className="flex items-center justify-center min-h-screen p-6 bg-slate-900 text-white">
+                    <form onSubmit={handleLogin} className="w-full max-w-sm space-y-6">
+                        <h1 className="text-4xl font-black italic tracking-tighter text-center">HSDEC WORKER</h1>
+                        <input type="text" placeholder="ID" className="form-input text-slate-900" onChange={e => setLoginForm({...loginForm, id: e.target.value})} />
+                        <input type="password" placeholder="Password" className="form-input text-center text-slate-900 tracking-widest" onChange={e => setLoginForm({...loginForm, pw: e.target.value})} />
+                        <button className="w-full bg-emerald-500 py-4 rounded-2xl font-black uppercase shadow-lg">Login</button>
+                    </form>
+                </div>
+            );
 
             return (
                 <div className="max-w-4xl mx-auto p-4 pb-20">
                     <header className="flex justify-between items-center py-6 border-b mb-6">
-                        <h1 className="text-2xl font-black italic tracking-tighter text-slate-800">HSDEC WORKER MASTER</h1>
-                        <button onClick={() => { setWForm(initialForm); setView('edit'); }} className="bg-black text-white px-6 py-2 rounded-xl font-black text-xs">+ REGISTER</button>
+                        <div>
+                            <h1 className="text-2xl font-black italic tracking-tighter">WORKER MASTER</h1>
+                            <p className="text-[10px] font-black text-blue-500 uppercase">{user.name} ({user.role})</p>
+                        </div>
+                        {canRegister && <button onClick={() => { setWForm(initialForm); setView('edit'); }} className="bg-black text-white px-6 py-2 rounded-xl font-black text-xs">+ REGISTER</button>}
                     </header>
 
-                    {selectedBatch === null ? (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {[1, 2, 3].map(bn => (
-                                <div key={bn} onClick={() => setSelectedBatch(bn)} className="bg-white p-8 rounded-[2rem] shadow-sm cursor-pointer border border-slate-100 text-center hover:bg-emerald-50">
-                                    <p className="text-4xl font-black italic">B-{bn}</p>
-                                    <p className="text-emerald-500 font-black text-[10px] uppercase">{workers.filter(w => w.batch_no === bn).length} MEMBERS</p>
-                                </div>
-                            ))}
-                            <div onClick={() => setSelectedBatch("all")} className="bg-slate-800 p-8 rounded-[2rem] shadow-sm cursor-pointer text-center text-white hover:bg-slate-700">
-                                <p className="text-xl font-black uppercase italic">View All</p>
-                                <p className="text-slate-400 font-black text-[10px] uppercase">{workers.length} MEMBERS</p>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <button onClick={() => setSelectedBatch(null)} className="text-[10px] font-black text-slate-400 mb-2 uppercase">← Back</button>
-                            {workers.filter(w => selectedBatch === "all" ? true : w.batch_no == selectedBatch).map(w => (
-                                <div key={w.id} onClick={() => { setWForm(w); setView('edit'); }} 
-                                     className={`p-5 rounded-[2rem] flex items-center justify-between shadow-sm border cursor-pointer transition-all ${w.is_couple ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-200'}`}>
-                                    <div className="flex items-center gap-5">
-                                        <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border-2 border-white shadow">
-                                            {w.photo_url && <img src={w.photo_url} className="w-full h-full object-cover" />}
-                                        </div>
-                                        <div>
-                                            <p className="font-black text-xl text-slate-800">{w.name}</p>
-                                            <p className="text-[10px] text-slate-400 font-black uppercase mb-2">{w.village}, {w.district} · Batch {w.batch_no}</p>
-                                            <div className="flex flex-wrap gap-1">
-                                                {Object.keys(DOC_LABELS).map(key => !w[key] && (
-                                                    <span key={key} className="doc-chip bg-red-50 text-red-500 border-red-200">×</span>
-                                                ))}
-                                            </div>
-                                        </div>
+                    <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+                        {["all", 1, 2, 3].map(bn => (
+                            <button key={bn} onClick={() => setSelectedBatch(bn)} className={`px-4 py-2 rounded-full font-black text-xs uppercase ${selectedBatch === bn ? 'bg-slate-800 text-white' : 'bg-white border text-slate-400'}`}>
+                                {bn === "all" ? "All" : `Batch ${bn}`}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="space-y-4">
+                        {workers.filter(w => selectedBatch === "all" ? true : w.batch_no == selectedBatch).map(w => (
+                            <div key={w.id} onClick={() => { setWForm(w); setView('edit'); }} className={`p-4 rounded-[1.5rem] flex items-center justify-between border cursor-pointer bg-white shadow-sm hover:shadow-md transition-all`}>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-slate-100 rounded-xl overflow-hidden border">
+                                        {w.photo_url && <img src={w.photo_url} className="w-full h-full object-cover" />}
                                     </div>
-                                    <p className="font-black text-slate-800">{w.age || '?'} yrs</p>
+                                    <div>
+                                        <p className="font-black text-slate-800">{w.name}</p>
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase">{w.village}, {w.district} · Batch {w.batch_no}</p>
+                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                <div className="text-right">
+                                    <p className="font-black text-sm">{w.age || '?'} yrs</p>
+                                    <div className="flex gap-1 justify-end mt-1">
+                                        {Object.keys(DOC_LABELS).slice(0, 5).map(key => (
+                                            <div key={key} className={`w-2 h-2 rounded-full ${w[key] ? 'bg-emerald-400' : 'bg-slate-200'}`}></div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
 
                     {view === 'edit' && (
                         <div className="modal-full">
-                            <div className="max-w-2xl mx-auto pb-40">
-                                <div className="flex justify-between items-center mb-8"><button onClick={() => setView('list')} className="text-slate-400 font-black text-xs uppercase bg-white px-4 py-2 rounded-lg shadow-sm">Cancel</button></div>
-                                <form onSubmit={handleSubmit}>
+                            <div className="max-w-2xl mx-auto pb-20">
+                                <div className="flex justify-between items-center mb-6">
+                                    <button onClick={() => setView('list')} className="font-black text-xs uppercase text-slate-400">Cancel</button>
+                                    <p className="font-black italic">PROFILE</p>
+                                </div>
+                                <form onSubmit={handleSubmit} className="space-y-6">
                                     <div className="section-title">Status</div>
-                                    <div className="grid grid-cols-2 gap-4 mb-6">
-                                        <label className="flex items-center gap-2 font-black text-xs text-rose-500 bg-rose-50 px-4 py-3 rounded-xl"><input type="checkbox" checked={wForm.is_couple} onChange={e => setWForm({...wForm, is_couple: e.target.checked})} /> COUPLE</label>
-                                        <label className="flex items-center gap-2 font-black text-xs text-emerald-600 bg-emerald-50 px-4 py-3 rounded-xl"><input type="checkbox" checked={wForm.is_reentry} onChange={e => setWForm({...wForm, is_reentry: e.target.checked})} /> RE-ENTRY</label>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <label className="flex items-center gap-2 p-3 bg-white rounded-xl border-2"><input type="checkbox" disabled={!canEdit} checked={wForm.is_couple} onChange={e => setWForm({...wForm, is_couple: e.target.checked})} /> <span className="text-xs font-black">COUPLE</span></label>
+                                        <label className="flex items-center gap-2 p-3 bg-white rounded-xl border-2"><input type="checkbox" disabled={!canEdit} checked={wForm.is_reentry} onChange={e => setWForm({...wForm, is_reentry: e.target.checked})} /> <span className="text-xs font-black">RE-ENTRY</span></label>
                                     </div>
 
-                                    <div className="section-title">Documents</div>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 bg-slate-900 p-4 rounded-2xl mb-6">
+                                    <div className="section-title">Personal Info</div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="col-span-2"><label className="label-cap">Name</label><input type="text" className="form-input" readOnly={!canEdit} value={wForm.name} onChange={e => setWForm({...wForm, name: e.target.value})} required /></div>
+                                        <div><label className="label-cap">Batch #</label><input type="number" className="form-input" readOnly={!canEdit} value={wForm.batch_no} onChange={e => setWForm({...wForm, batch_no: e.target.value})} /></div>
+                                        <div><label className="label-cap">Birthday</label><input type="date" className="form-input" readOnly={!canEdit} value={wForm.birthday} onChange={e => setWForm({...wForm, birthday: e.target.value})} /></div>
+                                        <div><label className="label-cap">Age</label><input type="number" className="form-input" readOnly={!canEdit} value={wForm.age} onChange={e => setWForm({...wForm, age: e.target.value})} /></div>
+                                        <div><label className="label-cap">Gender</label><select className="form-select" disabled={!canEdit} value={wForm.gender} onChange={e => setWForm({...wForm, gender: e.target.value})}><option>Male</option><option>Female</option></select></div>
+                                    </div>
+
+                                    <div className="section-title">Address</div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div><label className="label-cap">Village</label><input type="text" className="form-input text-xs" readOnly={!canEdit} value={wForm.village} onChange={e => setWForm({...wForm, village: e.target.value})} /></div>
+                                        <div><label className="label-cap">District</label><input type="text" className="form-input text-xs" readOnly={!canEdit} value={wForm.district} onChange={e => setWForm({...wForm, district: e.target.value})} /></div>
+                                        <div><label className="label-cap">Province</label><input type="text" className="form-input text-xs" readOnly={!canEdit} value={wForm.province} onChange={e => setWForm({...wForm, province: e.target.value})} /></div>
+                                    </div>
+
+                                    <div className="section-title">Experience & Education</div>
+                                    <div className="space-y-4">
+                                        <div><label className="label-cap">Education</label><input type="text" className="form-input" readOnly={!canEdit} value={wForm.education} onChange={e => setWForm({...wForm, education: e.target.value})} /></div>
+                                        <div><label className="label-cap">Work Experience</label><textarea className="form-textarea text-xs" readOnly={!canEdit} value={wForm.work_experience} onChange={e => setWForm({...wForm, work_experience: e.target.value})}></textarea></div>
+                                    </div>
+
+                                    <div className="section-title">Physical & Health</div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="label-cap">Height (cm)</label><input type="number" className="form-input" readOnly={!canEdit} value={wForm.height} onChange={e => setWForm({...wForm, height: e.target.value})} /></div>
+                                        <div><label className="label-cap">Weight (kg)</label><input type="number" className="form-input" readOnly={!canEdit} value={wForm.weight} onChange={e => setWForm({...wForm, weight: e.target.value})} /></div>
+                                        <div className="col-span-2"><label className="label-cap">Tattoos</label><input type="text" className="form-input" readOnly={!canEdit} value={wForm.tattoos} onChange={e => setWForm({...wForm, tattoos: e.target.value})} /></div>
+                                    </div>
+
+                                    <div className="section-title">Documents Check</div>
+                                    <div className="grid grid-cols-2 gap-2">
                                         {Object.keys(DOC_LABELS).map(key => (
-                                            <label key={key} className={`flex items-center justify-between p-2 rounded-lg border ${wForm[key] ? 'border-blue-500 text-blue-400' : 'border-slate-800 text-slate-500'}`}>
-                                                <span className="text-[9px] font-black uppercase">{DOC_LABELS[key]}</span>
-                                                <input type="checkbox" checked={wForm[key]} onChange={e => setWForm({...wForm, [key]: e.target.checked})} />
+                                            <label key={key} className={`flex items-center justify-between p-2 rounded-lg border ${wForm[key] ? 'border-emerald-500 bg-emerald-50' : 'border-slate-100'}`}>
+                                                <span className="text-[10px] font-bold uppercase">{DOC_LABELS[key]}</span>
+                                                <input type="checkbox" disabled={!canEdit} checked={wForm[key]} onChange={e => setWForm({...wForm, [key]: e.target.checked})} />
                                             </label>
                                         ))}
                                     </div>
 
-                                    <div className="section-title">Personal Details</div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="col-span-2"><label className="label-cap">Full Name</label><input type="text" className="form-input" value={wForm.name} onChange={e => setWForm({...wForm, name: e.target.value})} required /></div>
-                                        <div><label className="label-cap">Batch #</label><input type="number" className="form-input" value={wForm.batch_no} onChange={e => setWForm({...wForm, batch_no: e.target.value})} /></div>
-                                        <div><label className="label-cap">Birthday</label><input type="date" className="form-input" value={wForm.birthday} onChange={e => setWForm({...wForm, birthday: e.target.value})} /></div>
-                                        <div><label className="label-cap">Age</label><input type="number" className="form-input" value={wForm.age} onChange={e => setWForm({...wForm, age: e.target.value})} /></div>
-                                        <div><label className="label-cap">Place of Birth</label><input type="text" className="form-input" value={wForm.place_of_birth} onChange={e => setWForm({...wForm, place_of_birth: e.target.value})} /></div>
-                                        <div><label className="label-cap">Village</label><input type="text" className="form-input" value={wForm.village} onChange={e => setWForm({...wForm, village: e.target.value})} /></div>
-                                        <div><label className="label-cap">District</label><input type="text" className="form-input" value={wForm.district} onChange={e => setWForm({...wForm, district: e.target.value})} /></div>
-                                        <div><label className="label-cap">Province</label><input type="text" className="form-input" value={wForm.province} onChange={e => setWForm({...wForm, province: e.target.value})} /></div>
-                                    </div>
-
-                                    <div className="section-title">Education & Skills</div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="label-cap">Education</label><input type="text" className="form-input" value={wForm.education} onChange={e => setWForm({...wForm, education: e.target.value})} /></div>
-                                        <div><label className="label-cap">Language</label><input type="text" className="form-input" value={wForm.foreign_language} onChange={e => setWForm({...wForm, foreign_language: e.target.value})} /></div>
-                                        <div className="col-span-2"><label className="label-cap">Work Experience</label><input type="text" className="form-input" value={wForm.work_experience} onChange={e => setWForm({...wForm, work_experience: e.target.value})} /></div>
-                                    </div>
-
-                                    <div className="section-title">Physical Info</div>
-                                    <div className="grid grid-cols-4 gap-2">
-                                        <div><label className="label-cap">Weight</label><input type="number" className="form-input" value={wForm.weight} onChange={e => setWForm({...wForm, weight: e.target.value})} /></div>
-                                        <div><label className="label-cap">Height</label><input type="number" className="form-input" value={wForm.height} onChange={e => setWForm({...wForm, height: e.target.value})} /></div>
-                                        <div className="col-span-2"><label className="label-cap">Tattoos</label><input type="text" className="form-input" value={wForm.tattoos} onChange={e => setWForm({...wForm, tattoos: e.target.value})} /></div>
-                                    </div>
-
-                                    <button type="submit" className="w-full bg-emerald-600 text-white py-6 rounded-[2rem] font-black text-xl shadow-xl mt-12">SAVE DATA</button>
-                                    
-                                    {wForm.id && (
-                                        <button type="button" onClick={handleDelete} className="w-full bg-rose-100 text-rose-600 py-4 rounded-[2rem] font-black mt-4">DELETE WORKER</button>
+                                    {canEdit && <button type="submit" className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black shadow-xl uppercase">Save Changes</button>}
+                                    {canDelete && wForm.id && (
+                                        <button type="button" onClick={async () => { if(confirm("Delete?")) { await supabase.from('workers').delete().eq('id', wForm.id); setView('list'); fetchWorkers(); }}} className="w-full bg-rose-50 text-rose-500 py-3 rounded-2xl font-black text-xs mt-2 uppercase">Delete Worker</button>
                                     )}
                                 </form>
                             </div>
