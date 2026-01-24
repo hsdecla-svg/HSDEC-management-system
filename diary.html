@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Daily Diary | HSDEC</title>
+    <title>HSDEC Activity Log</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -11,111 +11,104 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #1e293b; }
-        .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; outline: none; background: white; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+        .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; outline: none; }
         .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; }
-        .diary-card { background: white; border-radius: 24px; border: 1px solid #e2e8f0; transition: all 0.2s; }
-        .diary-card:hover { transform: translateY(-2px); shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .category-tag { font-size: 9px; font-weight: 900; padding: 2px 8px; border-radius: 6px; }
     </style>
 </head>
 <body>
     <div id="root"></div>
-
     <script type="text/babel">
         const { useState, useEffect } = React;
         const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const STAFFS = ["Mr. Chanthaviphone", "Ms. Sengmala", "Mr. Takashi", "Ms. Chansouk", "Ms. Mim"];
+        const CATS = ["Lecture (授業)", "Dorm Life (生活)", "Company Visit (企業訪問)", "Interview (面接)", "Business (事務)"];
 
         function DiaryApp() {
             const [view, setView] = useState('list');
-            const [diaries, setDiaries] = useState([]);
+            const [logs, setLogs] = useState([]);
             const [isUploading, setIsUploading] = useState(false);
-            
-            const initialForm = {
-                date: new Date().toISOString().split('T')[0],
-                staff_name: STAFFS[0],
-                title: '',
-                content: '',
-                photo_url: ''
-            };
-            const [dForm, setDForm] = useState(initialForm);
+            const [filter, setFilter] = useState('All');
 
-            useEffect(() => { fetchDiaries(); }, []);
+            const initialForm = { date: new Date().toISOString().split('T')[0], category: CATS[0], title: '', related_to: '', content: '', photo_url: '' };
+            const [form, setForm] = useState(initialForm);
 
-            async function fetchDiaries() {
+            useEffect(() => { fetchLogs(); }, []);
+
+            async function fetchLogs() {
                 const { data } = await supabase.from('diaries').select('*').order('date', { ascending: false });
-                if (data) setDiaries(data);
+                if (data) setLogs(data);
             }
 
-            const handleFileUpload = async (e) => {
+            const handleUpload = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 setIsUploading(true);
-                const cleanName = `${Date.now()}_diary_${file.name.replace(/[^a-z0-9.]/gi, '_')}`;
-                const { error } = await supabase.storage.from('workers').upload(cleanName, file);
+                const name = `${Date.now()}_log_${file.name}`;
+                const { error } = await supabase.storage.from('workers').upload(name, file);
                 if (!error) {
-                    const { data: urlData } = supabase.storage.from('workers').getPublicUrl(cleanName);
-                    setDForm(prev => ({ ...prev, photo_url: urlData.publicUrl }));
+                    const { data } = supabase.storage.from('workers').getPublicUrl(name);
+                    setForm(prev => ({ ...prev, photo_url: data.publicUrl }));
                 }
                 setIsUploading(false);
             };
 
-            const handleSubmit = async (e) => {
+            const save = async (e) => {
                 e.preventDefault();
-                const { error } = await supabase.from('diaries').upsert([dForm]);
+                const { error } = await supabase.from('diaries').upsert([form]);
                 if (error) alert(error.message);
-                else { setView('list'); fetchDiaries(); }
+                else { setView('list'); fetchLogs(); }
             };
 
             return (
-                <div class="max-w-2xl mx-auto p-4 pb-24">
-                    <header class="flex justify-between items-center mb-8 py-6">
-                        <div>
-                            <h1 class="text-3xl font-black italic tracking-tighter">DAILY DIARY</h1>
-                            <p class="text-xs font-bold text-amber-500 uppercase tracking-widest">Work Logs & Progress</p>
-                        </div>
-                        <button onClick={() => { setDForm(initialForm); setView('edit'); }} class="bg-amber-500 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-amber-200 hover:bg-amber-600 transition">+ WRITE</button>
+                <div class="max-w-2xl mx-auto p-4 pb-20">
+                    <header class="flex justify-between items-center py-8">
+                        <div><h1 class="text-3xl font-black italic tracking-tighter">ACTIVITY LOG</h1><p class="text-[10px] font-black text-amber-500 uppercase">HSDEC Business Evidence</p></div>
+                        <button onClick={() => {setForm(initialForm); setView('edit');}} class="bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs">+ ADD RECORD</button>
                     </header>
 
                     {view === 'list' ? (
                         <div class="space-y-6">
-                            {diaries.map(d => (
-                                <div key={d.id} class="diary-card p-6 shadow-sm">
-                                    <div class="flex justify-between items-start mb-4">
-                                        <div>
-                                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider">{d.date} · {d.staff_name}</p>
-                                            <h3 class="text-xl font-black text-slate-800">{d.title}</h3>
+                            <div class="flex gap-2 overflow-x-auto pb-2">
+                                {['All', ...CATS].map(c => (
+                                    <button key={c} onClick={() => setFilter(c)} class={`px-4 py-2 rounded-full text-[10px] font-black whitespace-nowrap ${filter === c ? 'bg-amber-500 text-white' : 'bg-white text-slate-400'}`}>{c}</button>
+                                ))}
+                            </div>
+                            {logs.filter(l => filter === 'All' || l.category === filter).map(log => (
+                                <div key={log.id} class="bg-white rounded-[2rem] overflow-hidden border border-slate-100 shadow-sm">
+                                    {log.photo_url && <img src={log.photo_url} class="w-full h-64 object-cover" />}
+                                    <div class="p-8">
+                                        <div class="flex items-center gap-2 mb-2">
+                                            <span class="bg-amber-100 text-amber-600 category-tag uppercase">{log.category}</span>
+                                            <span class="text-[10px] font-black text-slate-300 uppercase">{log.date}</span>
                                         </div>
+                                        <h3 class="text-xl font-black text-slate-800 mb-2">{log.title}</h3>
+                                        <p class="text-xs font-black text-emerald-500 uppercase mb-4">Target: {log.related_to || 'N/A'}</p>
+                                        <p class="text-slate-500 font-medium leading-relaxed whitespace-pre-wrap">{log.content}</p>
                                     </div>
-                                    {d.photo_url && <img src={d.photo_url} class="w-full h-48 object-cover rounded-2xl mb-4 border border-slate-100" />}
-                                    <p class="text-slate-600 font-medium leading-relaxed whitespace-pre-wrap">{d.content}</p>
                                 </div>
                             ))}
                         </div>
                     ) : (
                         <div class="fixed inset-0 bg-white z-[100] p-6 overflow-y-auto">
-                            <div class="max-w-xl mx-auto pb-20">
-                                <button onClick={() => setView('list')} class="text-slate-400 font-black text-xs uppercase mb-8">← Cancel / Back</button>
-                                <form onSubmit={handleSubmit} class="space-y-5">
+                            <div class="max-w-xl mx-auto">
+                                <button onClick={() => setView('list')} class="text-slate-400 font-black text-xs mb-8 uppercase">← Back</button>
+                                <form onSubmit={save} class="space-y-6">
                                     <div class="grid grid-cols-2 gap-4">
-                                        <div><label class="label-cap">Date</label><input type="date" class="form-input" value={dForm.date} onChange={e => setDForm({...dForm, date: e.target.value})} /></div>
-                                        <div><label class="label-cap">Reporter</label><select class="form-select" value={dForm.staff_name} onChange={e => setDForm({...dForm, staff_name: e.target.value})}>{STAFFS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                                        <div><label class="label-cap">Date</label><input type="date" class="form-input" value={form.date} onChange={e => setForm({...form, date: e.target.value})} /></div>
+                                        <div><label class="label-cap">Category</label><select class="form-select" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>{CATS.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                                     </div>
-                                    <div><label class="label-cap">Work Title</label><input type="text" class="form-input" placeholder="e.g. Batch 1 Training Day 3" value={dForm.title} onChange={e => setDForm({...dForm, title: e.target.value})} required /></div>
-                                    <div><label class="label-cap">Details</label><textarea class="form-textarea h-40" placeholder="What happened today?" value={dForm.content} onChange={e => setDForm({...dForm, content: e.target.value})} required></textarea></div>
-                                    <div>
-                                        <label class="label-cap">Scene Photo (Optional)</label>
-                                        <div class="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border-2 border-dashed border-slate-200">
-                                            {dForm.photo_url && <img src={dForm.photo_url} class="w-16 h-16 rounded-lg object-cover" />}
-                                            <input type="file" onChange={handleFileUpload} class="text-xs" />
-                                        </div>
+                                    <input type="text" class="form-input" placeholder="Main Title (e.g. Batch 1 Evaluation)" value={form.title} onChange={e => setForm({...form, title: e.target.value})} required />
+                                    <input type="text" class="form-input" placeholder="Target Name (Worker / Company)" value={form.related_to} onChange={e => setForm({...form, related_to: e.target.value})} />
+                                    <textarea class="form-textarea h-48" placeholder="Detailed records..." value={form.content} onChange={e => setForm({...form, content: e.target.value})} required />
+                                    <div class="bg-slate-50 p-6 rounded-2xl border-2 border-dashed border-slate-200">
+                                        <input type="file" onChange={handleUpload} class="text-xs" />
+                                        {isUploading && <p class="text-[10px] font-black text-amber-500 mt-2">Uploading photo...</p>}
                                     </div>
-                                    <button type="submit" class="w-full bg-amber-500 text-white py-5 rounded-2xl font-black uppercase shadow-xl disabled:opacity-50" disabled={isUploading}>
-                                        {isUploading ? 'Uploading...' : 'Save Daily Diary'}
-                                    </button>
+                                    <button type="submit" class="w-full bg-slate-900 text-white py-5 rounded-3xl font-black shadow-xl">SAVE TO HISTORY</button>
                                 </form>
                             </div>
                         </div>
@@ -123,7 +116,6 @@
                 </div>
             );
         }
-
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<DiaryApp />);
     </script>
