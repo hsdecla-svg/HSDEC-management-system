@@ -62,17 +62,47 @@
                 if (data) setWorkers(data);
             }
 
-            const handleFileUpload = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                setIsUploading(true);
-                const name = `${Date.now()}_${file.name}`;
-                const { error } = await supabase.storage.from('workers').upload(name, file);
-                if (!error) {
-                    const { data } = supabase.storage.from('workers').getPublicUrl(name);
-                    setWForm(prev => ({ ...prev, photo_url: data.publicUrl }));
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+
+                // 送信データのコピーを作成
+                const payload = { ...wForm };
+
+                // 1. int4 (整数型) の項目を安全に変換
+                // 空文字 "" を送るとエラーになるため、空なら null に変換します
+                const int4Fields = ['age', 'weight', 'height', 'batch_no'];
+                int4Fields.forEach(field => {
+                    const value = payload[field];
+                    if (value === "" || value === null || value === undefined) {
+                        payload[field] = null;
+                    } else {
+                        // 文字列を整数に変換
+                        payload[field] = parseInt(value, 10);
+                    }
+                });
+
+                // 2. bool (真偽値型) の項目を確実に true / false に
+                const boolFields = [
+                    'is_couple', 'is_reentry', 'id_card', 'census', 'cert_address', 
+                    'mobile_phone', 'land_title', 'pic_3x4', 'pic_35x46', 
+                    'penalty_notice', 'agri_cert', 'health_cert', 'dollar_book'
+                ];
+                boolFields.forEach(field => {
+                    payload[field] = Boolean(payload[field]);
+                });
+
+                console.log("Saving payload:", payload);
+
+                const { error } = await supabase.from('workers').upsert([payload]);
+                
+                if (error) {
+                    console.error("Supabase Error:", error);
+                    alert("Save Error: " + error.message);
+                } else {
+                    alert("Saved successfully! / 保存が完了しました！");
+                    setView('list');
+                    fetchWorkers();
                 }
-                setIsUploading(false);
             };
 
             const handleSubmit = async (e) => {
