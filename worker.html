@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Worker Master</title>
+    <title>HSDEC Worker Master | Complete</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -61,19 +61,6 @@
                 if (data) setWorkers(data);
             }
 
-            const handleFileUpload = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                setIsUploading(true);
-                const name = `${Date.now()}_${file.name}`;
-                const { error } = await supabase.storage.from('workers').upload(name, file);
-                if (!error) {
-                    const { data } = supabase.storage.from('workers').getPublicUrl(name);
-                    setWForm(prev => ({ ...prev, photo_url: data.publicUrl }));
-                }
-                setIsUploading(false);
-            };
-
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 const payload = { ...wForm };
@@ -86,13 +73,16 @@
                 boolFields.forEach(f => { payload[f] = Boolean(payload[f]); });
 
                 const { error } = await supabase.from('workers').upsert([payload]);
-                if (error) {
-                    alert("Error: " + error.message);
-                } else {
-                    alert("Saved Successfully!");
-                    setView('list');
-                    fetchWorkers();
-                    setSelectedBatch(payload.batch_no);
+                if (error) alert("Error: " + error.message);
+                else { alert("Saved!"); setView('list'); fetchWorkers(); }
+            };
+
+            const handleDelete = async () => {
+                if (!wForm.id) return;
+                if (confirm("Delete this worker? / 削除しますか？")) {
+                    const { error } = await supabase.from('workers').delete().eq('id', wForm.id);
+                    if (error) alert(error.message);
+                    else { alert("Deleted"); setView('list'); fetchWorkers(); }
                 }
             };
 
@@ -100,47 +90,43 @@
                 <div className="max-w-4xl mx-auto p-4 pb-20">
                     <header className="flex justify-between items-center py-6 border-b mb-6">
                         <h1 className="text-2xl font-black italic tracking-tighter text-slate-800">HSDEC WORKER MASTER</h1>
-                        <button onClick={() => { setWForm(initialForm); setView('edit'); }} className="bg-black text-white px-6 py-2 rounded-xl font-black text-xs shadow-lg">+ REGISTER</button>
+                        <button onClick={() => { setWForm(initialForm); setView('edit'); }} className="bg-black text-white px-6 py-2 rounded-xl font-black text-xs">+ REGISTER</button>
                     </header>
 
                     {selectedBatch === null ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             {[1, 2, 3].map(bn => (
-                                <div key={bn} onClick={() => setSelectedBatch(bn)} className="bg-white p-8 rounded-[2rem] shadow-sm cursor-pointer hover:bg-emerald-50 border border-slate-100 text-center">
+                                <div key={bn} onClick={() => setSelectedBatch(bn)} className="bg-white p-8 rounded-[2rem] shadow-sm cursor-pointer border border-slate-100 text-center hover:bg-emerald-50">
                                     <p className="text-4xl font-black italic">B-{bn}</p>
                                     <p className="text-emerald-500 font-black text-[10px] uppercase">{workers.filter(w => w.batch_no === bn).length} MEMBERS</p>
                                 </div>
                             ))}
-                            <div onClick={() => setSelectedBatch("none")} className="bg-slate-200 p-8 rounded-[2rem] shadow-sm cursor-pointer hover:bg-slate-300 border border-slate-300 text-center">
-                                <p className="text-xl font-black italic text-slate-500 uppercase">No Batch</p>
-                                <p className="text-slate-400 font-black text-[10px] uppercase">{workers.filter(w => !w.batch_no).length} MEMBERS</p>
+                            <div onClick={() => setSelectedBatch("all")} className="bg-slate-800 p-8 rounded-[2rem] shadow-sm cursor-pointer text-center text-white hover:bg-slate-700">
+                                <p className="text-xl font-black uppercase italic">View All</p>
+                                <p className="text-slate-400 font-black text-[10px] uppercase">{workers.length} MEMBERS</p>
                             </div>
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <button onClick={() => setSelectedBatch(null)} className="text-[10px] font-black text-slate-400 mb-2 uppercase">← Back to List</button>
-                            {workers.filter(w => selectedBatch === "none" ? !w.batch_no : w.batch_no == selectedBatch).map(w => (
+                            <button onClick={() => setSelectedBatch(null)} className="text-[10px] font-black text-slate-400 mb-2 uppercase">← Back</button>
+                            {workers.filter(w => selectedBatch === "all" ? true : w.batch_no == selectedBatch).map(w => (
                                 <div key={w.id} onClick={() => { setWForm(w); setView('edit'); }} 
-                                     className={`p-5 rounded-[2rem] flex flex-col md:flex-row md:items-center justify-between shadow-sm border cursor-pointer transition-all ${w.is_couple ? 'bg-rose-50 border-rose-200' : w.is_reentry ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200'}`}>
+                                     className={`p-5 rounded-[2rem] flex items-center justify-between shadow-sm border cursor-pointer transition-all ${w.is_couple ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-200'}`}>
                                     <div className="flex items-center gap-5">
-                                        <img src={w.photo_url || 'https://via.placeholder.com/150'} className="w-16 h-16 rounded-2xl object-cover border-2 border-white shadow-md bg-slate-100" />
+                                        <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border-2 border-white shadow">
+                                            {w.photo_url && <img src={w.photo_url} className="w-full h-full object-cover" />}
+                                        </div>
                                         <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <p className="font-black text-xl text-slate-800">{w.name}</p>
-                                                {w.is_couple && <span className="bg-rose-500 text-white text-[8px] px-2 py-0.5 rounded-full font-black uppercase">Couple</span>}
-                                                {w.is_reentry && <span className="bg-emerald-600 text-white text-[8px] px-2 py-0.5 rounded-full font-black uppercase">Re-Entry</span>}
-                                            </div>
-                                            <p className="text-[10px] text-slate-400 font-black uppercase mb-2">{w.village}, {w.district}, {w.province}</p>
+                                            <p className="font-black text-xl text-slate-800">{w.name}</p>
+                                            <p className="text-[10px] text-slate-400 font-black uppercase mb-2">{w.village}, {w.district} · Batch {w.batch_no}</p>
                                             <div className="flex flex-wrap gap-1">
                                                 {Object.keys(DOC_LABELS).map(key => !w[key] && (
-                                                    <span key={key} className="doc-chip bg-red-50 text-red-500 border-red-200">× {DOC_LABELS[key]}</span>
+                                                    <span key={key} className="doc-chip bg-red-50 text-red-500 border-red-200">×</span>
                                                 ))}
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="text-right mt-4 md:mt-0">
-                                        <p className="font-black text-slate-800">{w.whatsapp || 'N/A'} · {w.age} yrs</p>
-                                    </div>
+                                    <p className="font-black text-slate-800">{w.age || '?'} yrs</p>
                                 </div>
                             ))}
                         </div>
@@ -151,38 +137,53 @@
                             <div className="max-w-2xl mx-auto pb-40">
                                 <div className="flex justify-between items-center mb-8"><button onClick={() => setView('list')} className="text-slate-400 font-black text-xs uppercase bg-white px-4 py-2 rounded-lg shadow-sm">Cancel</button></div>
                                 <form onSubmit={handleSubmit}>
-                                    <div className="section-title">Photo & Quick Status</div>
-                                    <div className="bg-white p-6 rounded-[2rem] shadow-sm mb-6 flex gap-6 items-center border border-slate-100">
-                                        <img src={wForm.photo_url || 'https://via.placeholder.com/150'} className="w-28 h-28 rounded-2xl object-cover shadow-xl bg-slate-50" />
-                                        <div className="flex-1 space-y-4">
-                                            <input type="file" onChange={handleFileUpload} className="text-xs" />
-                                            <div className="flex gap-4">
-                                                <label className="flex items-center gap-2 font-black text-xs text-rose-500 bg-rose-50 px-3 py-1 rounded-full"><input type="checkbox" checked={wForm.is_couple} onChange={e => setWForm({...wForm, is_couple: e.target.checked})} /> COUPLE</label>
-                                                <label className="flex items-center gap-2 font-black text-xs text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full"><input type="checkbox" checked={wForm.is_reentry} onChange={e => setWForm({...wForm, is_reentry: e.target.checked})} /> RE-ENTRY</label>
-                                            </div>
-                                        </div>
+                                    <div className="section-title">Status</div>
+                                    <div className="grid grid-cols-2 gap-4 mb-6">
+                                        <label className="flex items-center gap-2 font-black text-xs text-rose-500 bg-rose-50 px-4 py-3 rounded-xl"><input type="checkbox" checked={wForm.is_couple} onChange={e => setWForm({...wForm, is_couple: e.target.checked})} /> COUPLE</label>
+                                        <label className="flex items-center gap-2 font-black text-xs text-emerald-600 bg-emerald-50 px-4 py-3 rounded-xl"><input type="checkbox" checked={wForm.is_reentry} onChange={e => setWForm({...wForm, is_reentry: e.target.checked})} /> RE-ENTRY</label>
                                     </div>
 
-                                    <div className="section-title">Document Checklist</div>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 bg-slate-900 p-6 rounded-[2rem] mb-6 shadow-2xl">
+                                    <div className="section-title">Documents</div>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 bg-slate-900 p-4 rounded-2xl mb-6">
                                         {Object.keys(DOC_LABELS).map(key => (
-                                            <label key={key} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${wForm[key] ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-slate-800 text-slate-500 hover:border-slate-700'}`}>
-                                                <span className="text-[9px] font-black uppercase tracking-tighter">{DOC_LABELS[key]}</span>
-                                                <input type="checkbox" checked={wForm[key]} onChange={e => setWForm({...wForm, [key]: e.target.checked})} className="w-4 h-4" />
+                                            <label key={key} className={`flex items-center justify-between p-2 rounded-lg border ${wForm[key] ? 'border-blue-500 text-blue-400' : 'border-slate-800 text-slate-500'}`}>
+                                                <span className="text-[9px] font-black uppercase">{DOC_LABELS[key]}</span>
+                                                <input type="checkbox" checked={wForm[key]} onChange={e => setWForm({...wForm, [key]: e.target.checked})} />
                                             </label>
                                         ))}
                                     </div>
 
-                                    <div className="section-title">Data Entry</div>
+                                    <div className="section-title">Personal Details</div>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="col-span-2"><label className="label-cap">Name</label><input type="text" className="form-input" value={wForm.name} onChange={e => setWForm({...wForm, name: e.target.value})} required /></div>
+                                        <div className="col-span-2"><label className="label-cap">Full Name</label><input type="text" className="form-input" value={wForm.name} onChange={e => setWForm({...wForm, name: e.target.value})} required /></div>
                                         <div><label className="label-cap">Batch #</label><input type="number" className="form-input" value={wForm.batch_no} onChange={e => setWForm({...wForm, batch_no: e.target.value})} /></div>
-                                        <div><label className="label-cap">Date of Birth</label><input type="date" className="form-input" value={wForm.birthday} onChange={e => setWForm({...wForm, birthday: e.target.value})} /></div>
+                                        <div><label className="label-cap">Birthday</label><input type="date" className="form-input" value={wForm.birthday} onChange={e => setWForm({...wForm, birthday: e.target.value})} /></div>
                                         <div><label className="label-cap">Age</label><input type="number" className="form-input" value={wForm.age} onChange={e => setWForm({...wForm, age: e.target.value})} /></div>
-                                        <div><label className="label-cap">WhatsApp</label><input type="text" className="form-input" value={wForm.whatsapp} onChange={e => setWForm({...wForm, whatsapp: e.target.value})} /></div>
+                                        <div><label className="label-cap">Place of Birth</label><input type="text" className="form-input" value={wForm.place_of_birth} onChange={e => setWForm({...wForm, place_of_birth: e.target.value})} /></div>
+                                        <div><label className="label-cap">Village</label><input type="text" className="form-input" value={wForm.village} onChange={e => setWForm({...wForm, village: e.target.value})} /></div>
+                                        <div><label className="label-cap">District</label><input type="text" className="form-input" value={wForm.district} onChange={e => setWForm({...wForm, district: e.target.value})} /></div>
+                                        <div><label className="label-cap">Province</label><input type="text" className="form-input" value={wForm.province} onChange={e => setWForm({...wForm, province: e.target.value})} /></div>
                                     </div>
-                                    <textarea className="form-textarea h-32 mt-4" placeholder="Notes..." value={wForm.note} onChange={e => setWForm({...wForm, note: e.target.value})}></textarea>
-                                    <button type="submit" className="w-full bg-emerald-600 text-white py-6 rounded-[2.5rem] font-black text-xl shadow-2xl mt-12 mb-20">SAVE PROFILE</button>
+
+                                    <div className="section-title">Education & Skills</div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="label-cap">Education</label><input type="text" className="form-input" value={wForm.education} onChange={e => setWForm({...wForm, education: e.target.value})} /></div>
+                                        <div><label className="label-cap">Language</label><input type="text" className="form-input" value={wForm.foreign_language} onChange={e => setWForm({...wForm, foreign_language: e.target.value})} /></div>
+                                        <div className="col-span-2"><label className="label-cap">Work Experience</label><input type="text" className="form-input" value={wForm.work_experience} onChange={e => setWForm({...wForm, work_experience: e.target.value})} /></div>
+                                    </div>
+
+                                    <div className="section-title">Physical Info</div>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        <div><label className="label-cap">Weight</label><input type="number" className="form-input" value={wForm.weight} onChange={e => setWForm({...wForm, weight: e.target.value})} /></div>
+                                        <div><label className="label-cap">Height</label><input type="number" className="form-input" value={wForm.height} onChange={e => setWForm({...wForm, height: e.target.value})} /></div>
+                                        <div className="col-span-2"><label className="label-cap">Tattoos</label><input type="text" className="form-input" value={wForm.tattoos} onChange={e => setWForm({...wForm, tattoos: e.target.value})} /></div>
+                                    </div>
+
+                                    <button type="submit" className="w-full bg-emerald-600 text-white py-6 rounded-[2rem] font-black text-xl shadow-xl mt-12">SAVE DATA</button>
+                                    
+                                    {wForm.id && (
+                                        <button type="button" onClick={handleDelete} className="w-full bg-rose-100 text-rose-600 py-4 rounded-[2rem] font-black mt-4">DELETE WORKER</button>
+                                    )}
                                 </form>
                             </div>
                         </div>
