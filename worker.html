@@ -22,7 +22,7 @@
         .worker-card { border-width: 4px; border-color: transparent; transition: 0.3s; }
         .is-couple { border-color: #fbcfe8 !important; background-color: #fff1f2 !important; }
         .is-reentry { border-color: #bbf7d0 !important; background-color: #f0fdf4 !important; }
-        .doc-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; border: 2px solid #f1f5f9; cursor: pointer; }
+        .doc-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; border: 2px solid #f1f5f9; cursor: pointer; font-size: 11px; font-weight: 700;}
         .doc-item.done { border-color: #10b981; background: #f0fdf4; color: #166534; }
         .doc-item.pending { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
     </style>
@@ -125,36 +125,24 @@
                         
                         <div className="flex justify-between items-start mb-10">
                             <h2 className="text-3xl font-black italic uppercase leading-none">{form.name || 'New Profile'}</h2>
-                            <div className="w-32 h-32 bg-slate-100 rounded-3xl border-4 border-white shadow-lg overflow-hidden flex-shrink-0 relative group">
+                            <div className="w-32 h-32 bg-slate-100 rounded-3xl border-4 border-white shadow-lg overflow-hidden flex-shrink-0 relative">
                                 {form.photo_url ? <img src={form.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px] font-black text-slate-400 uppercase">Photo</div>}
-                                <input type="text" placeholder="Photo URL" className="absolute bottom-0 w-full text-[8px] bg-black/50 text-white p-1 outline-none" value={form.photo_url || ''} onChange={e => setForm({...form, photo_url: e.target.value})} />
+                                <div className="absolute bottom-0 w-full bg-black/60 p-2">
+                                    <input type="file" className="hidden" id="photo-upload" accept="image/*" />
+                                    <label htmlFor="photo-upload" className="text-[8px] text-white font-bold cursor-pointer uppercase block text-center">Upload File</label>
+                                    <input type="text" placeholder="or Image URL" className="w-full text-[8px] bg-white/20 text-white mt-1 p-1 outline-none rounded" value={form.photo_url || ''} onChange={e => setForm({...form, photo_url: e.target.value})} />
+                                </div>
                             </div>
                         </div>
 
-                        <div className="section-header">1. Documents & Status</div>
+                        <div className="section-header">1. Documents Status</div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-6">
                             {DOC_LIST.map(d => (
                                 <div key={d} onClick={() => setForm({...form, [d]: !form[d]})} className={`doc-item ${form[d] ? 'done' : 'pending'}`}>
                                     <span>{d}</span>
                                 </div>
                             ))}
-                            <div onClick={() => setForm({...form, is_reentry: !form.is_reentry})} className={`doc-item ${form.is_reentry ? 'done' : 'pending'}`}>
-                                <span>RE-ENTRY (GREEN)</span>
-                            </div>
-                            <div onClick={() => setForm({...form, is_couple: !form.is_couple})} className={`doc-item ${form.is_couple ? 'bg-pink-500 text-white border-pink-600' : 'pending'}`}>
-                                <span>COUPLE (PINK)</span>
-                            </div>
                         </div>
-
-                        {form.is_couple && (
-                            <div className="bg-pink-50 p-6 rounded-[2rem] mb-10 border border-pink-100">
-                                <label className="label-cap text-pink-500">Partner Selection</label>
-                                <select className="form-select" value={form.partner_id || ''} onChange={e => setForm({...form, partner_id: e.target.value})}>
-                                    <option value="">Select Partner Name...</option>
-                                    {workers.filter(w => w.gender !== form.gender).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                </select>
-                            </div>
-                        )}
 
                         <div className="section-header">2. Basic Details</div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -188,11 +176,11 @@
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div><label className="label-cap">Weight (kg)</label><input type="number" className="form-input" value={form.weight || ''} onChange={e => setForm({...form, weight: e.target.value})} /></div>
                             <div><label className="label-cap">Height (cm)</label><input type="number" className="form-input" value={form.height || ''} onChange={e => setForm({...form, height: e.target.value})} /></div>
-                            <div><label className="label-cap">Arm Strength</label><input className="form-input" value={form.arm_strength || ''} onChange={e => setForm({...form, arm_strength: e.target.value})} /></div>
-                            <div><label className="label-cap">Eyesight</label><input className="form-input" value={form.eyesight || ''} onChange={e => setForm({...form, eyesight: e.target.value})} /></div>
-                            <div className="col-span-2"><label className="label-cap">Identified Diseases</label><input className="form-input" value={form.diseases || ''} onChange={e => setForm({...form, diseases: e.target.value})} /></div>
-                            <div className="col-span-2"><label className="label-cap">Allergies</label><input className="form-input" value={form.allergies || ''} onChange={e => setForm({...form, allergies: e.target.value})} /></div>
-                            <div className="col-span-2"><label className="label-cap">Tattoos</label><input className="form-input" value={form.tattoos || ''} onChange={e => setForm({...form, tattoos: e.target.value})} /></div>
+                            <div><label className="label-cap">Arm Strength</label><select className="form-select" value={form.arm_strength || ''} onChange={e => setForm({...form, arm_strength: e.target.value})}><option value="">-</option><option value="Good">Good</option><option value="Problem">Problem</option></select></div>
+                            <div><label className="label-cap">Eyesight</label><select className="form-select" value={form.eyesight || ''} onChange={e => setForm({...form, eyesight: e.target.value})}><option value="">-</option><option value="Good">Good</option><option value="Problem">Problem</option></select></div>
+                            <div className="col-span-2"><label className="label-cap">Identified Diseases</label><select className="form-select" value={form.diseases || ''} onChange={e => setForm({...form, diseases: e.target.value})}><option value="None">None</option><option value="Have">Have</option></select></div>
+                            <div className="col-span-2"><label className="label-cap">Allergies</label><select className="form-select" value={form.allergies || ''} onChange={e => setForm({...form, allergies: e.target.value})}><option value="None">None</option><option value="Have">Have</option></select></div>
+                            <div className="col-span-4"><label className="label-cap">Tattoos</label><select className="form-select" value={form.tattoos || ''} onChange={e => setForm({...form, tattoos: e.target.value})}><option value="None">None</option><option value="Have">Have</option></select></div>
                         </div>
 
                         <div className="section-header">5. Contact & Registry</div>
@@ -204,7 +192,27 @@
                             <div><label className="label-cap">Census Dependent</label><input className="form-input" value={form.census_dependent || ''} onChange={e => setForm({...form, census_dependent: e.target.value})} /></div>
                         </div>
 
-                        <button type="submit" className="w-full bg-blue-600 text-white py-6 rounded-[2rem] font-black text-xl mt-16 shadow-2xl hover:bg-blue-700 active:scale-95 transition-all uppercase tracking-widest italic">Save Master Record</button>
+                        <div className="section-header">6. Final Status & Couple Linking</div>
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div onClick={() => setForm({...form, is_reentry: !form.is_reentry})} className={`doc-item ${form.is_reentry ? 'done' : 'pending'}`}>
+                                <span>RE-ENTRY (GREEN)</span>
+                            </div>
+                            <div onClick={() => setForm({...form, is_couple: !form.is_couple})} className={`doc-item ${form.is_couple ? 'bg-pink-500 text-white border-pink-600' : 'pending'}`}>
+                                <span>COUPLE (PINK)</span>
+                            </div>
+                        </div>
+
+                        {form.is_couple && (
+                            <div className="bg-pink-50 p-6 rounded-[2rem] mb-10 border border-pink-100">
+                                <label className="label-cap text-pink-500">Partner Selection ({form.gender === 'Male' ? 'Female List' : 'Male List'})</label>
+                                <select className="form-select" value={form.partner_id || ''} onChange={e => setForm({...form, partner_id: e.target.value})}>
+                                    <option value="">Select Partner Name...</option>
+                                    {workers.filter(w => w.gender !== form.gender).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                </select>
+                            </div>
+                        )}
+
+                        <button type="submit" className="w-full bg-blue-600 text-white py-6 rounded-[2rem] font-black text-xl mt-10 shadow-2xl hover:bg-blue-700 active:scale-95 transition-all uppercase tracking-widest italic">Save Master Record</button>
                     </form>
                 </div>
             );
