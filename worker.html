@@ -61,13 +61,14 @@
 
             const handleSave = async (e) => {
                 e.preventDefault();
-                const { error } = await supabase.from('workers').upsert([{ ...form, batch: currentBatch }]);
+                const { error } = await supabase.from('workers').upsert([form]);
                 if (!error) { setView('list'); fetchWorkers(); }
                 else alert(error.message);
             };
 
             if (!user) return null;
 
+            // --- FOLDER VIEW ---
             if (view === 'folders') return (
                 <div className="max-w-4xl mx-auto p-8 text-center">
                     <h1 className="text-5xl font-black italic mb-12 tracking-tighter text-slate-800">BATCH DIRECTORY</h1>
@@ -86,6 +87,7 @@
                 </div>
             );
 
+            // --- LIST VIEW ---
             if (view === 'list') return (
                 <div className="max-w-4xl mx-auto p-4">
                     <header className="flex justify-between items-end py-8 px-2">
@@ -118,6 +120,7 @@
                 </div>
             );
 
+            // --- EDIT VIEW ---
             return (
                 <div className="max-w-4xl mx-auto p-4 pb-24">
                     <form onSubmit={handleSave} className="bg-white p-8 md:p-12 rounded-[3.5rem] shadow-2xl border relative">
@@ -127,10 +130,8 @@
                             <h2 className="text-3xl font-black italic uppercase leading-none">{form.name || 'New Profile'}</h2>
                             <div className="w-32 h-32 bg-slate-100 rounded-3xl border-4 border-white shadow-lg overflow-hidden flex-shrink-0 relative">
                                 {form.photo_url ? <img src={form.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px] font-black text-slate-400 uppercase">Photo</div>}
-                                <div className="absolute bottom-0 w-full bg-black/60 p-2">
-                                    <input type="file" className="hidden" id="photo-upload" accept="image/*" />
-                                    <label htmlFor="photo-upload" className="text-[8px] text-white font-bold cursor-pointer uppercase block text-center">Upload File</label>
-                                    <input type="text" placeholder="or Image URL" className="w-full text-[8px] bg-white/20 text-white mt-1 p-1 outline-none rounded" value={form.photo_url || ''} onChange={e => setForm({...form, photo_url: e.target.value})} />
+                                <div className="absolute bottom-0 w-full bg-black/60 p-2 text-center">
+                                    <input type="text" placeholder="Photo URL" className="w-full text-[8px] bg-white/20 text-white p-1 outline-none rounded" value={form.photo_url || ''} onChange={e => setForm({...form, photo_url: e.target.value})} />
                                 </div>
                             </div>
                         </div>
@@ -146,6 +147,8 @@
 
                         <div className="section-header">2. Basic Details</div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* HERE IS THE BATCH SELECTION! */}
+                            <div><label className="label-cap">Assigned Batch</label><select className="form-select border-blue-200" value={form.batch || 1} onChange={e => setForm({...form, batch: parseInt(e.target.value)})}><option value="1">Batch 1</option><option value="2">Batch 2</option><option value="3">Batch 3</option></select></div>
                             <div><label className="label-cap">Gender</label><select className="form-select" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}><option value="Male">Male</option><option value="Female">Female</option></select></div>
                             <div><label className="label-cap">First & Last Name</label><input className="form-input" value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} required /></div>
                             <div><label className="label-cap">Nickname</label><input className="form-input" value={form.nickname || ''} onChange={e => setForm({...form, nickname: e.target.value})} /></div>
