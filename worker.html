@@ -19,16 +19,11 @@
         .form-input:focus { border-color: #3b82f6; }
         .label-cap { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
         .section-header { font-size: 11px; font-weight: 900; color: #3b82f6; background: #eff6ff; padding: 8px 16px; border-radius: 8px; margin-top: 24px; margin-bottom: 12px; text-transform: uppercase; display: inline-block; }
-        
-        /* Progress Indicator Styles */
         .progress-bg { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 8px; }
         .progress-fill { height: 100%; transition: width 0.3s ease; }
-        
         .worker-card { border-width: 4px; border-color: transparent; transition: 0.3s; cursor: pointer; }
-        .worker-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
         .is-couple { border-color: #fbcfe8 !important; background-color: #fff1f2 !important; }
         .is-reentry { border-color: #bbf7d0 !important; background-color: #f0fdf4 !important; }
-        
         .doc-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; border: 2px solid #f1f5f9; cursor: pointer; font-size: 11px; font-weight: 700;}
         .doc-item.done { border-color: #10b981; background: #f0fdf4; color: #166534; }
         .doc-item.pending { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
@@ -51,9 +46,10 @@
         function App() {
             const [user, setUser] = useState(null);
             const [view, setView] = useState('folders'); 
-            const [currentBatch, setCurrentBatch] = useState(null);
+            const [currentBatch, setCurrentBatch] = useState(1);
             const [workers, setWorkers] = useState([]);
             const [form, setForm] = useState({});
+            const [searchTerm, setSearchTerm] = useState('');
 
             useEffect(() => {
                 const savedUser = localStorage.getItem('hsdec_user');
@@ -100,6 +96,14 @@
                 else alert(error.message);
             };
 
+            // 検索フィルタリング
+            const filteredWorkers = workers.filter(w => {
+                const matchesBatch = w.batch == currentBatch;
+                const searchStr = `${w.name} ${w.nickname} ${w.village} ${w.district} ${w.province}`.toLowerCase();
+                const matchesSearch = searchStr.includes(searchTerm.toLowerCase());
+                return matchesBatch && matchesSearch;
+            });
+
             if (!user) return null;
 
             if (view === 'folders') return (
@@ -122,15 +126,38 @@
 
             if (view === 'list') return (
                 <div className="max-w-4xl mx-auto p-4">
-                    <header className="flex justify-between items-end py-8 px-2">
-                        <div>
-                            <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">← Directory</button>
-                            <h2 className="text-4xl font-black italic uppercase">Batch {currentBatch}</h2>
+                    <header className="py-8 px-2">
+                        <div className="flex justify-between items-end mb-6">
+                            <div>
+                                <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">← Directory</button>
+                                <h2 className="text-4xl font-black italic uppercase leading-none">Batch {currentBatch}</h2>
+                            </div>
+                            <button onClick={() => { setForm({batch: currentBatch, gender:'Male', diseases:'None', allergies:'None', tattoos:'None'}); setView('edit'); }} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs shadow-lg">+ NEW WORKER</button>
                         </div>
-                        <button onClick={() => { setForm({batch: currentBatch, gender:'Male', diseases:'None', allergies:'None', tattoos:'None'}); setView('edit'); }} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs shadow-lg">+ NEW WORKER</button>
+                        
+                        {/* SEARCH BAR */}
+                        <div className="flex gap-2">
+                            <input 
+                                type="text" 
+                                placeholder="Search by name, nickname, or address..." 
+                                className="form-input flex-grow shadow-sm italic"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                            <select 
+                                className="form-select w-32 shadow-sm"
+                                value={currentBatch}
+                                onChange={(e) => setCurrentBatch(e.target.value)}
+                            >
+                                <option value="1">Batch 1</option>
+                                <option value="2">Batch 2</option>
+                                <option value="3">Batch 3</option>
+                            </select>
+                        </div>
                     </header>
+
                     <div className="grid gap-4">
-                        {workers.filter(w => w.batch == currentBatch).map(w => {
+                        {filteredWorkers.map(w => {
                             const { count, percent } = calculateDocs(w);
                             return (
                                 <div key={w.id} onClick={() => { setForm(w); setView('edit'); }} 
@@ -142,7 +169,7 @@
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <h3 className="font-black text-2xl uppercase tracking-tight">{w.name}</h3>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase">{w.nickname || 'No Nickname'} • {w.phone || 'No Contact'}</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase">{w.nickname || 'No Nickname'} • {w.province || 'Unknown Location'}</p>
                                             </div>
                                             <div className="text-right">
                                                 <span className={`text-[10px] font-black px-2 py-1 rounded ${percent === 100 ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
@@ -150,12 +177,11 @@
                                                 </span>
                                             </div>
                                         </div>
-                                        {/* Document Progress Bar */}
                                         <div className="progress-bg">
                                             <div className={`progress-fill ${percent === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{width: `${percent}%`}}></div>
                                         </div>
                                         <div className="flex gap-2 mt-3">
-                                            {w.is_reentry && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase">Re-entry</span>}
+                                            {w.is_reentry && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase">Re-entry (B{w.prev_batch || '?'})</span>}
                                             {w.is_couple && <span className="bg-pink-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase">Couple</span>}
                                         </div>
                                     </div>
@@ -166,7 +192,6 @@
                 </div>
             );
 
-            // (Edit view remains largely the same but ensures batch/form data consistency)
             return (
                 <div className="max-w-4xl mx-auto p-4 pb-24">
                     <form onSubmit={handleSave} className="bg-white p-8 md:p-12 rounded-[3.5rem] shadow-2xl border relative">
@@ -183,7 +208,7 @@
                             </div>
                         </div>
 
-                        <div className="section-header">1. Documents Status ({DOC_LIST.filter(d=>form[d]).length} / {DOC_LIST.length})</div>
+                        <div className="section-header">1. Documents Status</div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-6">
                             {DOC_LIST.map(d => (
                                 <div key={d} onClick={() => setForm({...form, [d]: !form[d]})} className={`doc-item ${form[d] ? 'done' : 'pending'}`}>
@@ -201,23 +226,13 @@
                             <div><label className="label-cap">Nickname</label><input className="form-input" value={form.nickname || ''} onChange={e => setForm({...form, nickname: e.target.value})} /></div>
                             <div><label className="label-cap">Date of Birth</label><input type="date" className="form-input" value={form.birthday || ''} onChange={e => setForm({...form, birthday: e.target.value})} /></div>
                             <div><label className="label-cap">Age</label><input type="number" className="form-input" value={form.age || ''} onChange={e => setForm({...form, age: e.target.value})} /></div>
-                            <div><label className="label-cap">Place of Birth</label><input className="form-input" value={form.birth_place || ''} onChange={e => setForm({...form, birth_place: e.target.value})} /></div>
                         </div>
-                        <div className="mt-4"><label className="label-cap">Current Address</label><input className="form-input" value={form.current_address || ''} onChange={e => setForm({...form, current_address: e.target.value})} /></div>
-                        <div className="grid grid-cols-3 gap-4 mt-4">
+
+                        <div className="section-header">3. Address Information</div>
+                        <div className="grid grid-cols-3 gap-4 mt-2">
                             <div><label className="label-cap">Village</label><input className="form-input" value={form.village || ''} onChange={e => setForm({...form, village: e.target.value})} /></div>
                             <div><label className="label-cap">District</label><input className="form-input" value={form.district || ''} onChange={e => setForm({...form, district: e.target.value})} /></div>
                             <div><label className="label-cap">Province</label><input className="form-input" value={form.province || ''} onChange={e => setForm({...form, province: e.target.value})} /></div>
-                        </div>
-
-                        <div className="section-header">3. Education & Background</div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label className="label-cap">Foreign Language</label><input className="form-input" value={form.education_lang || ''} onChange={e => setForm({...form, education_lang: e.target.value})} /></div>
-                            <div><label className="label-cap">Occupation</label><input className="form-input" value={form.occupation || ''} onChange={e => setForm({...form, occupation: e.target.value})} /></div>
-                            <div><label className="label-cap">Lives with</label><input className="form-input" value={form.lives_with || ''} onChange={e => setForm({...form, lives_with: e.target.value})} /></div>
-                            <div><label className="label-cap">Children</label><input className="form-input" value={form.children || ''} onChange={e => setForm({...form, children: e.target.value})} /></div>
-                            <div><label className="label-cap">Worked abroad?</label><input className="form-input" value={form.work_abroad || ''} onChange={e => setForm({...form, work_abroad: e.target.value})} /></div>
-                            <div><label className="label-cap">Work Experience</label><textarea className="form-textarea" value={form.work_exp || ''} onChange={e => setForm({...form, work_exp: e.target.value})}></textarea></div>
                         </div>
 
                         <div className="section-header">4. Health Report</div>
@@ -226,23 +241,11 @@
                             <div><label className="label-cap">Height (cm)</label><input type="number" className="form-input" value={form.height || ''} onChange={e => setForm({...form, height: e.target.value})} /></div>
                             <div><label className="label-cap">Arm Strength</label><select className="form-select" value={form.arm_strength || ''} onChange={e => setForm({...form, arm_strength: e.target.value})}><option value="">-</option><option value="Good">Good</option><option value="Problem">Problem</option></select></div>
                             <div><label className="label-cap">Eyesight</label><select className="form-select" value={form.eyesight || ''} onChange={e => setForm({...form, eyesight: e.target.value})}><option value="">-</option><option value="Good">Good</option><option value="Problem">Problem</option></select></div>
-                            <div className="col-span-2"><label className="label-cap">Identified Diseases</label><select className="form-select" value={form.diseases || 'None'} onChange={e => setForm({...form, diseases: e.target.value})}><option value="None">None</option><option value="Have">Have</option></select></div>
-                            <div className="col-span-2"><label className="label-cap">Allergies</label><select className="form-select" value={form.allergies || 'None'} onChange={e => setForm({...form, allergies: e.target.value})}><option value="None">None</option><option value="Have">Have</option></select></div>
-                            <div className="col-span-4"><label className="label-cap">Tattoos</label><select className="form-select" value={form.tattoos || 'None'} onChange={e => setForm({...form, tattoos: e.target.value})}><option value="None">None</option><option value="Have">Have</option></select></div>
                         </div>
 
-                        <div className="section-header">5. Contact & Registry</div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div><label className="label-cap">WhatsApp</label><input className="form-input" value={form.whatsapp || ''} onChange={e => setForm({...form, whatsapp: e.target.value})} /></div>
-                            <div><label className="label-cap">Contact Number</label><input className="form-input" value={form.phone || ''} onChange={e => setForm({...form, phone: e.target.value})} /></div>
-                            <div><label className="label-cap">Passport Number</label><input className="form-input" value={form.passport_no || ''} onChange={e => setForm({...form, passport_no: e.target.value})} /></div>
-                            <div className="col-span-2"><label className="label-cap">Guarantor</label><input className="form-input" value={form.guarantor || ''} onChange={e => setForm({...form, guarantor: e.target.value})} /></div>
-                            <div><label className="label-cap">Census Dependent</label><input className="form-input" value={form.census_dependent || ''} onChange={e => setForm({...form, census_dependent: e.target.value})} /></div>
-                        </div>
-
-                        <div className="section-header">6. Special Status & Couple</div>
+                        <div className="section-header">5. Status & History</div>
                         <div className="grid grid-cols-2 gap-4 mb-6">
-                            <div onClick={() => setForm({...form, is_reentry: !form.is_reentry})} className={`doc-item ${form.is_reentry ? 'done' : 'pending'}`}>
+                            <div onClick={() => setForm({...form, is_reentry: !form.is_reentry})} className={`doc-item ${form.is_reentry ? 'done border-emerald-500' : 'pending'}`}>
                                 <span>RE-ENTRY (GREEN)</span>
                                 <span>{form.is_reentry ? 'YES' : 'NO'}</span>
                             </div>
@@ -252,8 +255,21 @@
                             </div>
                         </div>
 
+                        {/* RE-ENTRY DETAILS */}
+                        {form.is_reentry && (
+                            <div className="bg-emerald-50 p-6 rounded-[2rem] mb-6 border border-emerald-100">
+                                <label className="label-cap text-emerald-600">Which previous batch did they join?</label>
+                                <select className="form-select" value={form.prev_batch || ''} onChange={e => setForm({...form, prev_batch: e.target.value})}>
+                                    <option value="">Select Previous Batch...</option>
+                                    <option value="1">Batch 1</option>
+                                    <option value="2">Batch 2</option>
+                                </select>
+                            </div>
+                        )}
+
+                        {/* COUPLE DETAILS */}
                         {form.is_couple && (
-                            <div className="bg-pink-50 p-6 rounded-[2rem] mb-10 border border-pink-100">
+                            <div className="bg-pink-50 p-6 rounded-[2rem] mb-6 border border-pink-100">
                                 <label className="label-cap text-pink-500">Partner Selection ({form.gender === 'Male' ? 'Female List' : 'Male List'})</label>
                                 <select className="form-select" value={form.partner_id || ''} onChange={e => setForm({...form, partner_id: e.target.value})}>
                                     <option value="">Select Partner Name...</option>
