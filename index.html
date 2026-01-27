@@ -2,90 +2,124 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Login Portal</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HSDEC Global Hub - Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; overflow-x: hidden; }
+        .menu-card { 
+            background: rgba(255, 255, 255, 0.03); 
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .menu-card:hover { 
+            background: rgba(255, 255, 255, 0.08); 
+            transform: translateY(-8px); 
+            border-color: #10b981;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .icon-circle {
+            width: 56px; height: 56px; border-radius: 18px;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
-<body>
-    <div id="root"></div>
-    <script type="text/babel">
-        const { useState } = React;
+<body class="flex items-center justify-center min-h-screen p-6">
 
-        const USER_DB = [
-            { name: "Takashi", pw: "Tks83446412", role: "admin" },
-            { name: "Chansouk", pw: "97372185", role: "staff" },
-            { name: "Mim", pw: "78277996", role: "staff" },
-            { name: "Chanthaviphone", pw: "96086112", role: "vv" },
-            { name: "Sengmala", pw: "22886998", role: "sv" },
-            { name: "Guest", pw: "HSDEC2025", role: "guest" }
-        ];
+    <div id="auth-section" class="w-full max-w-md">
+        <div class="text-center mb-10">
+            <h1 class="text-5xl font-black italic text-emerald-500 tracking-tighter">HSDEC</h1>
+            <p class="text-slate-500 font-black uppercase tracking-[0.3em] text-[10px] mt-2">Central Management System</p>
+        </div>
+        <div class="bg-white/5 p-10 rounded-[2.5rem] border border-white/10 shadow-2xl">
+            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Select User</label>
+            <select id="user-select" class="w-full bg-slate-800 border-none p-4 rounded-xl mb-4 text-white font-bold outline-none">
+                <option value="Takashi">Takashi (Admin)</option>
+                <option value="Chansouk">Chansouk (Staff)</option>
+                <option value="Mim">Mim (Staff)</option>
+                <option value="Chanthaviphone">Chanthaviphone (VV)</option>
+                <option value="Sengmala">Sengmala (SV)</option>
+                <option value="Guest">Guest</option>
+            </select>
+            
+            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Password</label>
+            <input type="password" id="pass" placeholder="••••••••" class="w-full bg-slate-800 border-none p-5 rounded-2xl mb-8 text-white text-center text-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all">
+            
+            <button onclick="login()" class="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-lg hover:bg-emerald-400 transition shadow-xl shadow-emerald-500/20 active:scale-95">ENTER SYSTEM</button>
+            <p id="error" class="text-rose-500 text-xs mt-6 text-center hidden font-black uppercase tracking-widest italic">Access Denied.</p>
+        </div>
+    </div>
 
-        function Login() {
-            const [selectedUser, setSelectedUser] = useState("");
-            const [inputPw, setInputPw] = useState("");
+    <div id="menu-section" class="w-full max-w-5xl hidden">
+        <div class="flex justify-between items-end mb-16 px-4">
+            <div>
+                <h2 class="text-5xl font-black italic tracking-tighter">CONTROL HUB</h2>
+                <p id="welcome-msg" class="text-emerald-500 font-black uppercase text-xs tracking-widest mt-2">Logged in</p>
+            </div>
+            <button onclick="location.reload()" class="text-[10px] font-black text-slate-500 hover:text-white uppercase border border-slate-700 px-4 py-2 rounded-full transition">Logout</button>
+        </div>
 
-            const handleLogin = () => {
-                const user = USER_DB.find(u => u.name === selectedUser && u.pw === inputPw);
-                if (user) {
-                    localStorage.setItem('hsdec_user', JSON.stringify({
-                        name: user.name,
-                        role: user.role
-                    }));
-                    window.location.href = 'worker.html';
-                } else {
-                    alert("Incorrect Password!");
-                }
-            };
+        <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4">
+            </div>
+    </div>
 
-            return (
-                <div className="h-screen flex items-center justify-center p-6">
-                    <div className="w-full max-w-sm bg-white/10 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-xl">
-                        <h1 className="text-3xl font-black italic mb-8 text-center uppercase tracking-tighter">HSDEC Access</h1>
-                        
-                        <div className="space-y-6">
-                            <div>
-                                <label className="text-[10px] font-black uppercase text-blue-400 ml-1">Select User</label>
-                                <select 
-                                    className="w-full bg-slate-800 p-4 rounded-2xl outline-none border border-slate-700 font-bold"
-                                    value={selectedUser}
-                                    onChange={(e) => setSelectedUser(e.target.value)}
-                                >
-                                    <option value="">-- Choose Name --</option>
-                                    {USER_DB.map(u => <option key={u.name} value={u.name}>{u.name} ({u.role.toUpperCase()})</option>)}
-                                </select>
-                            </div>
+    <script>
+        const USER_DB = {
+            "Takashi": { pw: "Tks83446423", role: "admin" },
+            "Chansouk": { pw: "97372185", role: "staff" },
+            "Mim": { pw: "78277996", role: "staff" },
+            "Chanthaviphone": { pw: "96086112", role: "vv" },
+            "Sengmala": { pw: "22886998", role: "sv" },
+            "Guest": { pw: "HSDEC2025", role: "guest" }
+        };
 
-                            <div>
-                                <label className="text-[10px] font-black uppercase text-blue-400 ml-1">Password</label>
-                                <input 
-                                    type="password" 
-                                    className="w-full bg-slate-800 p-4 rounded-2xl outline-none border border-slate-700 font-bold"
-                                    placeholder="••••••••"
-                                    value={inputPw}
-                                    onChange={(e) => setInputPw(e.target.value)}
-                                />
-                            </div>
+        function login() {
+            const name = document.getElementById('user-select').value;
+            const pass = document.getElementById('pass').value;
+            const error = document.getElementById('error');
 
-                            <button 
-                                onClick={handleLogin}
-                                className="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all"
-                            >
-                                Enter System
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            );
+            if (USER_DB[name] && USER_DB[name].pw === pass) {
+                const role = USER_DB[name].role;
+                localStorage.setItem('hsdec_user', JSON.stringify({ name, role }));
+                showMenu(name, role);
+            } else {
+                error.classList.remove('hidden');
+                setTimeout(() => { error.classList.add('hidden'); }, 2000);
+            }
         }
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<Login />);
+
+        function showMenu(name, role) {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('menu-section').classList.remove('hidden');
+            document.getElementById('welcome-msg').innerText = `Logged in as ${name} (${role.toUpperCase()})`;
+
+            const grid = document.getElementById('menu-grid');
+            grid.innerHTML = ''; // クリア
+
+            const allMenus = [
+                { id: 'worker', title: 'Workers', desc: '労働者・名簿管理', icon: '👤', url: 'worker.html', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
+                { id: 'finance', title: 'Finance', desc: '支出・収支・自動計算', icon: '💰', url: 'finance.html', roles: ['admin', 'staff'] },
+                { id: 'diary', title: 'Diary', desc: '日報作成・現場写真', icon: '📝', url: 'diary.html', roles: ['admin', 'staff', 'sv'] },
+                { id: 'contracts', title: 'Contracts', desc: '契約書類管理', icon: '📄', url: 'contracts.html', roles: ['admin', 'staff'] },
+                { id: 'cloud', title: 'Cloud Photo', desc: 'Google Drive 共有', icon: '📸', url: 'https://drive.google.com/', roles: ['admin', 'staff', 'sv', 'vv'] }
+            ];
+
+            // 権限に合わせてメニューを表示
+            allMenus.forEach(m => {
+                if (m.roles.includes(role)) {
+                    grid.innerHTML += `
+                        <a href="${m.url}" target="_blank" class="menu-card p-10 rounded-[2.5rem] block group">
+                            <div class="text-4xl mb-4">${m.icon}</div>
+                            <h3 class="text-2xl font-black tracking-tight">${m.title}</h3>
+                            <p class="text-slate-500 text-sm mt-3 font-bold leading-relaxed">${m.desc}</p>
+                        </a>
+                    `;
+                }
+            });
+        }
     </script>
 </body>
 </html>
