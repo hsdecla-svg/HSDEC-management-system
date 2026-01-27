@@ -19,12 +19,9 @@
         .form-input:focus { border-color: #3b82f6; }
         .label-cap { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
         .section-header { font-size: 11px; font-weight: 900; color: #3b82f6; background: #eff6ff; padding: 8px 16px; border-radius: 8px; margin-top: 24px; margin-bottom: 12px; text-transform: uppercase; display: inline-block; }
-        
-        /* リストのカードスタイル */
         .worker-card { border-width: 4px; border-color: transparent; transition: 0.3s; }
         .is-couple { border-color: #fbcfe8 !important; background-color: #fff1f2 !important; }
         .is-reentry { border-color: #bbf7d0 !important; background-color: #f0fdf4 !important; }
-
         .doc-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; border: 2px solid #f1f5f9; cursor: pointer; }
         .doc-item.done { border-color: #10b981; background: #f0fdf4; color: #166534; }
         .doc-item.pending { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
@@ -71,17 +68,16 @@
 
             if (!user) return null;
 
-            // --- 1. Batch Selection (Folders) ---
             if (view === 'folders') return (
-                <div className="max-w-4xl mx-auto p-8">
-                    <h1 className="text-5xl font-black italic mb-12 tracking-tighter text-slate-800">MASTER FOLDERS</h1>
+                <div className="max-w-4xl mx-auto p-8 text-center">
+                    <h1 className="text-5xl font-black italic mb-12 tracking-tighter text-slate-800">BATCH DIRECTORY</h1>
                     <div className="grid grid-cols-1 gap-6">
                         {[1, 2, 3].map(num => (
                             <div key={num} onClick={() => { setCurrentBatch(num); setView('list'); }} 
                                  className="bg-white p-12 rounded-[3rem] border-2 border-slate-100 shadow-xl flex justify-between items-center cursor-pointer hover:scale-[1.02] transition-all group">
-                                <div>
-                                    <span className="text-slate-400 font-black text-xs uppercase tracking-widest">Generation</span>
-                                    <h2 className="text-4xl font-black italic text-slate-800">第 {num} 期生</h2>
+                                <div className="text-left">
+                                    <span className="text-slate-400 font-black text-xs uppercase tracking-widest">Generation Group</span>
+                                    <h2 className="text-4xl font-black italic text-slate-800 uppercase">Batch {num}</h2>
                                 </div>
                                 <div className="text-4xl group-hover:translate-x-2 transition-transform">📂</div>
                             </div>
@@ -90,29 +86,28 @@
                 </div>
             );
 
-            // --- 2. Worker List ---
             if (view === 'list') return (
                 <div className="max-w-4xl mx-auto p-4">
                     <header className="flex justify-between items-end py-8 px-2">
                         <div>
-                            <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">← Back to Folders</button>
+                            <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">← Directory</button>
                             <h2 className="text-4xl font-black italic uppercase">Batch {currentBatch}</h2>
                         </div>
-                        <button onClick={() => { setForm({status:'Active', gender:'Male'}); setView('edit'); }} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs shadow-lg">+ ADD WORKER</button>
+                        <button onClick={() => { setForm({batch: currentBatch, status:'Active', gender:'Male'}); setView('edit'); }} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs shadow-lg">+ NEW WORKER</button>
                     </header>
                     <div className="grid gap-4">
                         {workers.filter(w => w.batch == currentBatch).map(w => (
                             <div key={w.id} onClick={() => { setForm(w); setView('edit'); }} 
                                  className={`worker-card bg-white p-6 rounded-[2.5rem] shadow-sm flex items-center gap-6 ${w.is_couple ? 'is-couple' : ''} ${w.is_reentry ? 'is-reentry' : ''}`}>
                                 <div className="w-20 h-20 bg-slate-200 rounded-[1.5rem] overflow-hidden flex-shrink-0 shadow-inner">
-                                    {w.photo_url ? <img src={w.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px] font-black text-slate-400">NO PHOTO</div>}
+                                    {w.photo_url ? <img src={w.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px] font-black text-slate-400 uppercase">Photo</div>}
                                 </div>
                                 <div className="flex-grow">
                                     <div className="flex justify-between items-center">
                                         <h3 className="font-black text-2xl uppercase tracking-tight">{w.name}</h3>
                                         <div className="flex gap-2">
-                                            {w.is_reentry && <span className="bg-emerald-500 text-white text-[9px] font-black px-3 py-1 rounded-full uppercase">Re-entry</span>}
-                                            {w.is_couple && <span className="bg-pink-500 text-white text-[9px] font-black px-3 py-1 rounded-full uppercase">Couple</span>}
+                                            {w.is_reentry && <span className="bg-emerald-500 text-white text-[9px] font-black px-3 py-1 rounded-full uppercase italic">Re-entry</span>}
+                                            {w.is_couple && <span className="bg-pink-500 text-white text-[9px] font-black px-3 py-1 rounded-full uppercase italic">Couple</span>}
                                         </div>
                                     </div>
                                     <p className="text-sm font-bold text-slate-400 mt-1 uppercase">{w.nickname || 'No Nickname'} • {w.whatsapp || w.phone || 'No Contact'}</p>
@@ -123,21 +118,20 @@
                 </div>
             );
 
-            // --- 3. Full Detail / Edit Form ---
             return (
                 <div className="max-w-4xl mx-auto p-4 pb-24">
                     <form onSubmit={handleSave} className="bg-white p-8 md:p-12 rounded-[3.5rem] shadow-2xl border relative">
-                        <button type="button" onClick={() => setView('list')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8">← Back to Batch {currentBatch}</button>
+                        <button type="button" onClick={() => setView('list')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8">← Back to List</button>
                         
                         <div className="flex justify-between items-start mb-10">
                             <h2 className="text-3xl font-black italic uppercase leading-none">{form.name || 'New Profile'}</h2>
                             <div className="w-32 h-32 bg-slate-100 rounded-3xl border-4 border-white shadow-lg overflow-hidden flex-shrink-0 relative group">
-                                {form.photo_url ? <img src={form.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px] font-black text-slate-400">PHOTO</div>}
-                                <input type="text" placeholder="URL" className="absolute bottom-0 w-full text-[8px] bg-black/50 text-white p-1 outline-none" value={form.photo_url || ''} onChange={e => setForm({...form, photo_url: e.target.value})} />
+                                {form.photo_url ? <img src={form.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px] font-black text-slate-400 uppercase">Photo</div>}
+                                <input type="text" placeholder="Photo URL" className="absolute bottom-0 w-full text-[8px] bg-black/50 text-white p-1 outline-none" value={form.photo_url || ''} onChange={e => setForm({...form, photo_url: e.target.value})} />
                             </div>
                         </div>
 
-                        <div className="section-header">1. Documents & Special Status</div>
+                        <div className="section-header">1. Documents & Status</div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-6">
                             {DOC_LIST.map(d => (
                                 <div key={d} onClick={() => setForm({...form, [d]: !form[d]})} className={`doc-item ${form[d] ? 'done' : 'pending'}`}>
@@ -145,24 +139,24 @@
                                 </div>
                             ))}
                             <div onClick={() => setForm({...form, is_reentry: !form.is_reentry})} className={`doc-item ${form.is_reentry ? 'done' : 'pending'}`}>
-                                <span>再入国 (RE-ENTRY)</span>
+                                <span>RE-ENTRY (GREEN)</span>
                             </div>
                             <div onClick={() => setForm({...form, is_couple: !form.is_couple})} className={`doc-item ${form.is_couple ? 'bg-pink-500 text-white border-pink-600' : 'pending'}`}>
-                                <span>夫婦 (COUPLE)</span>
+                                <span>COUPLE (PINK)</span>
                             </div>
                         </div>
 
                         {form.is_couple && (
                             <div className="bg-pink-50 p-6 rounded-[2rem] mb-10 border border-pink-100">
-                                <label className="label-cap text-pink-500">Partner Selection ({form.gender === 'Male' ? 'Female List' : 'Male List'})</label>
+                                <label className="label-cap text-pink-500">Partner Selection</label>
                                 <select className="form-select" value={form.partner_id || ''} onChange={e => setForm({...form, partner_id: e.target.value})}>
-                                    <option value="">Choose Partner...</option>
+                                    <option value="">Select Partner Name...</option>
                                     {workers.filter(w => w.gender !== form.gender).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                                 </select>
                             </div>
                         )}
 
-                        <div className="section-header">2. Basic Info & Address</div>
+                        <div className="section-header">2. Basic Details</div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div><label className="label-cap">Gender</label><select className="form-select" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}><option value="Male">Male</option><option value="Female">Female</option></select></div>
                             <div><label className="label-cap">First & Last Name</label><input className="form-input" value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} required /></div>
@@ -178,7 +172,7 @@
                             <div><label className="label-cap">Province</label><input className="form-input" value={form.province || ''} onChange={e => setForm({...form, province: e.target.value})} /></div>
                         </div>
 
-                        <div className="section-header">3. Education & Work</div>
+                        <div className="section-header">3. Education & Background</div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div><label className="label-cap">Education Foreign Language</label><input className="form-input" value={form.education_lang || ''} onChange={e => setForm({...form, education_lang: e.target.value})} /></div>
                             <div><label className="label-cap">Occupation</label><input className="form-input" value={form.occupation || ''} onChange={e => setForm({...form, occupation: e.target.value})} /></div>
@@ -190,7 +184,7 @@
                             <div><label className="label-cap">Work Experience</label><textarea className="form-textarea" value={form.work_exp || ''} onChange={e => setForm({...form, work_exp: e.target.value})}></textarea></div>
                         </div>
 
-                        <div className="section-header">4. Physical & Health</div>
+                        <div className="section-header">4. Physical & Health Report</div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div><label className="label-cap">Weight (kg)</label><input type="number" className="form-input" value={form.weight || ''} onChange={e => setForm({...form, weight: e.target.value})} /></div>
                             <div><label className="label-cap">Height (cm)</label><input type="number" className="form-input" value={form.height || ''} onChange={e => setForm({...form, height: e.target.value})} /></div>
@@ -201,7 +195,7 @@
                             <div className="col-span-2"><label className="label-cap">Tattoos</label><input className="form-input" value={form.tattoos || ''} onChange={e => setForm({...form, tattoos: e.target.value})} /></div>
                         </div>
 
-                        <div className="section-header">5. Contact & ID</div>
+                        <div className="section-header">5. Contact & Registry</div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div><label className="label-cap">WhatsApp</label><input className="form-input" value={form.whatsapp || ''} onChange={e => setForm({...form, whatsapp: e.target.value})} /></div>
                             <div><label className="label-cap">Contact Number</label><input className="form-input" value={form.phone || ''} onChange={e => setForm({...form, phone: e.target.value})} /></div>
@@ -210,7 +204,7 @@
                             <div><label className="label-cap">Census Dependent</label><input className="form-input" value={form.census_dependent || ''} onChange={e => setForm({...form, census_dependent: e.target.value})} /></div>
                         </div>
 
-                        <button type="submit" className="w-full bg-blue-600 text-white py-6 rounded-[2rem] font-black text-xl mt-16 shadow-2xl hover:bg-blue-700 active:scale-95 transition-all uppercase tracking-widest">Update Master Data</button>
+                        <button type="submit" className="w-full bg-blue-600 text-white py-6 rounded-[2rem] font-black text-xl mt-16 shadow-2xl hover:bg-blue-700 active:scale-95 transition-all uppercase tracking-widest italic">Save Master Record</button>
                     </form>
                 </div>
             );
