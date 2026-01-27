@@ -75,36 +75,38 @@
             const handleSave = async (e) => {
     e.preventDefault();
     
-    // Supabaseの列名と完全に一致させるための整理
-    const payload = {
-        date: fForm.date,
-        item_name: fForm.item_name,
-        category: fForm.category,
-        total: Number(fForm.unit_price || 0), // 入力欄のunit_priceをtotalとして保存
-        staff_name: fForm.staff_name,
-        photo_url: fForm.photo_url || null,
-        method: fForm.method || 'Cash',
-        recorded_by: user.name,
-        note: fForm.note || ''
+    // 400エラーを回避するため、送るデータを「超クリーン」にする
+    const cleanData = {
+        date: fForm.date || new Date().toISOString().split('T')[0],
+        item_name: String(fForm.item_name || ""),
+        category: String(fForm.category || "Other"),
+        total: Number(fForm.unit_price || 0),
+        staff_name: String(fForm.staff_name || "Other"),
+        method: String(fForm.method || "Cash"),
+        recorded_by: String(user.name || "System"),
+        photo_url: fForm.photo_url || null // 写真がない場合はnull
     };
 
-    // 既存データの編集ならIDを含める
-    if (fForm.id) payload.id = fForm.id;
+    // 新規作成か更新かを判断（IDがある場合は更新）
+    if (fForm.id) {
+        cleanData.id = fForm.id;
+    }
 
-    console.log("Saving payload:", payload); // デバッグ用
+    console.log("Sending clean data:", cleanData);
 
-    const { error } = await supabase.from('finance').upsert([payload]);
+    const { data, error } = await supabase
+        .from('finance')
+        .upsert(cleanData);
 
     if (error) {
-        console.error("Supabase Error:", error);
-        alert("Error: " + error.message);
+        console.error("Supabase Error Details:", error);
+        alert("Error: " + error.message + " (Code: " + error.code + ")");
     } else {
-        alert("Saved successfully!");
+        alert("✅ Saved to HSDEC Database!");
         setView('list');
         fetchRecords();
     }
 };
-
             const filteredRecords = records.filter(r => 
                 r.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 r.staff_name.toLowerCase().includes(searchTerm.toLowerCase())
