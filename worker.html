@@ -29,22 +29,9 @@
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        // 共通のセキュリティ・チェック
-const [user, setUser] = useState(null);
-
-useEffect(() => {
-    const savedUser = localStorage.getItem('hsdec_user');
-    if (!savedUser) {
-        // ログインしてない場合はポータルへ強制送還
-        window.location.href = 'index.html'; 
-    } else {
-        setUser(JSON.parse(savedUser));
-    }
-}, []);
-
-// 権限の判定（例：AdminとStaffだけが編集できる）
-const canEdit = user && ['admin', 'staff'].includes(user.role);
         const { useState, useEffect } = React;
+
+        // 🔑 Supabase Config
         const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -71,22 +58,29 @@ const canEdit = user && ['admin', 'staff'].includes(user.role);
                 education_level: '', previous_job: '', hired_date: '', position: 'Staff', 
                 salary_base: 0, bank_name: '', bank_account_no: '', bank_account_name: '',
                 note: '', guarantor: '', photo_url: '',
-                // ドキュメント初期値 (false)
                 ...DOC_LIST.reduce((acc, doc) => ({ ...acc, [doc]: false }), {})
             };
             const [wForm, setWForm] = useState(initialForm);
 
+            // 🔐 1. Security & Auth Check
             useEffect(() => {
                 const savedUser = localStorage.getItem('hsdec_user');
-                if (savedUser) setUser(JSON.parse(savedUser));
-                else window.location.href = 'index.html';
+                if (!savedUser) {
+                    window.location.href = 'index.html'; 
+                } else {
+                    setUser(JSON.parse(savedUser));
+                }
             }, []);
 
-            useEffect(() => { if(user) fetchWorkers(); }, [user]);
+            // 📥 2. Fetch Data
+            useEffect(() => { 
+                if(user) fetchWorkers(); 
+            }, [user]);
 
             const fetchWorkers = async () => {
-                const { data } = await supabase.from('workers').select('*').order('name', { ascending: true });
+                const { data, error } = await supabase.from('workers').select('*').order('name', { ascending: true });
                 if (data) setWorkers(data);
+                if (error) console.error(error);
             };
 
             const canEdit = user && ['admin', 'staff', 'sv'].includes(user.role);
@@ -95,8 +89,12 @@ const canEdit = user && ['admin', 'staff'].includes(user.role);
                 e.preventDefault();
                 if (!canEdit) return;
                 const { error } = await supabase.from('workers').upsert([{ ...wForm, guarantor: user.name }]);
-                if (!error) { setView('list'); fetchWorkers(); }
-                else alert(error.message);
+                if (!error) { 
+                    setView('list'); 
+                    fetchWorkers(); 
+                } else {
+                    alert(error.message);
+                }
             };
 
             const filteredWorkers = workers.filter(w => 
@@ -104,18 +102,18 @@ const canEdit = user && ['admin', 'staff'].includes(user.role);
                 (w.nickname && w.nickname.toLowerCase().includes(search.toLowerCase()))
             );
 
-            if (!user) return null;
+            if (!user) return <div className="p-10 font-black">Checking access...</div>;
 
             return (
                 <div className="max-w-6xl mx-auto p-4 pb-20">
                     <header className="flex justify-between items-end py-8">
                         <div>
                             <h1 className="text-4xl font-black italic tracking-tighter leading-none">WORKER MASTER</h1>
-                            <p className="text-[10px] font-black text-blue-500 uppercase mt-2 tracking-widest">Database Operator: {user.name}</p>
+                            <p className="text-[10px] font-black text-blue-500 uppercase mt-2 tracking-widest">Operator: {user.name} ({user.role})</p>
                         </div>
                         <div className="flex gap-2">
                             {canEdit && <button onClick={() => { setWForm(initialForm); setView('edit'); }} className="bg-black text-white px-6 py-3 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">+ NEW WORKER</button>}
-                            <button onClick={() => window.location.href='index.html'} className="bg-white border px-4 py-3 rounded-2xl font-black text-[10px] uppercase">Portal</button>
+                            <button onClick={() => { localStorage.clear(); window.location.href='index.html'; }} className="bg-white border px-4 py-3 rounded-2xl font-black text-[10px] uppercase">Portal</button>
                         </div>
                     </header>
 
@@ -159,8 +157,7 @@ const canEdit = user && ['admin', 'staff'].includes(user.role);
                                     </div>
                                 </div>
 
-                                {/* 1. Document Checklist (赤・緑管理) */}
-                                <div className="section-header">1. Document Status (Red = Missing)</div>
+                                <div className="section-header">1. Document Status</div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                                     {DOC_LIST.map(doc => (
                                         <div key={doc} onClick={() => canEdit && setWForm({...wForm, [doc]: !wForm[doc]})} className={`doc-item ${wForm[doc] ? 'done' : 'pending'}`}>
@@ -173,7 +170,6 @@ const canEdit = user && ['admin', 'staff'].includes(user.role);
                                     ))}
                                 </div>
 
-                                {/* 2. Basic Information */}
                                 <div className="section-header">2. Basic Information</div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div><label className="label-cap">Lao Name</label><input type="text" className="form-input" value={wForm.name} onChange={e => setWForm({...wForm, name: e.target.value})} required disabled={!canEdit} /></div>
@@ -181,44 +177,37 @@ const canEdit = user && ['admin', 'staff'].includes(user.role);
                                     <div><label className="label-cap">Phone</label><input type="tel" className="form-input" value={wForm.phone} onChange={e => setWForm({...wForm, phone: e.target.value})} disabled={!canEdit} /></div>
                                     <div><label className="label-cap">Status</label><select className="form-select" value={wForm.status} onChange={e => setWForm({...wForm, status: e.target.value})} disabled={!canEdit}><option value="Active">Active</option><option value="Resigned">Resigned</option><option value="Blacklisted">Blacklisted</option></select></div>
                                     <div><label className="label-cap">Position</label><input type="text" className="form-input" value={wForm.position} onChange={e => setWForm({...wForm, position: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Salary Base (LAK)</label><input type="number" className="form-input" value={wForm.salary_base} onChange={e => setWForm({...wForm, salary_base: e.target.value})} disabled={!canEdit} /></div>
+                                    <div><label className="label-cap">Salary (LAK)</label><input type="number" className="form-input" value={wForm.salary_base} onChange={e => setWForm({...wForm, salary_base: e.target.value})} disabled={!canEdit} /></div>
                                 </div>
 
-                                {/* 3. Identity & Documents */}
-                                <div className="section-header">3. Identity Card & Family Info</div>
+                                <div className="section-header">3. Identity & Family</div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div><label className="label-cap">ID Card No.</label><input type="text" className="form-input" value={wForm.id_card_no} onChange={e => setWForm({...wForm, id_card_no: e.target.value})} disabled={!canEdit} /></div>
                                     <div><label className="label-cap">Passport No.</label><input type="text" className="form-input" value={wForm.passport_no} onChange={e => setWForm({...wForm, passport_no: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Family Book No.</label><input type="text" className="form-input" value={wForm.family_book_no} onChange={e => setWForm({...wForm, family_book_no: e.target.value})} disabled={!canEdit} /></div>
                                     <div><label className="label-cap">Father's Name</label><input type="text" className="form-input" value={wForm.father_name} onChange={e => setWForm({...wForm, father_name: e.target.value})} disabled={!canEdit} /></div>
                                     <div><label className="label-cap">Mother's Name</label><input type="text" className="form-input" value={wForm.mother_name} onChange={e => setWForm({...wForm, mother_name: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Marital Status</label><select className="form-select" value={wForm.marital_status} onChange={e => setWForm({...wForm, marital_status: e.target.value})} disabled={!canEdit}><option value="Single">Single</option><option value="Married">Married</option><option value="Divorced">Divorced</option></select></div>
                                 </div>
 
-                                {/* 4. Address & Emergency */}
-                                <div className="section-header">4. Address & Emergency Contact</div>
+                                <div className="section-header">4. Address & Emergency</div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div><label className="label-cap">Village</label><input type="text" className="form-input" value={wForm.address_village} onChange={e => setWForm({...wForm, address_village: e.target.value})} disabled={!canEdit} /></div>
                                     <div><label className="label-cap">District</label><input type="text" className="form-input" value={wForm.address_district} onChange={e => setWForm({...wForm, address_district: e.target.value})} disabled={!canEdit} /></div>
                                     <div><label className="label-cap">Province</label><input type="text" className="form-input" value={wForm.address_province} onChange={e => setWForm({...wForm, address_province: e.target.value})} disabled={!canEdit} /></div>
                                     <div><label className="label-cap">Emergency Person</label><input type="text" className="form-input" value={wForm.emergency_name} onChange={e => setWForm({...wForm, emergency_name: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Emergency Relation</label><input type="text" className="form-input" value={wForm.emergency_relation} onChange={e => setWForm({...wForm, emergency_relation: e.target.value})} disabled={!canEdit} /></div>
                                     <div><label className="label-cap">Emergency Phone</label><input type="tel" className="form-input" value={wForm.emergency_phone} onChange={e => setWForm({...wForm, emergency_phone: e.target.value})} disabled={!canEdit} /></div>
                                 </div>
 
-                                {/* 5. Body & Health */}
                                 <div className="section-header">5. Physical Details</div>
                                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                                     <div><label className="label-cap">Height (cm)</label><input type="number" className="form-input" value={wForm.height} onChange={e => setWForm({...wForm, height: e.target.value})} disabled={!canEdit} /></div>
                                     <div><label className="label-cap">Weight (kg)</label><input type="number" className="form-input" value={wForm.weight} onChange={e => setWForm({...wForm, weight: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Blood Type</label><input type="text" className="form-input" value={wForm.blood_type} onChange={e => setWForm({...wForm, blood_type: e.target.value})} disabled={!canEdit} /></div>
                                     <div><label className="label-cap">Uniform</label><input type="text" className="form-input" value={wForm.uniform_size} onChange={e => setWForm({...wForm, uniform_size: e.target.value})} disabled={!canEdit} /></div>
                                     <div><label className="label-cap">Shoes</label><input type="number" className="form-input" value={wForm.shoe_size} onChange={e => setWForm({...wForm, shoe_size: e.target.value})} disabled={!canEdit} /></div>
                                 </div>
 
                                 {canEdit && (
                                     <div className="mt-16 sticky bottom-4">
-                                        <button className="w-full bg-blue-600 text-white py-6 rounded-3xl font-black text-xl shadow-2xl hover:bg-blue-700 active:scale-95 transition-all">SAVE COMPLETE MASTER DATA</button>
+                                        <button className="w-full bg-blue-600 text-white py-6 rounded-3xl font-black text-xl shadow-2xl hover:bg-blue-700 active:scale-95 transition-all">SAVE MASTER DATA</button>
                                     </div>
                                 )}
                             </form>
