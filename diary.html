@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC | Activity Diary (Multi-Photo)</title>
+    <title>HSDEC | Activity Diary Pro</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -24,7 +24,6 @@
         .color-Other { border-left: 8px solid #64748b; }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
     </style>
 </head>
 <body>
@@ -42,8 +41,9 @@
             const [user, setUser] = useState(null);
             const [view, setView] = useState('list');
             const [entries, setEntries] = useState([]);
-            const [dForm, setDForm] = useState({ photos: [] });
+            const [dForm, setDForm] = useState({ photos: [], labor_stats: "0,0,0" });
             const [searchTerm, setSearchTerm] = useState('');
+            const [filterCategory, setFilterCategory] = useState('All');
 
             useEffect(() => {
                 const savedUser = localStorage.getItem('hsdec_user');
@@ -55,7 +55,6 @@
             const fetchEntries = async () => {
                 const { data } = await supabase.from('diary').select('*').order('date', { ascending: false }).order('created_at', { ascending: false });
                 if (data) {
-                    // 写真がJSON文字列として保存されている場合はパースする
                     const formatted = data.map(item => ({
                         ...item,
                         photos: item.photo_url ? JSON.parse(item.photo_url) : []
@@ -67,10 +66,7 @@
             const handlePhotoUpload = (e) => {
                 const files = Array.from(e.target.files);
                 const currentPhotos = dForm.photos || [];
-                if (currentPhotos.length + files.length > 5) {
-                    alert("Max 5 photos allowed");
-                    return;
-                }
+                if (currentPhotos.length + files.length > 5) { alert("Max 5 photos allowed"); return; }
 
                 files.forEach(file => {
                     const reader = new FileReader();
@@ -100,49 +96,74 @@
                     staff_name: dForm.staff_name || STAFF_LIST[0],
                     category: dForm.category || CATEGORIES[0],
                     content: dForm.content || "",
-                    labor_stats: dForm.labor_stats || "",
-                    photo_url: JSON.stringify(dForm.photos || []), // 配列を文字列にして保存
+                    labor_stats: dForm.labor_stats || "0,0,0",
+                    photo_url: JSON.stringify(dForm.photos || []),
                     recorded_by: user.name
                 };
                 if (dForm.id) payload.id = dForm.id;
-
                 const { error } = await supabase.from('diary').upsert([payload]);
                 if (!error) { setView('list'); fetchEntries(); }
             };
 
-            const filteredEntries = entries.filter(item => 
-                (item.content + item.staff_name).toLowerCase().includes(searchTerm.toLowerCase())
-            );
+            const filteredEntries = entries.filter(item => {
+                const matchesSearch = (item.content + item.staff_name).toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesCat = filterCategory === 'All' || item.category === filterCategory;
+                return matchesSearch && matchesCat;
+            });
+
+            const getColorClass = (name) => {
+                const n = name.replace("Mr. ", "").replace("Ms. ", "");
+                return `color-${n}`;
+            };
 
             if (!user) return null;
 
             return (
                 <div className="max-w-2xl mx-auto p-4 pb-20">
                     <header className="flex justify-between items-center py-6">
-                        <h1 className="text-3xl font-black italic tracking-tighter uppercase">Activity Log</h1>
-                        <button onClick={() => { setDForm({date: new Date().toISOString().split('T')[0], staff_name: STAFF_LIST[0], photos: []}); setView('edit'); }} 
-                                className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-xs">+ NEW POST</button>
+                        <h1 className="text-3xl font-black italic tracking-tighter uppercase leading-none">Activity Log</h1>
+                        <button onClick={() => { setDForm({date: new Date().toISOString().split('T')[0], staff_name: STAFF_LIST[0], category: CATEGORIES[0], photos: [], labor_stats: "0,0,0"}); setView('edit'); }} 
+                                className="bg-blue-600 text-white px-5 py-3 rounded-2xl font-black text-xs shadow-lg uppercase">+ New Log</button>
                     </header>
 
-                    <input type="text" className="form-input mb-6 shadow-sm border-none" placeholder="Search activities..." 
-                           onChange={e => setSearchTerm(e.target.value)} />
+                    {/* 🔍 SEARCH & FILTER */}
+                    <div className="space-y-2 mb-6">
+                        <input type="text" className="form-input shadow-sm border-none bg-white py-4" placeholder="Search entries..." 
+                               value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                            {["All", ...CATEGORIES].map(cat => (
+                                <button key={cat} onClick={() => setFilterCategory(cat)} 
+                                        className={`flex-shrink-0 px-4 py-2 rounded-full text-[10px] font-black uppercase transition-all ${filterCategory === cat ? 'bg-slate-800 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-200'}`}>
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
 
                     {view === 'list' ? (
                         <div className="space-y-4">
                             {filteredEntries.map(item => (
                                 <div key={item.id} onClick={() => { setDForm(item); setView('edit'); }} 
-                                     className={`bg-white p-5 rounded-3xl shadow-sm border border-slate-100 ${item.staff_name.includes('Takashi') ? 'color-Takashi' : item.staff_name.includes('Chanthaviphone') ? 'color-Chanthaviphone' : 'color-Other'}`}>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase">{item.date} • {item.category}</p>
-                                    <h3 className="font-black text-slate-800 mb-2">{item.staff_name}</h3>
-                                    
-                                    {/* 複数写真のプレビュー */}
+                                     className={`bg-white p-5 rounded-3xl shadow-sm border border-slate-100 ${getColorClass(item.staff_name)}`}>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase">{item.date} • {item.category}</p>
+                                            <h3 className="font-black text-slate-800 leading-none mt-1">{item.staff_name}</h3>
+                                        </div>
+                                    </div>
+                                    {item.category.includes("Labor") && (
+                                        <div className="bg-blue-50/50 p-3 rounded-xl mb-3 border border-blue-100 flex gap-4 text-center">
+                                            <div className="flex-1"><p className="text-[8px] font-bold text-slate-400">TOTAL</p><p className="font-black text-blue-600 text-sm">{item.labor_stats.split(',')[0]}</p></div>
+                                            <div className="flex-1 border-x border-blue-100"><p className="text-[8px] font-bold text-slate-400">ABSENT</p><p className="font-black text-rose-500 text-sm">{item.labor_stats.split(',')[1]}</p></div>
+                                            <div className="flex-1"><p className="text-[8px] font-bold text-slate-400">LATE</p><p className="font-black text-amber-500 text-sm">{item.labor_stats.split(',')[2]}</p></div>
+                                        </div>
+                                    )}
                                     <div className="flex gap-2 overflow-x-auto no-scrollbar mb-3">
                                         {item.photos && item.photos.map((p, i) => (
-                                            <img key={i} src={p} className="w-24 h-24 object-cover rounded-xl border flex-shrink-0" />
+                                            <img key={i} src={p} className="w-20 h-20 object-cover rounded-xl border flex-shrink-0" />
                                         ))}
                                     </div>
-                                    
-                                    <p className="text-slate-600 text-sm font-medium whitespace-pre-wrap line-clamp-3">{item.content}</p>
+                                    <p className="text-slate-600 text-sm font-medium whitespace-pre-wrap line-clamp-3 leading-relaxed">{item.content}</p>
                                 </div>
                             ))}
                         </div>
@@ -150,43 +171,73 @@
                         /* ✍️ EDIT VIEW */
                         <div className="bg-white p-6 rounded-[2.5rem] shadow-xl border">
                             <form onSubmit={handleSave} className="space-y-4">
-                                <div className="flex justify-between items-center">
+                                <div className="flex justify-between items-center mb-2">
                                     <button type="button" onClick={() => setView('list')} className="text-slate-400 font-black text-xs uppercase">← Cancel</button>
-                                    <span className="font-black italic text-xs text-blue-600">Multi-Photo Entry</span>
+                                    <span className="font-black italic text-xs text-blue-600 uppercase">Detail Entry</span>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    <input type="date" className="form-input" value={dForm.date} onChange={e => setDForm({...dForm, date: e.target.value})} />
-                                    <select className="form-select" value={dForm.staff_name} onChange={e => setDForm({...dForm, staff_name: e.target.value})}>
-                                        {STAFF_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                                    <div><label className="label-cap">Date</label><input type="date" className="form-input" value={dForm.date} onChange={e => setDForm({...dForm, date: e.target.value})} /></div>
+                                    <div><label className="label-cap">Author</label>
+                                        <select className="form-select" value={dForm.staff_name} onChange={e => setDForm({...dForm, staff_name: e.target.value})}>
+                                            {STAFF_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div><label className="label-cap">Category</label>
+                                    <select className="form-select" value={dForm.category} onChange={e => setDForm({...dForm, category: e.target.value})}>
+                                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
 
-                                {/* 📸 MULTI PHOTO UPLOAD */}
-                                <div className="bg-slate-50 p-4 rounded-2xl border-2 border-dashed border-slate-200">
+                                {dForm.category === "Labor Inspection (労働者様子)" && (
+                                    <div className="bg-blue-50 p-4 rounded-2xl grid grid-cols-3 gap-3 border border-blue-200">
+                                        <div><label className="label-cap text-blue-600">Present</label>
+                                            <input type="number" className="form-input text-center" value={dForm.labor_stats.split(',')[0]} onChange={e => {
+                                                const s = dForm.labor_stats.split(','); s[0] = e.target.value; setDForm({...dForm, labor_stats: s.join(',')});
+                                            }} />
+                                        </div>
+                                        <div><label className="label-cap text-rose-500">Absent</label>
+                                            <input type="number" className="form-input text-center" value={dForm.labor_stats.split(',')[1]} onChange={e => {
+                                                const s = dForm.labor_stats.split(','); s[1] = e.target.value; setDForm({...dForm, labor_stats: s.join(',')});
+                                            }} />
+                                        </div>
+                                        <div><label className="label-cap text-amber-500">Late</label>
+                                            <input type="number" className="form-input text-center" value={dForm.labor_stats.split(',')[2]} onChange={e => {
+                                                const s = dForm.labor_stats.split(','); s[2] = e.target.value; setDForm({...dForm, labor_stats: s.join(',')});
+                                            }} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div>
                                     <label className="label-cap">Photos (Max 5)</label>
-                                    <div className="photo-grid mb-3">
+                                    <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                                         {dForm.photos && dForm.photos.map((p, i) => (
-                                            <div key={i} className="relative aspect-square">
-                                                <img src={p} className="w-full h-full object-cover rounded-lg border" />
+                                            <div key={i} className="relative flex-shrink-0">
+                                                <img src={p} className="w-24 h-24 object-cover rounded-xl border" />
                                                 <button type="button" onClick={() => {
                                                     const updated = [...dForm.photos]; updated.splice(i, 1);
                                                     setDForm({...dForm, photos: updated});
-                                                }} className="absolute -top-2 -right-2 bg-rose-500 text-white w-5 h-5 rounded-full text-[10px] font-bold">X</button>
+                                                }} className="absolute -top-1 -right-1 bg-rose-500 text-white w-5 h-5 rounded-full text-[10px] font-black">✕</button>
                                             </div>
                                         ))}
                                         {(!dForm.photos || dForm.photos.length < 5) && (
-                                            <label className="aspect-square bg-white rounded-lg border flex items-center justify-center cursor-pointer text-2xl opacity-30">
-                                                + <input type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
+                                            <label className="w-24 h-24 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer text-2xl opacity-30 flex-shrink-0">
+                                                ＋ <input type="file" accept="image/*" multiple className="hidden" onChange={handlePhotoUpload} />
                                             </label>
                                         )}
                                     </div>
                                 </div>
 
-                                <textarea className="form-textarea h-40" placeholder="Details..." 
-                                          value={dForm.content} onChange={e => setDForm({...dForm, content: e.target.value})} required></textarea>
+                                <div>
+                                    <label className="label-cap">Report Details</label>
+                                    <textarea className="form-textarea h-48" placeholder="Enter details (Attendance notes, Meeting minutes, etc.)" 
+                                              value={dForm.content} onChange={e => setDForm({...dForm, content: e.target.value})} required></textarea>
+                                </div>
 
-                                <button className="w-full bg-slate-900 text-white py-6 rounded-3xl font-black text-xl shadow-xl uppercase italic">Save with Photos</button>
+                                <button className="w-full bg-slate-900 text-white py-6 rounded-[2rem] font-black text-xl shadow-xl uppercase italic active:scale-95 transition-all">Save Report</button>
                             </form>
                         </div>
                     )}
