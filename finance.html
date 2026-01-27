@@ -73,11 +73,37 @@
             };
 
             const handleSave = async (e) => {
-                e.preventDefault();
-                const payload = { ...fForm, total: Number(fForm.unit_price || 0), recorded_by: user.name };
-                const { error } = await supabase.from('finance').upsert([payload]);
-                if(!error) { setView('list'); fetchRecords(); }
-            };
+    e.preventDefault();
+    
+    // Supabaseの列名と完全に一致させるための整理
+    const payload = {
+        date: fForm.date,
+        item_name: fForm.item_name,
+        category: fForm.category,
+        total: Number(fForm.unit_price || 0), // 入力欄のunit_priceをtotalとして保存
+        staff_name: fForm.staff_name,
+        photo_url: fForm.photo_url || null,
+        method: fForm.method || 'Cash',
+        recorded_by: user.name,
+        note: fForm.note || ''
+    };
+
+    // 既存データの編集ならIDを含める
+    if (fForm.id) payload.id = fForm.id;
+
+    console.log("Saving payload:", payload); // デバッグ用
+
+    const { error } = await supabase.from('finance').upsert([payload]);
+
+    if (error) {
+        console.error("Supabase Error:", error);
+        alert("Error: " + error.message);
+    } else {
+        alert("Saved successfully!");
+        setView('list');
+        fetchRecords();
+    }
+};
 
             const filteredRecords = records.filter(r => 
                 r.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
