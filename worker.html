@@ -96,11 +96,11 @@
                 else alert(error.message);
             };
 
-            // 検索フィルタリング
+            // Search logic: filtering workers based on batch and search term
             const filteredWorkers = workers.filter(w => {
                 const matchesBatch = w.batch == currentBatch;
-                const searchStr = `${w.name} ${w.nickname} ${w.village} ${w.district} ${w.province}`.toLowerCase();
-                const matchesSearch = searchStr.includes(searchTerm.toLowerCase());
+                const searchData = `${w.name} ${w.nickname} ${w.province} ${w.district} ${w.village}`.toLowerCase();
+                const matchesSearch = searchData.includes(searchTerm.toLowerCase());
                 return matchesBatch && matchesSearch;
             });
 
@@ -135,29 +135,30 @@
                             <button onClick={() => { setForm({batch: currentBatch, gender:'Male', diseases:'None', allergies:'None', tattoos:'None'}); setView('edit'); }} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs shadow-lg">+ NEW WORKER</button>
                         </div>
                         
-                        {/* SEARCH BAR */}
-                        <div className="flex gap-2">
+                        {/* SEARCH & BATCH SWITCHER */}
+                        <div className="flex gap-2 items-center bg-white p-2 rounded-2xl shadow-sm border">
+                            <span className="pl-4 text-xl">🔍</span>
                             <input 
                                 type="text" 
-                                placeholder="Search by name, nickname, or address..." 
-                                className="form-input flex-grow shadow-sm italic"
+                                placeholder="Search Name, Nickname, or Location..." 
+                                className="w-full p-3 font-bold outline-none italic"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                             <select 
-                                className="form-select w-32 shadow-sm"
+                                className="bg-slate-100 p-3 rounded-xl font-black text-xs uppercase outline-none"
                                 value={currentBatch}
-                                onChange={(e) => setCurrentBatch(e.target.value)}
+                                onChange={(e) => setCurrentBatch(parseInt(e.target.value))}
                             >
-                                <option value="1">Batch 1</option>
-                                <option value="2">Batch 2</option>
-                                <option value="3">Batch 3</option>
+                                <option value="1">B1</option>
+                                <option value="2">B2</option>
+                                <option value="3">B3</option>
                             </select>
                         </div>
                     </header>
 
                     <div className="grid gap-4">
-                        {filteredWorkers.map(w => {
+                        {filteredWorkers.length > 0 ? filteredWorkers.map(w => {
                             const { count, percent } = calculateDocs(w);
                             return (
                                 <div key={w.id} onClick={() => { setForm(w); setView('edit'); }} 
@@ -169,7 +170,7 @@
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <h3 className="font-black text-2xl uppercase tracking-tight">{w.name}</h3>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase">{w.nickname || 'No Nickname'} • {w.province || 'Unknown Location'}</p>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase">{w.nickname || 'No Nickname'} • {w.province || 'Unknown'}</p>
                                             </div>
                                             <div className="text-right">
                                                 <span className={`text-[10px] font-black px-2 py-1 rounded ${percent === 100 ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
@@ -181,17 +182,22 @@
                                             <div className={`progress-fill ${percent === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{width: `${percent}%`}}></div>
                                         </div>
                                         <div className="flex gap-2 mt-3">
-                                            {w.is_reentry && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase">Re-entry (B{w.prev_batch || '?'})</span>}
-                                            {w.is_couple && <span className="bg-pink-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase">Couple</span>}
+                                            {w.is_reentry && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase italic">Re-entry (B{w.prev_batch || '?'})</span>}
+                                            {w.is_couple && <span className="bg-pink-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase italic">Couple</span>}
                                         </div>
                                     </div>
                                 </div>
                             );
-                        })}
+                        }) : (
+                            <div className="text-center py-20 bg-white rounded-[3rem] border-2 border-dashed text-slate-400 font-bold uppercase italic">
+                                No workers found in Batch {currentBatch}
+                            </div>
+                        )}
                     </div>
                 </div>
             );
 
+            // Edit view logic including Re-entry previous batch selection...
             return (
                 <div className="max-w-4xl mx-auto p-4 pb-24">
                     <form onSubmit={handleSave} className="bg-white p-8 md:p-12 rounded-[3.5rem] shadow-2xl border relative">
@@ -224,26 +230,11 @@
                             <div><label className="label-cap">Gender</label><select className="form-select" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}><option value="Male">Male</option><option value="Female">Female</option></select></div>
                             <div><label className="label-cap">Full Name</label><input className="form-input" value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} required /></div>
                             <div><label className="label-cap">Nickname</label><input className="form-input" value={form.nickname || ''} onChange={e => setForm({...form, nickname: e.target.value})} /></div>
-                            <div><label className="label-cap">Date of Birth</label><input type="date" className="form-input" value={form.birthday || ''} onChange={e => setForm({...form, birthday: e.target.value})} /></div>
-                            <div><label className="label-cap">Age</label><input type="number" className="form-input" value={form.age || ''} onChange={e => setForm({...form, age: e.target.value})} /></div>
-                        </div>
-
-                        <div className="section-header">3. Address Information</div>
-                        <div className="grid grid-cols-3 gap-4 mt-2">
-                            <div><label className="label-cap">Village</label><input className="form-input" value={form.village || ''} onChange={e => setForm({...form, village: e.target.value})} /></div>
-                            <div><label className="label-cap">District</label><input className="form-input" value={form.district || ''} onChange={e => setForm({...form, district: e.target.value})} /></div>
                             <div><label className="label-cap">Province</label><input className="form-input" value={form.province || ''} onChange={e => setForm({...form, province: e.target.value})} /></div>
+                            <div><label className="label-cap">WhatsApp</label><input className="form-input" value={form.whatsapp || ''} onChange={e => setForm({...form, whatsapp: e.target.value})} /></div>
                         </div>
 
-                        <div className="section-header">4. Health Report</div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div><label className="label-cap">Weight (kg)</label><input type="number" className="form-input" value={form.weight || ''} onChange={e => setForm({...form, weight: e.target.value})} /></div>
-                            <div><label className="label-cap">Height (cm)</label><input type="number" className="form-input" value={form.height || ''} onChange={e => setForm({...form, height: e.target.value})} /></div>
-                            <div><label className="label-cap">Arm Strength</label><select className="form-select" value={form.arm_strength || ''} onChange={e => setForm({...form, arm_strength: e.target.value})}><option value="">-</option><option value="Good">Good</option><option value="Problem">Problem</option></select></div>
-                            <div><label className="label-cap">Eyesight</label><select className="form-select" value={form.eyesight || ''} onChange={e => setForm({...form, eyesight: e.target.value})}><option value="">-</option><option value="Good">Good</option><option value="Problem">Problem</option></select></div>
-                        </div>
-
-                        <div className="section-header">5. Status & History</div>
+                        <div className="section-header">3. Special Status & History</div>
                         <div className="grid grid-cols-2 gap-4 mb-6">
                             <div onClick={() => setForm({...form, is_reentry: !form.is_reentry})} className={`doc-item ${form.is_reentry ? 'done border-emerald-500' : 'pending'}`}>
                                 <span>RE-ENTRY (GREEN)</span>
@@ -255,10 +246,10 @@
                             </div>
                         </div>
 
-                        {/* RE-ENTRY DETAILS */}
+                        {/* RE-ENTRY: Selecting previous batch */}
                         {form.is_reentry && (
                             <div className="bg-emerald-50 p-6 rounded-[2rem] mb-6 border border-emerald-100">
-                                <label className="label-cap text-emerald-600">Which previous batch did they join?</label>
+                                <label className="label-cap text-emerald-600 italic">Which previous batch did they belong to?</label>
                                 <select className="form-select" value={form.prev_batch || ''} onChange={e => setForm({...form, prev_batch: e.target.value})}>
                                     <option value="">Select Previous Batch...</option>
                                     <option value="1">Batch 1</option>
@@ -267,12 +258,12 @@
                             </div>
                         )}
 
-                        {/* COUPLE DETAILS */}
+                        {/* COUPLE: Selecting partner from opposite gender */}
                         {form.is_couple && (
                             <div className="bg-pink-50 p-6 rounded-[2rem] mb-6 border border-pink-100">
-                                <label className="label-cap text-pink-500">Partner Selection ({form.gender === 'Male' ? 'Female List' : 'Male List'})</label>
+                                <label className="label-cap text-pink-500 italic">Partner Selection ({form.gender === 'Male' ? 'Female' : 'Male'})</label>
                                 <select className="form-select" value={form.partner_id || ''} onChange={e => setForm({...form, partner_id: e.target.value})}>
-                                    <option value="">Select Partner Name...</option>
+                                    <option value="">Choose Partner...</option>
                                     {workers.filter(w => w.gender !== form.gender).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
                                 </select>
                             </div>
