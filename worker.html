@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Worker Master Database | Full Specs</title>
+    <title>HSDEC Worker Master Database</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -17,21 +17,23 @@
             font-weight: 700; background: white; outline: none; transition: border-color 0.2s;
         }
         .form-input:focus { border-color: #3b82f6; }
-        .label-cap { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; letter-spacing: 0.05em; }
+        .label-cap { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
         .section-header { font-size: 11px; font-weight: 900; color: #3b82f6; background: #eff6ff; padding: 8px 16px; border-radius: 8px; margin-top: 24px; margin-bottom: 12px; text-transform: uppercase; display: inline-block; }
-        .doc-chip { font-size: 9px; font-weight: 900; padding: 4px 8px; border-radius: 6px; text-transform: uppercase; border-width: 1px; }
-        .doc-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; border: 2px solid #f1f5f9; cursor: pointer; transition: 0.2s; }
+        
+        /* リストのカードスタイル */
+        .worker-card { border-width: 4px; border-color: transparent; transition: 0.3s; }
+        .is-couple { border-color: #fbcfe8 !important; background-color: #fff1f2 !important; }
+        .is-reentry { border-color: #bbf7d0 !important; background-color: #f0fdf4 !important; }
+
+        .doc-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; border: 2px solid #f1f5f9; cursor: pointer; }
         .doc-item.done { border-color: #10b981; background: #f0fdf4; color: #166534; }
         .doc-item.pending { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
-        .modal-overlay { position: fixed; inset: 0; background: #f1f5f9; z-index: 1000; overflow-y: auto; padding: 20px; }
     </style>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect } = React;
-
-        // 🔑 Supabase Config
         const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -39,185 +41,182 @@
         const DOC_LIST = [
             "Identity card", "Census", "Certificate of address", "Mobile phone", 
             "Land title", "Picture 3*4", "Picture 3,5*4,6", 
-            "Agriculture certificate", "Health certificate", "Dollar bank account book"
+            "Agriculture certificate", "Health certificate", "Dollar bank account book", "Penalty notice"
         ];
 
-        function WorkerApp() {
+        function App() {
             const [user, setUser] = useState(null);
-            const [view, setView] = useState('list');
+            const [view, setView] = useState('folders'); 
+            const [currentBatch, setCurrentBatch] = useState(null);
             const [workers, setWorkers] = useState([]);
-            const [search, setSearch] = useState('');
-            
-            const initialForm = {
-                name: '', nickname: '', phone: '', status: 'Active', gender: 'Male', birthday: '',
-                passport_no: '', id_card_no: '', family_book_no: '',
-                address_village: '', address_district: '', address_province: '',
-                emergency_name: '', emergency_phone: '', emergency_relation: '',
-                height: '', weight: '', blood_type: '', uniform_size: '', shoe_size: '',
-                father_name: '', mother_name: '', marital_status: 'Single', children_count: 0,
-                education_level: '', previous_job: '', hired_date: '', position: 'Staff', 
-                salary_base: 0, bank_name: '', bank_account_no: '', bank_account_name: '',
-                note: '', guarantor: '', photo_url: '',
-                ...DOC_LIST.reduce((acc, doc) => ({ ...acc, [doc]: false }), {})
-            };
-            const [wForm, setWForm] = useState(initialForm);
+            const [form, setForm] = useState({});
 
-            // 🔐 1. Security & Auth Check
             useEffect(() => {
                 const savedUser = localStorage.getItem('hsdec_user');
-                if (!savedUser) {
-                    window.location.href = 'index.html'; 
-                } else {
-                    setUser(JSON.parse(savedUser));
-                }
+                if (!savedUser) window.location.href = 'index.html';
+                else { setUser(JSON.parse(savedUser)); fetchWorkers(); }
             }, []);
 
-            // 📥 2. Fetch Data
-            useEffect(() => { 
-                if(user) fetchWorkers(); 
-            }, [user]);
-
             const fetchWorkers = async () => {
-                const { data, error } = await supabase.from('workers').select('*').order('name', { ascending: true });
+                const { data } = await supabase.from('workers').select('*').order('name');
                 if (data) setWorkers(data);
-                if (error) console.error(error);
             };
-
-            const canEdit = user && ['admin', 'staff', 'sv'].includes(user.role);
 
             const handleSave = async (e) => {
                 e.preventDefault();
-                if (!canEdit) return;
-                const { error } = await supabase.from('workers').upsert([{ ...wForm, guarantor: user.name }]);
-                if (!error) { 
-                    setView('list'); 
-                    fetchWorkers(); 
-                } else {
-                    alert(error.message);
-                }
+                const { error } = await supabase.from('workers').upsert([{ ...form, batch: currentBatch }]);
+                if (!error) { setView('list'); fetchWorkers(); }
+                else alert(error.message);
             };
 
-            const filteredWorkers = workers.filter(w => 
-                w.name.toLowerCase().includes(search.toLowerCase()) || 
-                (w.nickname && w.nickname.toLowerCase().includes(search.toLowerCase()))
+            if (!user) return null;
+
+            // --- 1. Batch Selection (Folders) ---
+            if (view === 'folders') return (
+                <div className="max-w-4xl mx-auto p-8">
+                    <h1 className="text-5xl font-black italic mb-12 tracking-tighter text-slate-800">MASTER FOLDERS</h1>
+                    <div className="grid grid-cols-1 gap-6">
+                        {[1, 2, 3].map(num => (
+                            <div key={num} onClick={() => { setCurrentBatch(num); setView('list'); }} 
+                                 className="bg-white p-12 rounded-[3rem] border-2 border-slate-100 shadow-xl flex justify-between items-center cursor-pointer hover:scale-[1.02] transition-all group">
+                                <div>
+                                    <span className="text-slate-400 font-black text-xs uppercase tracking-widest">Generation</span>
+                                    <h2 className="text-4xl font-black italic text-slate-800">第 {num} 期生</h2>
+                                </div>
+                                <div className="text-4xl group-hover:translate-x-2 transition-transform">📂</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             );
 
-            if (!user) return <div className="p-10 font-black">Checking access...</div>;
-
-            return (
-                <div className="max-w-6xl mx-auto p-4 pb-20">
-                    <header className="flex justify-between items-end py-8">
+            // --- 2. Worker List ---
+            if (view === 'list') return (
+                <div className="max-w-4xl mx-auto p-4">
+                    <header className="flex justify-between items-end py-8 px-2">
                         <div>
-                            <h1 className="text-4xl font-black italic tracking-tighter leading-none">WORKER MASTER</h1>
-                            <p className="text-[10px] font-black text-blue-500 uppercase mt-2 tracking-widest">Operator: {user.name} ({user.role})</p>
+                            <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">← Back to Folders</button>
+                            <h2 className="text-4xl font-black italic uppercase">Batch {currentBatch}</h2>
                         </div>
-                        <div className="flex gap-2">
-                            {canEdit && <button onClick={() => { setWForm(initialForm); setView('edit'); }} className="bg-black text-white px-6 py-3 rounded-2xl font-black text-xs shadow-xl active:scale-95 transition-all">+ NEW WORKER</button>}
-                            <button onClick={() => { localStorage.clear(); window.location.href='index.html'; }} className="bg-white border px-4 py-3 rounded-2xl font-black text-[10px] uppercase">Portal</button>
-                        </div>
+                        <button onClick={() => { setForm({status:'Active', gender:'Male'}); setView('edit'); }} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs shadow-lg">+ ADD WORKER</button>
                     </header>
-
-                    {view === 'list' && (
-                        <div className="space-y-4">
-                            <input type="text" placeholder="Search by name or nickname..." className="form-input shadow-sm" value={search} onChange={e => setSearch(e.target.value)} />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {filteredWorkers.map(w => {
-                                    const missing = DOC_LIST.filter(d => !w[d]);
-                                    return (
-                                        <div key={w.id} onClick={() => { setWForm(w); setView('edit'); }} className="bg-white p-6 rounded-[2rem] border shadow-sm hover:shadow-md transition-all cursor-pointer">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div>
-                                                    <h3 className="font-black text-xl uppercase leading-none">{w.name}</h3>
-                                                    <p className="text-xs font-bold text-slate-400 mt-1 uppercase">{w.nickname || 'No Nickname'} · {w.phone || 'No Phone'}</p>
-                                                </div>
-                                                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${w.status === 'Active' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>{w.status}</span>
-                                            </div>
-                                            <div className="flex flex-wrap gap-1.5">
-                                                {missing.length === 0 ? (
-                                                    <span className="doc-chip bg-emerald-50 text-emerald-600 border-emerald-200">✓ All Docs OK</span>
-                                                ) : (
-                                                    missing.map(m => <span key={m} className="doc-chip bg-rose-50 text-rose-500 border-rose-100">{m}</span>)
-                                                )}
-                                            </div>
+                    <div className="grid gap-4">
+                        {workers.filter(w => w.batch == currentBatch).map(w => (
+                            <div key={w.id} onClick={() => { setForm(w); setView('edit'); }} 
+                                 className={`worker-card bg-white p-6 rounded-[2.5rem] shadow-sm flex items-center gap-6 ${w.is_couple ? 'is-couple' : ''} ${w.is_reentry ? 'is-reentry' : ''}`}>
+                                <div className="w-20 h-20 bg-slate-200 rounded-[1.5rem] overflow-hidden flex-shrink-0 shadow-inner">
+                                    {w.photo_url ? <img src={w.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px] font-black text-slate-400">NO PHOTO</div>}
+                                </div>
+                                <div className="flex-grow">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="font-black text-2xl uppercase tracking-tight">{w.name}</h3>
+                                        <div className="flex gap-2">
+                                            {w.is_reentry && <span className="bg-emerald-500 text-white text-[9px] font-black px-3 py-1 rounded-full uppercase">Re-entry</span>}
+                                            {w.is_couple && <span className="bg-pink-500 text-white text-[9px] font-black px-3 py-1 rounded-full uppercase">Couple</span>}
                                         </div>
-                                    );
-                                })}
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-400 mt-1 uppercase">{w.nickname || 'No Nickname'} • {w.whatsapp || w.phone || 'No Contact'}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+
+            // --- 3. Full Detail / Edit Form ---
+            return (
+                <div className="max-w-4xl mx-auto p-4 pb-24">
+                    <form onSubmit={handleSave} className="bg-white p-8 md:p-12 rounded-[3.5rem] shadow-2xl border relative">
+                        <button type="button" onClick={() => setView('list')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8">← Back to Batch {currentBatch}</button>
+                        
+                        <div className="flex justify-between items-start mb-10">
+                            <h2 className="text-3xl font-black italic uppercase leading-none">{form.name || 'New Profile'}</h2>
+                            <div className="w-32 h-32 bg-slate-100 rounded-3xl border-4 border-white shadow-lg overflow-hidden flex-shrink-0 relative group">
+                                {form.photo_url ? <img src={form.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px] font-black text-slate-400">PHOTO</div>}
+                                <input type="text" placeholder="URL" className="absolute bottom-0 w-full text-[8px] bg-black/50 text-white p-1 outline-none" value={form.photo_url || ''} onChange={e => setForm({...form, photo_url: e.target.value})} />
                             </div>
                         </div>
-                    )}
 
-                    {view === 'edit' && (
-                        <div className="modal-overlay">
-                            <form onSubmit={handleSave} className="max-w-4xl mx-auto bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl border relative">
-                                <div className="flex justify-between items-center mb-10">
-                                    <button type="button" onClick={() => setView('list')} className="text-slate-400 font-black text-xs uppercase tracking-widest">← Back to List</button>
-                                    <div className="text-right">
-                                        <p className="text-[10px] font-black text-slate-300 uppercase">Profile Management</p>
-                                        <p className="font-black italic text-lg uppercase">{wForm.name || 'New Registration'}</p>
-                                    </div>
+                        <div className="section-header">1. Documents & Special Status</div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-6">
+                            {DOC_LIST.map(d => (
+                                <div key={d} onClick={() => setForm({...form, [d]: !form[d]})} className={`doc-item ${form[d] ? 'done' : 'pending'}`}>
+                                    <span>{d}</span>
                                 </div>
-
-                                <div className="section-header">1. Document Status</div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                                    {DOC_LIST.map(doc => (
-                                        <div key={doc} onClick={() => canEdit && setWForm({...wForm, [doc]: !wForm[doc]})} className={`doc-item ${wForm[doc] ? 'done' : 'pending'}`}>
-                                            <span className="text-[11px] font-bold uppercase">{doc}</span>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[9px] font-black uppercase">{wForm[doc] ? 'Done' : 'Need'}</span>
-                                                <div className={`w-2 h-2 rounded-full ${wForm[doc] ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'}`}></div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="section-header">2. Basic Information</div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div><label className="label-cap">Lao Name</label><input type="text" className="form-input" value={wForm.name} onChange={e => setWForm({...wForm, name: e.target.value})} required disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Nickname</label><input type="text" className="form-input" value={wForm.nickname} onChange={e => setWForm({...wForm, nickname: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Phone</label><input type="tel" className="form-input" value={wForm.phone} onChange={e => setWForm({...wForm, phone: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Status</label><select className="form-select" value={wForm.status} onChange={e => setWForm({...wForm, status: e.target.value})} disabled={!canEdit}><option value="Active">Active</option><option value="Resigned">Resigned</option><option value="Blacklisted">Blacklisted</option></select></div>
-                                    <div><label className="label-cap">Position</label><input type="text" className="form-input" value={wForm.position} onChange={e => setWForm({...wForm, position: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Salary (LAK)</label><input type="number" className="form-input" value={wForm.salary_base} onChange={e => setWForm({...wForm, salary_base: e.target.value})} disabled={!canEdit} /></div>
-                                </div>
-
-                                <div className="section-header">3. Identity & Family</div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div><label className="label-cap">ID Card No.</label><input type="text" className="form-input" value={wForm.id_card_no} onChange={e => setWForm({...wForm, id_card_no: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Passport No.</label><input type="text" className="form-input" value={wForm.passport_no} onChange={e => setWForm({...wForm, passport_no: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Father's Name</label><input type="text" className="form-input" value={wForm.father_name} onChange={e => setWForm({...wForm, father_name: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Mother's Name</label><input type="text" className="form-input" value={wForm.mother_name} onChange={e => setWForm({...wForm, mother_name: e.target.value})} disabled={!canEdit} /></div>
-                                </div>
-
-                                <div className="section-header">4. Address & Emergency</div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div><label className="label-cap">Village</label><input type="text" className="form-input" value={wForm.address_village} onChange={e => setWForm({...wForm, address_village: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">District</label><input type="text" className="form-input" value={wForm.address_district} onChange={e => setWForm({...wForm, address_district: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Province</label><input type="text" className="form-input" value={wForm.address_province} onChange={e => setWForm({...wForm, address_province: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Emergency Person</label><input type="text" className="form-input" value={wForm.emergency_name} onChange={e => setWForm({...wForm, emergency_name: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Emergency Phone</label><input type="tel" className="form-input" value={wForm.emergency_phone} onChange={e => setWForm({...wForm, emergency_phone: e.target.value})} disabled={!canEdit} /></div>
-                                </div>
-
-                                <div className="section-header">5. Physical Details</div>
-                                <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                                    <div><label className="label-cap">Height (cm)</label><input type="number" className="form-input" value={wForm.height} onChange={e => setWForm({...wForm, height: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Weight (kg)</label><input type="number" className="form-input" value={wForm.weight} onChange={e => setWForm({...wForm, weight: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Uniform</label><input type="text" className="form-input" value={wForm.uniform_size} onChange={e => setWForm({...wForm, uniform_size: e.target.value})} disabled={!canEdit} /></div>
-                                    <div><label className="label-cap">Shoes</label><input type="number" className="form-input" value={wForm.shoe_size} onChange={e => setWForm({...wForm, shoe_size: e.target.value})} disabled={!canEdit} /></div>
-                                </div>
-
-                                {canEdit && (
-                                    <div className="mt-16 sticky bottom-4">
-                                        <button className="w-full bg-blue-600 text-white py-6 rounded-3xl font-black text-xl shadow-2xl hover:bg-blue-700 active:scale-95 transition-all">SAVE MASTER DATA</button>
-                                    </div>
-                                )}
-                            </form>
+                            ))}
+                            <div onClick={() => setForm({...form, is_reentry: !form.is_reentry})} className={`doc-item ${form.is_reentry ? 'done' : 'pending'}`}>
+                                <span>再入国 (RE-ENTRY)</span>
+                            </div>
+                            <div onClick={() => setForm({...form, is_couple: !form.is_couple})} className={`doc-item ${form.is_couple ? 'bg-pink-500 text-white border-pink-600' : 'pending'}`}>
+                                <span>夫婦 (COUPLE)</span>
+                            </div>
                         </div>
-                    )}
+
+                        {form.is_couple && (
+                            <div className="bg-pink-50 p-6 rounded-[2rem] mb-10 border border-pink-100">
+                                <label className="label-cap text-pink-500">Partner Selection ({form.gender === 'Male' ? 'Female List' : 'Male List'})</label>
+                                <select className="form-select" value={form.partner_id || ''} onChange={e => setForm({...form, partner_id: e.target.value})}>
+                                    <option value="">Choose Partner...</option>
+                                    {workers.filter(w => w.gender !== form.gender).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                </select>
+                            </div>
+                        )}
+
+                        <div className="section-header">2. Basic Info & Address</div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div><label className="label-cap">Gender</label><select className="form-select" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                            <div><label className="label-cap">First & Last Name</label><input className="form-input" value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} required /></div>
+                            <div><label className="label-cap">Nickname</label><input className="form-input" value={form.nickname || ''} onChange={e => setForm({...form, nickname: e.target.value})} /></div>
+                            <div><label className="label-cap">Date of Birth</label><input type="date" className="form-input" value={form.birthday || ''} onChange={e => setForm({...form, birthday: e.target.value})} /></div>
+                            <div><label className="label-cap">Age</label><input type="number" className="form-input" value={form.age || ''} onChange={e => setForm({...form, age: e.target.value})} /></div>
+                            <div><label className="label-cap">Place of Birth</label><input className="form-input" value={form.birth_place || ''} onChange={e => setForm({...form, birth_place: e.target.value})} /></div>
+                        </div>
+                        <div className="mt-4"><label className="label-cap">Current Address</label><input className="form-input" value={form.current_address || ''} onChange={e => setForm({...form, current_address: e.target.value})} /></div>
+                        <div className="grid grid-cols-3 gap-4 mt-4">
+                            <div><label className="label-cap">Village</label><input className="form-input" value={form.village || ''} onChange={e => setForm({...form, village: e.target.value})} /></div>
+                            <div><label className="label-cap">District</label><input className="form-input" value={form.district || ''} onChange={e => setForm({...form, district: e.target.value})} /></div>
+                            <div><label className="label-cap">Province</label><input className="form-input" value={form.province || ''} onChange={e => setForm({...form, province: e.target.value})} /></div>
+                        </div>
+
+                        <div className="section-header">3. Education & Work</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label className="label-cap">Education Foreign Language</label><input className="form-input" value={form.education_lang || ''} onChange={e => setForm({...form, education_lang: e.target.value})} /></div>
+                            <div><label className="label-cap">Occupation</label><input className="form-input" value={form.occupation || ''} onChange={e => setForm({...form, occupation: e.target.value})} /></div>
+                            <div><label className="label-cap">Lives with</label><input className="form-input" value={form.lives_with || ''} onChange={e => setForm({...form, lives_with: e.target.value})} /></div>
+                            <div><label className="label-cap">Children</label><input className="form-input" value={form.children || ''} onChange={e => setForm({...form, children: e.target.value})} /></div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div><label className="label-cap">Worked abroad?</label><input className="form-input" value={form.work_abroad || ''} onChange={e => setForm({...form, work_abroad: e.target.value})} /></div>
+                            <div><label className="label-cap">Work Experience</label><textarea className="form-textarea" value={form.work_exp || ''} onChange={e => setForm({...form, work_exp: e.target.value})}></textarea></div>
+                        </div>
+
+                        <div className="section-header">4. Physical & Health</div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div><label className="label-cap">Weight (kg)</label><input type="number" className="form-input" value={form.weight || ''} onChange={e => setForm({...form, weight: e.target.value})} /></div>
+                            <div><label className="label-cap">Height (cm)</label><input type="number" className="form-input" value={form.height || ''} onChange={e => setForm({...form, height: e.target.value})} /></div>
+                            <div><label className="label-cap">Arm Strength</label><input className="form-input" value={form.arm_strength || ''} onChange={e => setForm({...form, arm_strength: e.target.value})} /></div>
+                            <div><label className="label-cap">Eyesight</label><input className="form-input" value={form.eyesight || ''} onChange={e => setForm({...form, eyesight: e.target.value})} /></div>
+                            <div className="col-span-2"><label className="label-cap">Identified Diseases</label><input className="form-input" value={form.diseases || ''} onChange={e => setForm({...form, diseases: e.target.value})} /></div>
+                            <div className="col-span-2"><label className="label-cap">Allergies</label><input className="form-input" value={form.allergies || ''} onChange={e => setForm({...form, allergies: e.target.value})} /></div>
+                            <div className="col-span-2"><label className="label-cap">Tattoos</label><input className="form-input" value={form.tattoos || ''} onChange={e => setForm({...form, tattoos: e.target.value})} /></div>
+                        </div>
+
+                        <div className="section-header">5. Contact & ID</div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div><label className="label-cap">WhatsApp</label><input className="form-input" value={form.whatsapp || ''} onChange={e => setForm({...form, whatsapp: e.target.value})} /></div>
+                            <div><label className="label-cap">Contact Number</label><input className="form-input" value={form.phone || ''} onChange={e => setForm({...form, phone: e.target.value})} /></div>
+                            <div><label className="label-cap">Passport Number</label><input className="form-input" value={form.passport_no || ''} onChange={e => setForm({...form, passport_no: e.target.value})} /></div>
+                            <div className="col-span-2"><label className="label-cap">Guarantor</label><input className="form-input" value={form.guarantor || ''} onChange={e => setForm({...form, guarantor: e.target.value})} /></div>
+                            <div><label className="label-cap">Census Dependent</label><input className="form-input" value={form.census_dependent || ''} onChange={e => setForm({...form, census_dependent: e.target.value})} /></div>
+                        </div>
+
+                        <button type="submit" className="w-full bg-blue-600 text-white py-6 rounded-[2rem] font-black text-xl mt-16 shadow-2xl hover:bg-blue-700 active:scale-95 transition-all uppercase tracking-widest">Update Master Data</button>
+                    </form>
                 </div>
             );
         }
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<WorkerApp />);
+        root.render(<App />);
     </script>
 </body>
 </html>
