@@ -46,10 +46,10 @@
         function App() {
             const [user, setUser] = useState(null);
             const [view, setView] = useState('folders'); 
-            const [currentBatch, setCurrentBatch] = useState(1);
+            const [currentBatch, setCurrentBatch] = useState(null);
             const [workers, setWorkers] = useState([]);
             const [form, setForm] = useState({});
-            const [searchTerm, setSearchTerm] = useState('');
+            const [globalSearch, setGlobalSearch] = useState('');
 
             useEffect(() => {
                 const savedUser = localStorage.getItem('hsdec_user');
@@ -92,73 +92,89 @@
             const handleSave = async (e) => {
                 e.preventDefault();
                 const { error } = await supabase.from('workers').upsert([form]);
-                if (!error) { setView('list'); fetchWorkers(); }
+                if (!error) { setView('list'); setGlobalSearch(''); fetchWorkers(); }
                 else alert(error.message);
             };
 
-            // Search logic: filtering workers based on batch and search term
-            const filteredWorkers = workers.filter(w => {
-                const matchesBatch = w.batch == currentBatch;
-                const searchData = `${w.name} ${w.nickname} ${w.province} ${w.district} ${w.village}`.toLowerCase();
-                const matchesSearch = searchData.includes(searchTerm.toLowerCase());
-                return matchesBatch && matchesSearch;
+            // 全体検索用のフィルタ
+            const searchedWorkers = workers.filter(w => {
+                const searchStr = `${w.name} ${w.nickname} ${w.province} ${w.batch}期`.toLowerCase();
+                return searchStr.includes(globalSearch.toLowerCase());
             });
 
             if (!user) return null;
 
+            // --- 📂 FOLDER & GLOBAL SEARCH VIEW ---
             if (view === 'folders') return (
-                <div className="max-w-4xl mx-auto p-8 text-center">
-                    <h1 className="text-5xl font-black italic mb-12 tracking-tighter text-slate-800 uppercase">Batch Directory</h1>
-                    <div className="grid grid-cols-1 gap-6">
-                        {[1, 2, 3].map(num => (
-                            <div key={num} onClick={() => { setCurrentBatch(num); setView('list'); }} 
-                                 className="bg-white p-12 rounded-[3rem] border-2 border-slate-100 shadow-xl flex justify-between items-center cursor-pointer hover:scale-[1.02] transition-all group">
-                                <div className="text-left">
-                                    <span className="text-slate-400 font-black text-xs uppercase tracking-widest">Generation Group</span>
-                                    <h2 className="text-4xl font-black italic text-slate-800 uppercase">Batch {num}</h2>
-                                </div>
-                                <div className="text-4xl group-hover:translate-x-2 transition-transform">📂</div>
-                            </div>
-                        ))}
+                <div className="max-w-4xl mx-auto p-6">
+                    <h1 className="text-4xl font-black italic mb-8 tracking-tighter text-slate-800 uppercase text-center">HSDEC Master DB</h1>
+                    
+                    {/* 🔍 Global Search Bar */}
+                    <div className="mb-10 relative">
+                        <label className="label-cap text-blue-500 mb-2">Global Search (All Batches)</label>
+                        <input 
+                            type="text" 
+                            placeholder="Type name, nickname or batch (e.g. 1期)..." 
+                            className="form-input shadow-xl text-lg py-5 border-blue-100"
+                            value={globalSearch}
+                            onChange={(e) => setGlobalSearch(e.target.value)}
+                        />
+                        {globalSearch && <span className="absolute right-4 top-10 text-xs font-black text-blue-400 uppercase tracking-widest">Searching...</span>}
                     </div>
+
+                    {globalSearch ? (
+                        /* 🔎 Search Results */
+                        <div className="grid gap-4">
+                            <h3 className="font-black text-xs text-slate-400 uppercase tracking-widest px-2">Results ({searchedWorkers.length})</h3>
+                            {searchedWorkers.map(w => {
+                                const { count, percent } = calculateDocs(w);
+                                return (
+                                    <div key={w.id} onClick={() => { setForm(w); setView('edit'); }} 
+                                         className={`worker-card bg-white p-4 rounded-[2rem] shadow-md flex items-center gap-4 ${w.is_couple ? 'is-couple' : ''} ${w.is_reentry ? 'is-reentry' : ''}`}>
+                                        <div className="w-14 h-14 bg-slate-200 rounded-2xl overflow-hidden flex-shrink-0">
+                                            {w.photo_url ? <img src={w.photo_url} className="w-full h-full object-cover" /> : <div className="text-[8px] flex items-center justify-center h-full">N/A</div>}
+                                        </div>
+                                        <div className="flex-grow">
+                                            <div className="flex justify-between items-center">
+                                                <h4 className="font-black text-lg uppercase">{w.name} <span className="text-[10px] text-blue-500 ml-1">B{w.batch}</span></h4>
+                                                <span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded">DOCS: {count}/11</span>
+                                            </div>
+                                            <div className="progress-bg"><div className="progress-fill bg-blue-500" style={{width: `${percent}%`}}></div></div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        /* 📁 Batch Folders */
+                        <div className="grid grid-cols-1 gap-6">
+                            {[1, 2, 3].map(num => (
+                                <div key={num} onClick={() => { setCurrentBatch(num); setView('list'); }} 
+                                     className="bg-white p-10 rounded-[3rem] border-2 border-slate-100 shadow-xl flex justify-between items-center cursor-pointer hover:scale-[1.02] transition-all group">
+                                    <div className="text-left">
+                                        <span className="text-slate-400 font-black text-xs uppercase tracking-widest">Generation Group</span>
+                                        <h2 className="text-4xl font-black italic text-slate-800 uppercase">Batch {num}</h2>
+                                    </div>
+                                    <div className="text-4xl group-hover:translate-x-2 transition-transform">📂</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             );
 
+            // --- 📋 LIST VIEW (Filtered by Batch) ---
             if (view === 'list') return (
                 <div className="max-w-4xl mx-auto p-4">
-                    <header className="py-8 px-2">
-                        <div className="flex justify-between items-end mb-6">
-                            <div>
-                                <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">← Directory</button>
-                                <h2 className="text-4xl font-black italic uppercase leading-none">Batch {currentBatch}</h2>
-                            </div>
-                            <button onClick={() => { setForm({batch: currentBatch, gender:'Male', diseases:'None', allergies:'None', tattoos:'None'}); setView('edit'); }} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs shadow-lg">+ NEW WORKER</button>
+                    <header className="flex justify-between items-end py-8 px-2">
+                        <div>
+                            <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">← Back to Dashboard</button>
+                            <h2 className="text-4xl font-black italic uppercase">Batch {currentBatch}</h2>
                         </div>
-                        
-                        {/* SEARCH & BATCH SWITCHER */}
-                        <div className="flex gap-2 items-center bg-white p-2 rounded-2xl shadow-sm border">
-                            <span className="pl-4 text-xl">🔍</span>
-                            <input 
-                                type="text" 
-                                placeholder="Search Name, Nickname, or Location..." 
-                                className="w-full p-3 font-bold outline-none italic"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                            <select 
-                                className="bg-slate-100 p-3 rounded-xl font-black text-xs uppercase outline-none"
-                                value={currentBatch}
-                                onChange={(e) => setCurrentBatch(parseInt(e.target.value))}
-                            >
-                                <option value="1">B1</option>
-                                <option value="2">B2</option>
-                                <option value="3">B3</option>
-                            </select>
-                        </div>
+                        <button onClick={() => { setForm({batch: currentBatch, gender:'Male', diseases:'None', allergies:'None', tattoos:'None'}); setView('edit'); }} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs shadow-lg">+ NEW WORKER</button>
                     </header>
-
                     <div className="grid gap-4">
-                        {filteredWorkers.length > 0 ? filteredWorkers.map(w => {
+                        {workers.filter(w => w.batch == currentBatch).map(w => {
                             const { count, percent } = calculateDocs(w);
                             return (
                                 <div key={w.id} onClick={() => { setForm(w); setView('edit'); }} 
@@ -168,47 +184,33 @@
                                     </div>
                                     <div className="flex-grow">
                                         <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="font-black text-2xl uppercase tracking-tight">{w.name}</h3>
-                                                <p className="text-[10px] font-bold text-slate-400 uppercase">{w.nickname || 'No Nickname'} • {w.province || 'Unknown'}</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className={`text-[10px] font-black px-2 py-1 rounded ${percent === 100 ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                    DOCS: {count}/{DOC_LIST.length}
-                                                </span>
-                                            </div>
+                                            <div><h3 className="font-black text-2xl uppercase tracking-tight">{w.name}</h3><p className="text-[10px] font-bold text-slate-400 uppercase">{w.nickname || 'No Nickname'}</p></div>
+                                            <div className="text-right"><span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded">DOCS: {count}/11</span></div>
                                         </div>
-                                        <div className="progress-bg">
-                                            <div className={`progress-fill ${percent === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{width: `${percent}%`}}></div>
-                                        </div>
+                                        <div className="progress-bg"><div className={`progress-fill ${percent === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{width: `${percent}%`}}></div></div>
                                         <div className="flex gap-2 mt-3">
-                                            {w.is_reentry && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase italic">Re-entry (B{w.prev_batch || '?'})</span>}
-                                            {w.is_couple && <span className="bg-pink-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase italic">Couple</span>}
+                                            {w.is_reentry && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase">Re-entry (B{w.prev_batch})</span>}
+                                            {w.is_couple && <span className="bg-pink-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase">Couple</span>}
                                         </div>
                                     </div>
                                 </div>
                             );
-                        }) : (
-                            <div className="text-center py-20 bg-white rounded-[3rem] border-2 border-dashed text-slate-400 font-bold uppercase italic">
-                                No workers found in Batch {currentBatch}
-                            </div>
-                        )}
+                        })}
                     </div>
                 </div>
             );
 
-            // Edit view logic including Re-entry previous batch selection...
+            // --- ✍️ EDIT VIEW (Combined from previous steps) ---
             return (
                 <div className="max-w-4xl mx-auto p-4 pb-24">
                     <form onSubmit={handleSave} className="bg-white p-8 md:p-12 rounded-[3.5rem] shadow-2xl border relative">
-                        <button type="button" onClick={() => setView('list')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8">← Back to List</button>
-                        
+                        <button type="button" onClick={() => setView(currentBatch ? 'list' : 'folders')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8">← Cancel</button>
                         <div className="flex justify-between items-start mb-10">
                             <h2 className="text-3xl font-black italic uppercase leading-none">{form.name || 'New Profile'}</h2>
                             <div className="w-32 h-32 bg-slate-100 rounded-3xl border-4 border-white shadow-lg overflow-hidden flex-shrink-0 relative group">
                                 {form.photo_url ? <img src={form.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px] font-black text-slate-400 uppercase">Photo</div>}
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                                    <label htmlFor="photo-upload" className="text-white text-[10px] font-black uppercase cursor-pointer">Update Photo</label>
+                                    <label htmlFor="photo-upload" className="text-white text-[10px] font-black uppercase cursor-pointer">Update</label>
                                 </div>
                                 <input type="file" id="photo-upload" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
                             </div>
@@ -218,58 +220,31 @@
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-6">
                             {DOC_LIST.map(d => (
                                 <div key={d} onClick={() => setForm({...form, [d]: !form[d]})} className={`doc-item ${form[d] ? 'done' : 'pending'}`}>
-                                    <span>{d}</span>
-                                    <span>{form[d] ? '✓' : '○'}</span>
+                                    <span>{d}</span><span>{form[d] ? '✓' : '○'}</span>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="section-header">2. Basic Details</div>
+                        <div className="section-header">2. Details & History</div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div><label className="label-cap">Assigned Batch</label><select className="form-select border-blue-200" value={form.batch || 1} onChange={e => setForm({...form, batch: parseInt(e.target.value)})}><option value="1">Batch 1</option><option value="2">Batch 2</option><option value="3">Batch 3</option></select></div>
+                            <div><label className="label-cap">Current Batch</label><select className="form-select border-blue-200" value={form.batch || 1} onChange={e => setForm({...form, batch: parseInt(e.target.value)})}><option value="1">Batch 1</option><option value="2">Batch 2</option><option value="3">Batch 3</option></select></div>
                             <div><label className="label-cap">Gender</label><select className="form-select" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}><option value="Male">Male</option><option value="Female">Female</option></select></div>
-                            <div><label className="label-cap">Full Name</label><input className="form-input" value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} required /></div>
-                            <div><label className="label-cap">Nickname</label><input className="form-input" value={form.nickname || ''} onChange={e => setForm({...form, nickname: e.target.value})} /></div>
-                            <div><label className="label-cap">Province</label><input className="form-input" value={form.province || ''} onChange={e => setForm({...form, province: e.target.value})} /></div>
-                            <div><label className="label-cap">WhatsApp</label><input className="form-input" value={form.whatsapp || ''} onChange={e => setForm({...form, whatsapp: e.target.value})} /></div>
+                            <div><label className="label-cap">Name</label><input className="form-input" value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} required /></div>
                         </div>
 
-                        <div className="section-header">3. Special Status & History</div>
-                        <div className="grid grid-cols-2 gap-4 mb-6">
-                            <div onClick={() => setForm({...form, is_reentry: !form.is_reentry})} className={`doc-item ${form.is_reentry ? 'done border-emerald-500' : 'pending'}`}>
-                                <span>RE-ENTRY (GREEN)</span>
-                                <span>{form.is_reentry ? 'YES' : 'NO'}</span>
-                            </div>
-                            <div onClick={() => setForm({...form, is_couple: !form.is_couple})} className={`doc-item ${form.is_couple ? 'bg-pink-500 text-white border-pink-600' : 'pending'}`}>
-                                <span>COUPLE (PINK)</span>
-                                <span>{form.is_couple ? 'YES' : 'NO'}</span>
-                            </div>
+                        <div className="grid grid-cols-2 gap-4 mt-6">
+                            <div onClick={() => setForm({...form, is_reentry: !form.is_reentry})} className={`doc-item ${form.is_reentry ? 'done border-emerald-500' : 'pending'}`}>RE-ENTRY</div>
+                            <div onClick={() => setForm({...form, is_couple: !form.is_couple})} className={`doc-item ${form.is_couple ? 'bg-pink-500 text-white' : 'pending'}`}>COUPLE</div>
                         </div>
 
-                        {/* RE-ENTRY: Selecting previous batch */}
                         {form.is_reentry && (
-                            <div className="bg-emerald-50 p-6 rounded-[2rem] mb-6 border border-emerald-100">
-                                <label className="label-cap text-emerald-600 italic">Which previous batch did they belong to?</label>
-                                <select className="form-select" value={form.prev_batch || ''} onChange={e => setForm({...form, prev_batch: e.target.value})}>
-                                    <option value="">Select Previous Batch...</option>
-                                    <option value="1">Batch 1</option>
-                                    <option value="2">Batch 2</option>
-                                </select>
+                            <div className="bg-emerald-50 p-6 rounded-[2rem] mt-4 border border-emerald-100">
+                                <label className="label-cap text-emerald-600">Prev Batch?</label>
+                                <select className="form-select" value={form.prev_batch || ''} onChange={e => setForm({...form, prev_batch: e.target.value})}><option value="">Select...</option><option value="1">Batch 1</option><option value="2">Batch 2</option></select>
                             </div>
                         )}
 
-                        {/* COUPLE: Selecting partner from opposite gender */}
-                        {form.is_couple && (
-                            <div className="bg-pink-50 p-6 rounded-[2rem] mb-6 border border-pink-100">
-                                <label className="label-cap text-pink-500 italic">Partner Selection ({form.gender === 'Male' ? 'Female' : 'Male'})</label>
-                                <select className="form-select" value={form.partner_id || ''} onChange={e => setForm({...form, partner_id: e.target.value})}>
-                                    <option value="">Choose Partner...</option>
-                                    {workers.filter(w => w.gender !== form.gender).map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-                                </select>
-                            </div>
-                        )}
-
-                        <button type="submit" className="w-full bg-blue-600 text-white py-6 rounded-[2rem] font-black text-xl mt-10 shadow-2xl hover:bg-blue-700 active:scale-95 transition-all uppercase tracking-widest italic">Save Master Record</button>
+                        <button type="submit" className="w-full bg-blue-600 text-white py-6 rounded-[2rem] font-black text-xl mt-10 shadow-2xl hover:bg-blue-700 uppercase italic">Save Master Record</button>
                     </form>
                 </div>
             );
