@@ -12,7 +12,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; }
-        .form-input, .form-select { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 900; outline: none; }
+        .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 900; outline: none; }
         .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; }
         .modal-full { position: fixed; inset: 0; background: white; z-index: 1000; overflow-y: auto; padding: 20px; }
         .lak-amount { font-family: 'Inter', sans-serif; font-weight: 900; letter-spacing: -0.02em; }
@@ -28,11 +28,18 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // ⚠️ ここにGASで発行したURLを貼り付けてください
+        // ⚠️ あなたのGASのURLに差し替えてください
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbwpgtJZxwmnPHSXnMcOrvHkm1OjylOCLHEMEHghoL3iAcSry9QcTiSE29EPebxg0ig/exec';
 
-        const PAYER_LIST = ["Mr. Chanthaviphone", "Ms. Sengmala", "Mr. Takashi", "Ms. Chansouk", "Ms. Mim", "Other"];
-        const CATEGORIES = ["Gasoline", "Office Supplies", "Equipment", "Food/Drink", "Transport", "Repair", "Other"];
+        const CATEGORIES = [
+            "ນ້ຳມັນລົດ / Gas / petro",
+            "ອຸປະກອນສຳນັກງານ / Office supplies",
+            "ອຸປະກອນແແຮງງານ / Equipment WK",
+            "ອາຫານ / ເຄື່ອງດື່ມ / food / drink",
+            "ການຂົນສົ່ງ / Transport",
+            "ອື່ນໆ / Other"
+        ];
+        const METHODS = ["ໂອນເງິນ / Transfer", "ເງິນສົດ / Cash"];
 
         function FinanceApp() {
             const [user, setUser] = useState(null);
@@ -47,34 +54,31 @@
                 const savedUser = localStorage.getItem('hsdec_user');
                 if (savedUser) {
                     setUser(JSON.parse(savedUser));
-                    fetchCombinedData();
+                    fetchSheetData();
                 } else {
                     window.location.href = 'index.html';
                 }
             }, []);
 
-            // スプレッドシートとSupabaseの両方からデータを取得して統合
-            const fetchCombinedData = async () => {
+            const fetchSheetData = async () => {
                 setIsLoading(true);
                 try {
-                    // 1. Supabaseから取得
-                    const { data: dbData } = await supabase.from('finance').select('*').order('date', { ascending: false });
-                    
-                    // 2. スプレッドシートから取得 (GAS経由)
-                    let sheetData = [];
-                    if (GAS_URL !== 'YOUR_GAS_WEB_APP_URL_HERE') {
-                        const response = await fetch(GAS_URL);
-                        sheetData = await response.json();
-                    }
-
-                    // データを結合（日付順）
-                    const combined = [...(dbData || []), ...sheetData].sort((a, b) => new Date(b.date) - new Date(a.date));
-                    setRecords(combined);
-                } catch (err) {
-                    console.error("Fetch error:", err);
-                } finally {
-                    setIsLoading(false);
-                }
+                    const response = await fetch(GAS_URL);
+                    const data = await response.json();
+                    // スプレッドシートの項目名を現在のシステムのキー名にマッピング
+                    const mapped = data.map(r => ({
+                        ...r,
+                        id: r.row_index, // スプレッドシートの行番号をID代わりにする
+                        date: r["ວັນທີ /Date."],
+                        item_name: r["ລາຍການ / Item."],
+                        category: r["ປະເພດ / Category."],
+                        total: r["ລວມ / Total."],
+                        method: r["ວິທີຈ່າຍເງິນ / Payment Method."],
+                        photo_url: r["Photo"] || r.photo_url
+                    }));
+                    setRecords(mapped.reverse());
+                } catch (err) { console.error("Fetch error:", err); }
+                setIsLoading(false);
             };
 
             const handlePhoto = (e) => {
@@ -85,13 +89,13 @@
                     const img = new Image();
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 400;
+                        const MAX_WIDTH = 500;
                         let width = img.width, height = img.height;
                         if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
                         canvas.width = width; canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-                        setFForm({...fForm, photo_url: canvas.toDataURL('image/jpeg', 0.4)});
+                        setFForm({...fForm, photo_url: canvas.toDataURL('image/jpeg', 0.5)});
                     };
                     img.src = event.target.result;
                 };
@@ -100,33 +104,51 @@
 
             const handleSave = async (e) => {
                 e.preventDefault();
-                const cleanData = {
-                    date: fForm.date || new Date().toISOString().split('T')[0],
-                    item_name: String(fForm.item_name || ""),
-                    category: String(fForm.category || "Other"),
-                    total: Number(fForm.unit_price || 0),
-                    staff_name: String(fForm.staff_name || "Other"),
-                    method: String(fForm.method || "Cash"),
-                    recorded_by: String(user.name || "System"),
-                    photo_url: fForm.photo_url || null
+                setIsLoading(true);
+
+                // GASに送るためのデータ整形
+                const payload = {
+                    row_index: fForm.id || null,
+                    no: fForm.no || records.length + 1,
+                    date: fForm.date,
+                    category: fForm.category,
+                    method: fForm.method,
+                    total: fForm.total,
+                    item: fForm.item_name,
+                    qty: fForm.qty || "1",
+                    price: fForm.price || fForm.total,
+                    amount: fForm.total,
+                    memo: fForm.memo || "",
+                    photo_url: fForm.photo_url || ""
                 };
 
-                if (fForm.id) cleanData.id = fForm.id;
+                try {
+                    // 1. スプレッドシート(GAS)へ保存
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        mode: 'no-cors', // 重要
+                        body: JSON.stringify(payload)
+                    });
 
-                const { error } = await supabase.from('finance').upsert(cleanData);
+                    // 2. Supabaseへバックアップ保存 (任意)
+                    await supabase.from('finance').upsert({
+                        date: fForm.date,
+                        item_name: fForm.item_name,
+                        total: fForm.total,
+                        photo_url: fForm.photo_url
+                    });
 
-                if (error) {
-                    alert("Error: " + error.message);
-                } else {
-                    alert("✅ Saved & Syncing!");
+                    alert("✅ Success! Syncing to Sheets...");
                     setView('list');
-                    fetchCombinedData();
+                    setTimeout(fetchSheetData, 1500); // 反映を待って再取得
+                } catch (error) {
+                    alert("Error: " + error.message);
                 }
+                setIsLoading(false);
             };
 
             const filteredRecords = records.filter(r => 
-                String(r.item_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-                String(r.staff_name || "").toLowerCase().includes(searchTerm.toLowerCase())
+                String(r.item_name || "").toLowerCase().includes(searchTerm.toLowerCase())
             );
 
             const totalLak = filteredRecords.reduce((acc, curr) => acc + Number(curr.total || 0), 0);
@@ -135,36 +157,24 @@
 
             return (
                 <div className="max-w-4xl mx-auto p-4 pb-20">
-                    {/* 🇱🇦 MAIN DASHBOARD */}
+                    {/* 🇱🇦 DASHBOARD */}
                     <div className="bg-emerald-900 text-white rounded-[2.5rem] p-8 mb-6 shadow-2xl relative overflow-hidden">
                         <div className="relative z-10">
                             <div className="flex justify-between items-start mb-4">
                                 <div>
                                     <p className="text-[10px] font-black uppercase opacity-60 tracking-widest flex items-center gap-2">
-                                        Total Expenses (LAK)
-                                        {isLoading && <span className="w-2 h-2 bg-emerald-400 rounded-full sync-active"></span>}
+                                        Total Expenses (LAK) {isLoading && <span className="w-2 h-2 bg-emerald-400 rounded-full sync-active"></span>}
                                     </p>
                                     <h2 className="lak-amount text-4xl md:text-5xl text-emerald-300">
                                         {totalLak.toLocaleString()} <span className="text-sm font-normal">₭</span>
                                     </h2>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={fetchCombinedData} className="bg-emerald-800 text-white p-3 rounded-2xl hover:bg-emerald-700">🔄</button>
+                                    <button onClick={fetchSheetData} className="bg-emerald-800 text-white p-3 rounded-2xl">🔄</button>
                                     <button onClick={() => { 
-                                        setFForm({date: new Date().toISOString().split('T')[0], method:'Cash', staff_name: PAYER_LIST[0], category: 'Gasoline'}); 
+                                        setFForm({date: new Date().toISOString().split('T')[0], category: CATEGORIES[0], method: METHODS[0]}); 
                                         setView('edit'); 
                                     }} className="bg-white text-emerald-900 px-5 py-3 rounded-2xl font-black text-xs uppercase shadow-lg">+ NEW</button>
-                                </div>
-                            </div>
-                            
-                            <div className="flex gap-4 border-t border-white/10 pt-4 mt-2">
-                                <div>
-                                    <p className="text-[8px] font-black opacity-50 uppercase">Est. USD</p>
-                                    <p className="font-bold text-sm">${(totalLak / rates.usd).toLocaleString(undefined, {maximumFractionDigits: 2})}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[8px] font-black opacity-50 uppercase">Est. THB</p>
-                                    <p className="font-bold text-sm">฿{(totalLak / rates.thb).toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
                                 </div>
                             </div>
                         </div>
@@ -172,77 +182,89 @@
 
                     {/* 🔍 SEARCH */}
                     <div className="relative mb-6">
-                        <input 
-                            type="text" 
-                            className="form-input shadow-sm pl-12 py-5 italic text-lg border-none" 
-                            placeholder="Search records (DB & Sheets)..." 
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+                        <input type="text" className="form-input shadow-sm pl-12 py-5 italic text-lg border-none" placeholder="Search item description..." onChange={(e) => setSearchTerm(e.target.value)} />
                         <span className="absolute left-4 top-5 text-xl opacity-30">🔍</span>
                     </div>
 
                     {/* 📋 LIST */}
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="grid grid-cols-1 gap-3">
                         {filteredRecords.map((r, i) => (
-                            <div key={r.id || i} onClick={() => { setFForm(r); setView('edit'); }} className="bg-white p-5 rounded-3xl border border-slate-100 flex justify-between items-center cursor-pointer shadow-sm active:scale-95 transition-all">
+                            <div key={i} onClick={() => {
+                                setFForm({
+                                    id: r.row_index,
+                                    no: r["ລ/ດ / No."],
+                                    date: r.date,
+                                    item_name: r.item_name,
+                                    category: r.category,
+                                    total: r.total,
+                                    method: r.method,
+                                    qty: r["ຈຳນວນ/Quantity."],
+                                    price: r["ລາຄາ / Price."],
+                                    memo: r["Memo"],
+                                    photo_url: r.photo_url
+                                });
+                                setView('edit');
+                            }} className="bg-white p-5 rounded-3xl border border-slate-100 flex justify-between items-center cursor-pointer shadow-sm active:scale-95 transition-all">
                                 <div className="flex gap-4 items-center">
                                     <div className="w-14 h-14 bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 flex-shrink-0">
-                                        {r.photo_url ? <img src={r.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[8px] font-black text-slate-200 uppercase">Image</div>}
+                                        {r.photo_url ? <img src={r.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[8px] font-black text-slate-200 uppercase">No Image</div>}
                                     </div>
                                     <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase leading-none">{r.date}</p>
-                                            {!r.id && <span className="text-[7px] bg-blue-100 text-blue-600 px-1 rounded font-bold">SHEET</span>}
-                                        </div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase">{r.date}</p>
                                         <p className="font-black text-slate-800 text-base leading-tight">{r.item_name}</p>
-                                        <span className="text-[9px] font-black bg-slate-100 px-2 py-0.5 rounded text-slate-500 uppercase">{r.category}</span>
+                                        <span className="text-[9px] font-black bg-slate-100 px-2 py-0.5 rounded text-slate-500">{r.category}</span>
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     <p className="lak-amount text-lg text-rose-600">-{Number(r.total).toLocaleString()}₭</p>
-                                    <p className="text-[9px] font-black text-slate-400 uppercase">{r.staff_name}</p>
+                                    <p className="text-[8px] font-black text-slate-400 uppercase">{r.method}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* ✍️ EDIT VIEW */}
+                    {/* ✍️ EDIT/NEW VIEW */}
                     {view === 'edit' && (
                         <div className="modal-full">
                             <div className="max-w-xl mx-auto pb-10">
                                 <header className="flex justify-between items-center mb-6">
                                     <button onClick={() => setView('list')} className="font-black text-xs text-slate-400 uppercase tracking-widest">← Back</button>
-                                    <h2 className="font-black italic text-sm">RECEIPT ENTRY</h2>
+                                    <h2 className="font-black italic text-sm">TRANSACTION ENTRY</h2>
                                 </header>
                                 <form onSubmit={handleSave} className="space-y-4">
-                                    <div className="relative w-full aspect-[4/3] bg-slate-50 rounded-[2.5rem] border-4 border-dashed border-slate-200 overflow-hidden flex items-center justify-center">
+                                    <div className="relative w-full aspect-video bg-slate-50 rounded-[2rem] border-4 border-dashed border-slate-200 overflow-hidden flex items-center justify-center">
                                         {fForm.photo_url ? <img src={fForm.photo_url} className="w-full h-full object-contain" /> : <span className="text-5xl opacity-20">📷</span>}
                                         <input type="file" accept="image/*" capture="environment" className="absolute inset-0 opacity-0" onChange={handlePhoto} />
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div><label className="label-cap">Date</label><input type="date" className="form-input" value={fForm.date} onChange={e => setFForm({...fForm, date: e.target.value})} required /></div>
-                                        <div><label className="label-cap">Category</label><select className="form-select" value={fForm.category} onChange={e => setFForm({...fForm, category: e.target.value})}>{CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-                                    </div>
-
-                                    <div><label className="label-cap">Item Description</label><input type="text" className="form-input" value={fForm.item_name} placeholder="e.g. Gasoline for Toyota" onChange={e => setFForm({...fForm, item_name: e.target.value})} required /></div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div><label className="label-cap">Payer</label><select className="form-select" value={fForm.staff_name} onChange={e => setFForm({...fForm, staff_name: e.target.value})}>{PAYER_LIST.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
-                                        <div><label className="label-cap">Total (LAK)</label><input type="number" className="form-input text-rose-600 text-xl" value={fForm.total || fForm.unit_price} placeholder="Amount in Kip" onChange={e => setFForm({...fForm, unit_price: e.target.value, total: e.target.value})} required /></div>
-                                    </div>
-
-                                    <div className="bg-emerald-50 p-6 rounded-3xl border border-emerald-100">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-xs font-black text-emerald-700 uppercase">Converted</span>
-                                            <span className="font-black text-lg text-emerald-800">
-                                                ${(Number(fForm.total || fForm.unit_price || 0) / rates.usd).toFixed(2)} / ฿{(Number(fForm.total || fForm.unit_price || 0) / rates.thb).toFixed(0)}
-                                            </span>
+                                        <div><label className="label-cap">Category</label>
+                                            <select className="form-select" value={fForm.category} onChange={e => setFForm({...fForm, category: e.target.value})}>
+                                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                            </select>
                                         </div>
                                     </div>
 
-                                    <button className="w-full bg-emerald-900 text-white py-6 rounded-[2rem] font-black text-xl shadow-xl active:scale-95 transition-all uppercase italic">Save Transaction</button>
+                                    <div><label className="label-cap">Item Description</label><input type="text" className="form-input" value={fForm.item_name} placeholder="What did you buy?" onChange={e => setFForm({...fForm, item_name: e.target.value})} required /></div>
+
+                                    <div className="grid grid-cols-3 gap-3">
+                                        <div><label className="label-cap">Qty</label><input type="text" className="form-input" value={fForm.qty} onChange={e => setFForm({...fForm, qty: e.target.value})} /></div>
+                                        <div><label className="label-cap">Price</label><input type="number" className="form-input" value={fForm.price} onChange={e => setFForm({...fForm, price: e.target.value})} /></div>
+                                        <div><label className="label-cap">Total (LAK)</label><input type="number" className="form-input text-rose-600" value={fForm.total} onChange={e => setFForm({...fForm, total: e.target.value})} required /></div>
+                                    </div>
+
+                                    <div><label className="label-cap">Payment Method</label>
+                                        <select className="form-select" value={fForm.method} onChange={e => setFForm({...fForm, method: e.target.value})}>
+                                            {METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                                        </select>
+                                    </div>
+
+                                    <div><label className="label-cap">Memo / Note</label><textarea className="form-textarea h-24" value={fForm.memo} onChange={e => setFForm({...fForm, memo: e.target.value})} placeholder="Free memo here..."></textarea></div>
+
+                                    <button disabled={isLoading} className="w-full bg-emerald-900 text-white py-6 rounded-[2rem] font-black text-xl shadow-xl active:scale-95 transition-all uppercase italic">
+                                        {isLoading ? "Syncing..." : "Save Transaction"}
+                                    </button>
                                 </form>
                             </div>
                         </div>
