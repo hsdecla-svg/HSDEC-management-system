@@ -46,37 +46,33 @@
             }, []);
 
            const fetchSheetData = async () => {
-    setIsLoading(true);
-    try {
-        // GAS_URLは新しいもの（...YAZbhVyABg/exec）を使ってください
-        const response = await fetch(GAS_URL, {
-            redirect: 'follow', // Googleのログイン画面へリダイレクトされた場合に追従する
-            method: 'GET'
-        });
-        
-        // もしここでエラーが出るなら、ブラウザで一度GASのURLを直接開いて
-        // ログイン＆アクセス許可を完了させてください。
-        const data = await response.json();
-        
-        const mapped = data.map(r => ({
-            ...r,
-            id: r.row_index,
-            date: r["Date"] || r["ວັນທີ /Date."] || "",
-            item_name: r["Item"] || r["ລາຍການ / Item."] || "",
-            total: r["Total"] || r["ລວມ / Total."] || 0,
-            category: r["Category"] || r["ປະເພດ / Category."] || "",
-            method: r["Method"] || r["ວິທີຈ່າຍເງິນ / Payment Method."] || "",
-            memo: r["Memo"] || r["K"] || "",
-            photo_url: r["Photo"] || r["L"] || ""
-        }));
-        setRecords(mapped.reverse());
-    } catch (err) {
-        console.error("Fetch error:", err);
-        // 画面にヒントを出す
-        alert("データにアクセスできません。ブラウザで一度GASのURLを直接開き、Googleログインを完了させてから戻ってきてください。");
-    }
-    setIsLoading(false);
-};
+                setIsLoading(true);
+                try {
+                    const response = await fetch(GAS_URL);
+                    if (!response.ok) throw new Error('Network error');
+                    
+                    const data = await response.json();
+                    
+                    const mapped = data.map(r => ({
+                        ...r,
+                        id: r.row_index,
+                        date: r["Date"] || r["ວັນທີ /Date."] || "",
+                        item_name: r["Item"] || r["ລາຍການ / Item."] || "",
+                        total: r["Total"] || r["ລລວມ / Total."] || 0,
+                        category: r["Category"] || r["ປະເພດ / Category."] || "",
+                        method: r["Method"] || r["ວິທີຈ່າຍເງິນ / Payment Method."] || "",
+                        qty: r["Qty"] || r["ຈຳນວນ/Quantity."] || 1,
+                        price: r["Price"] || r["ລາຄາ / Price."] || 0,
+                        memo: r["Memo"] || "",
+                        photo_url: r["Photo"] || ""
+                    }));
+                    setRecords(mapped.reverse());
+                } catch (err) {
+                    console.error("Fetch error:", err);
+                }
+                setIsLoading(false);
+            };
+            
                     const data = await response.json();
                     
                     const mapped = data.map(r => ({
