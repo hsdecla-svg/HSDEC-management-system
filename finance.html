@@ -11,13 +11,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; }
-        .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 900; outline: none; }
-        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; }
-        .modal-full { position: fixed; inset: 0; background: white; z-index: 1000; overflow-y: auto; padding: 20px; }
-        .lak-amount { font-family: 'Inter', sans-serif; font-weight: 900; letter-spacing: -0.02em; }
-        .sync-active { animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #0f172a; }
+        .form-input, .form-select { border: 2px solid #e2e8f0; padding: 10px; border-radius: 10px; width: 100%; font-weight: 700; outline: none; font-size: 14px; }
+        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; display: block; }
+        .modal-full { position: fixed; inset: 0; background: white; z-index: 1000; overflow-y: auto; padding: 15px; }
+        .table-cell { border: 1px solid #e2e8f0; padding: 8px; text-align: center; font-size: 12px; font-weight: 700; }
+        .lak-amount { font-weight: 900; letter-spacing: -0.02em; }
     </style>
 </head>
 <body>
@@ -28,36 +27,22 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // ⚠️ あなたのGASのURLに差し替えてください
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwpgtJZxwmnPHSXnMcOrvHkm1OjylOCLHEMEHghoL3iAcSry9QcTiSE29EPebxg0ig/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzHaYdpMpg4Z1tGeXP7y3cCUt0HlAxWvRU-FfhX66M3QCxoSRubMKNIXuWDb--JRVuUmg/exec'; // ⚠️ 新しいGASのURLに差し替えてください
 
-        const CATEGORIES = [
-            "ນ້ຳມັນລົດ / Gas / petro",
-            "ອຸປະກອນສຳນັກງານ / Office supplies",
-            "ອຸປະກອນແແຮງງານ / Equipment WK",
-            "ອາຫານ / ເຄື່ອງດື່ມ / food / drink",
-            "ການຂົນສົ່ງ / Transport",
-            "ອື່ນໆ / Other"
-        ];
-        const METHODS = ["ໂອນເງິນ / Transfer", "ເງິນສົດ / Cash"];
+        const CATEGORIES = ["Gasoline", "Office Supplies", "Equipment", "Food/Drink", "Transport", "Other"];
+        const METHODS = ["Transfer", "Cash"];
 
         function FinanceApp() {
             const [user, setUser] = useState(null);
             const [view, setView] = useState('list');
             const [records, setRecords] = useState([]);
             const [fForm, setFForm] = useState({});
-            const [searchTerm, setSearchTerm] = useState('');
             const [isLoading, setIsLoading] = useState(false);
-            const [rates] = useState({ usd: 22000, thb: 620 }); 
 
             useEffect(() => {
                 const savedUser = localStorage.getItem('hsdec_user');
-                if (savedUser) {
-                    setUser(JSON.parse(savedUser));
-                    fetchSheetData();
-                } else {
-                    window.location.href = 'index.html';
-                }
+                if (savedUser) { setUser(JSON.parse(savedUser)); fetchSheetData(); }
+                else { window.location.href = 'index.html'; }
             }, []);
 
             const fetchSheetData = async () => {
@@ -65,19 +50,24 @@
                 try {
                     const response = await fetch(GAS_URL);
                     const data = await response.json();
-                    // スプレッドシートの項目名を現在のシステムのキー名にマッピング
+                    // ヘッダー名に合わせてマッピング（既存シートの1行目の名前に合わせてください）
                     const mapped = data.map(r => ({
                         ...r,
-                        id: r.row_index, // スプレッドシートの行番号をID代わりにする
-                        date: r["ວັນທີ /Date."],
-                        item_name: r["ລາຍການ / Item."],
-                        category: r["ປະເພດ / Category."],
-                        total: r["ລວມ / Total."],
-                        method: r["ວິທີຈ່າຍເງິນ / Payment Method."],
-                        photo_url: r["Photo"] || r.photo_url
+                        id: r.row_index,
+                        date: r["Date"] || r["ວັນທີ /Date."],
+                        item_name: r["Item"] || r["ລາຍການ / Item."],
+                        qty: r["Qty"] || r["ຈຳນວນ/Quantity."],
+                        price: r["Price"] || r["ລາຄາ / Price."],
+                        amount: r["Amount"] || r["ຈຳນວນເງີນ / Amount."],
+                        total: r["Total"] || r["ລວມ / Total."],
+                        category: r["Category"] || r["ປະເພດ / Category."],
+                        method: r["Method"] || r["ວິທີຈ່າຍເງິນ / Payment Method."],
+                        memo: r["Memo"] || r["K列名"], 
+                        photo_url: r["Photo"] || r["L列名"],
+                        j_val: r["操作用項目"] || r["J列名"]
                     }));
                     setRecords(mapped.reverse());
-                } catch (err) { console.error("Fetch error:", err); }
+                } catch (err) { console.error(err); }
                 setIsLoading(false);
             };
 
@@ -85,19 +75,18 @@
                 const file = e.target.files[0];
                 if (!file) return;
                 const reader = new FileReader();
-                reader.onload = (event) => {
+                reader.onload = (ev) => {
                     const img = new Image();
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 500;
-                        let width = img.width, height = img.height;
-                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                        canvas.width = width; canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
+                        const MAX_W = 400;
+                        let w = img.width, h = img.height;
+                        if (w > MAX_W) { h *= MAX_W / w; w = MAX_W; }
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                         setFForm({...fForm, photo_url: canvas.toDataURL('image/jpeg', 0.5)});
                     };
-                    img.src = event.target.result;
+                    img.src = ev.target.result;
                 };
                 reader.readAsDataURL(file);
             };
@@ -105,138 +94,68 @@
             const handleSave = async (e) => {
                 e.preventDefault();
                 setIsLoading(true);
-
-                // GASに送るためのデータ整形
                 const payload = {
-                    row_index: fForm.id || null,
-                    no: fForm.no || records.length + 1,
+                    row_index: fForm.id,
                     date: fForm.date,
                     category: fForm.category,
                     method: fForm.method,
                     total: fForm.total,
                     item: fForm.item_name,
-                    qty: fForm.qty || "1",
-                    price: fForm.price || fForm.total,
-                    amount: fForm.total,
+                    qty: fForm.qty,
+                    price: fForm.price,
+                    amount: fForm.total, // I列(Amount) = E列(Total)とする
+                    j_val: fForm.j_val || "", // J列を保持
                     memo: fForm.memo || "",
                     photo_url: fForm.photo_url || ""
                 };
-
                 try {
-                    // 1. スプレッドシート(GAS)へ保存
-                    await fetch(GAS_URL, {
-                        method: 'POST',
-                        mode: 'no-cors', // 重要
-                        body: JSON.stringify(payload)
-                    });
-
-                    // 2. Supabaseへバックアップ保存 (任意)
-                    await supabase.from('finance').upsert({
-                        date: fForm.date,
-                        item_name: fForm.item_name,
-                        total: fForm.total,
-                        photo_url: fForm.photo_url
-                    });
-
-                    alert("✅ Success! Syncing to Sheets...");
+                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+                    alert("Saved!");
                     setView('list');
-                    setTimeout(fetchSheetData, 1500); // 反映を待って再取得
-                } catch (error) {
-                    alert("Error: " + error.message);
-                }
+                    fetchSheetData();
+                } catch (err) { alert(err); }
                 setIsLoading(false);
             };
 
-            const filteredRecords = records.filter(r => 
-                String(r.item_name || "").toLowerCase().includes(searchTerm.toLowerCase())
-            );
-
-            const totalLak = filteredRecords.reduce((acc, curr) => acc + Number(curr.total || 0), 0);
-
-            if (!user) return null;
-
             return (
-                <div className="max-w-4xl mx-auto p-4 pb-20">
-                    {/* 🇱🇦 DASHBOARD */}
-                    <div className="bg-emerald-900 text-white rounded-[2.5rem] p-8 mb-6 shadow-2xl relative overflow-hidden">
-                        <div className="relative z-10">
-                            <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <p className="text-[10px] font-black uppercase opacity-60 tracking-widest flex items-center gap-2">
-                                        Total Expenses (LAK) {isLoading && <span className="w-2 h-2 bg-emerald-400 rounded-full sync-active"></span>}
-                                    </p>
-                                    <h2 className="lak-amount text-4xl md:text-5xl text-emerald-300">
-                                        {totalLak.toLocaleString()} <span className="text-sm font-normal">₭</span>
-                                    </h2>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={fetchSheetData} className="bg-emerald-800 text-white p-3 rounded-2xl">🔄</button>
-                                    <button onClick={() => { 
-                                        setFForm({date: new Date().toISOString().split('T')[0], category: CATEGORIES[0], method: METHODS[0]}); 
-                                        setView('edit'); 
-                                    }} className="bg-white text-emerald-900 px-5 py-3 rounded-2xl font-black text-xs uppercase shadow-lg">+ NEW</button>
-                                </div>
-                            </div>
-                        </div>
+                <div className="max-w-2xl mx-auto p-4">
+                    <div className="flex justify-between items-center mb-6">
+                        <h1 className="font-black text-xl italic text-emerald-800 tracking-tighter">HSDEC FINANCE</h1>
+                        <button onClick={() => { setFForm({date: new Date().toISOString().split('T')[0], category: 'Other', method: 'Cash', qty: 1}); setView('edit'); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-lg">+ ADD</button>
                     </div>
 
-                    {/* 🔍 SEARCH */}
-                    <div className="relative mb-6">
-                        <input type="text" className="form-input shadow-sm pl-12 py-5 italic text-lg border-none" placeholder="Search item description..." onChange={(e) => setSearchTerm(e.target.value)} />
-                        <span className="absolute left-4 top-5 text-xl opacity-30">🔍</span>
-                    </div>
-
-                    {/* 📋 LIST */}
-                    <div className="grid grid-cols-1 gap-3">
-                        {filteredRecords.map((r, i) => (
-                            <div key={i} onClick={() => {
-                                setFForm({
-                                    id: r.row_index,
-                                    no: r["ລ/ດ / No."],
-                                    date: r.date,
-                                    item_name: r.item_name,
-                                    category: r.category,
-                                    total: r.total,
-                                    method: r.method,
-                                    qty: r["ຈຳນວນ/Quantity."],
-                                    price: r["ລາຄາ / Price."],
-                                    memo: r["Memo"],
-                                    photo_url: r.photo_url
-                                });
-                                setView('edit');
-                            }} className="bg-white p-5 rounded-3xl border border-slate-100 flex justify-between items-center cursor-pointer shadow-sm active:scale-95 transition-all">
-                                <div className="flex gap-4 items-center">
-                                    <div className="w-14 h-14 bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 flex-shrink-0">
-                                        {r.photo_url ? <img src={r.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[8px] font-black text-slate-200 uppercase">No Image</div>}
+                    {/* LIST */}
+                    <div className="space-y-3">
+                        {records.map((r, i) => (
+                            <div key={i} onClick={() => { setFForm(r); setView('edit'); }} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
+                                        {r.photo_url && <img src={r.photo_url} className="w-full h-full object-cover" />}
                                     </div>
                                     <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase">{r.date}</p>
-                                        <p className="font-black text-slate-800 text-base leading-tight">{r.item_name}</p>
-                                        <span className="text-[9px] font-black bg-slate-100 px-2 py-0.5 rounded text-slate-500">{r.category}</span>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">{r.date}</p>
+                                        <p className="font-black text-slate-800">{r.item_name}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="lak-amount text-lg text-rose-600">-{Number(r.total).toLocaleString()}₭</p>
-                                    <p className="text-[8px] font-black text-slate-400 uppercase">{r.method}</p>
+                                    <p className="lak-amount text-rose-600 font-black">{Number(r.total).toLocaleString()}₭</p>
+                                    <p className="text-[9px] font-bold text-slate-400">{r.category}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* ✍️ EDIT/NEW VIEW */}
+                    {/* EDIT MODAL */}
                     {view === 'edit' && (
                         <div className="modal-full">
-                            <div className="max-w-xl mx-auto pb-10">
-                                <header className="flex justify-between items-center mb-6">
-                                    <button onClick={() => setView('list')} className="font-black text-xs text-slate-400 uppercase tracking-widest">← Back</button>
-                                    <h2 className="font-black italic text-sm">TRANSACTION ENTRY</h2>
-                                </header>
-                                <form onSubmit={handleSave} className="space-y-4">
-                                    <div className="relative w-full aspect-video bg-slate-50 rounded-[2rem] border-4 border-dashed border-slate-200 overflow-hidden flex items-center justify-center">
-                                        {fForm.photo_url ? <img src={fForm.photo_url} className="w-full h-full object-contain" /> : <span className="text-5xl opacity-20">📷</span>}
-                                        <input type="file" accept="image/*" capture="environment" className="absolute inset-0 opacity-0" onChange={handlePhoto} />
-                                    </div>
+                            <div className="max-w-md mx-auto">
+                                <div className="flex justify-between items-center mb-6">
+                                    <button onClick={() => setView('list')} className="text-slate-400 font-bold">Cancel</button>
+                                    <h2 className="font-black text-sm">TRANSACTION</h2>
+                                    <div className="w-10"></div>
+                                </div>
 
+                                <form onSubmit={handleSave} className="space-y-4">
                                     <div className="grid grid-cols-2 gap-3">
                                         <div><label className="label-cap">Date</label><input type="date" className="form-input" value={fForm.date} onChange={e => setFForm({...fForm, date: e.target.value})} required /></div>
                                         <div><label className="label-cap">Category</label>
@@ -246,24 +165,46 @@
                                         </div>
                                     </div>
 
-                                    <div><label className="label-cap">Item Description</label><input type="text" className="form-input" value={fForm.item_name} placeholder="What did you buy?" onChange={e => setFForm({...fForm, item_name: e.target.value})} required /></div>
-
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div><label className="label-cap">Qty</label><input type="text" className="form-input" value={fForm.qty} onChange={e => setFForm({...fForm, qty: e.target.value})} /></div>
-                                        <div><label className="label-cap">Price</label><input type="number" className="form-input" value={fForm.price} onChange={e => setFForm({...fForm, price: e.target.value})} /></div>
-                                        <div><label className="label-cap">Total (LAK)</label><input type="number" className="form-input text-rose-600" value={fForm.total} onChange={e => setFForm({...fForm, total: e.target.value})} required /></div>
+                                    {/* Table View for F-I columns */}
+                                    <div className="overflow-hidden rounded-xl border border-slate-200">
+                                        <table className="w-full border-collapse bg-slate-50">
+                                            <thead>
+                                                <tr className="bg-slate-100">
+                                                    <th className="table-cell">Item (F)</th>
+                                                    <th className="table-cell">Qty (G)</th>
+                                                    <th className="table-cell">Price (H)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td className="p-0"><input type="text" className="w-full p-2 text-center text-xs font-bold outline-none bg-white" value={fForm.item_name} onChange={e => setFForm({...fForm, item_name: e.target.value})} /></td>
+                                                    <td className="p-0"><input type="number" className="w-full p-2 text-center text-xs font-bold outline-none bg-white" value={fForm.qty} onChange={e => {const q = e.target.value; setFForm({...fForm, qty: q, total: q * (fForm.price || 0)})}} /></td>
+                                                    <td className="p-0"><input type="number" className="w-full p-2 text-center text-xs font-bold outline-none bg-white" value={fForm.price} onChange={e => {const p = e.target.value; setFForm({...fForm, price: p, total: p * (fForm.qty || 0)})}} /></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                        <div className="p-3 bg-emerald-50 flex justify-between items-center border-t border-slate-200">
+                                            <span className="text-[10px] font-black text-emerald-700">TOTAL AMOUNT (E/I)</span>
+                                            <span className="font-black text-emerald-900">{Number(fForm.total || 0).toLocaleString()} ₭</span>
+                                        </div>
                                     </div>
 
-                                    <div><label className="label-cap">Payment Method</label>
+                                    <div>
+                                        <label className="label-cap">Payment Method (D)</label>
                                         <select className="form-select" value={fForm.method} onChange={e => setFForm({...fForm, method: e.target.value})}>
                                             {METHODS.map(m => <option key={m} value={m}>{m}</option>)}
                                         </select>
                                     </div>
 
-                                    <div><label className="label-cap">Memo / Note</label><textarea className="form-textarea h-24" value={fForm.memo} onChange={e => setFForm({...fForm, memo: e.target.value})} placeholder="Free memo here..."></textarea></div>
+                                    <div><label className="label-cap">Memo (K)</label><textarea className="form-input h-20" value={fForm.memo} onChange={e => setFForm({...fForm, memo: e.target.value})} /></div>
 
-                                    <button disabled={isLoading} className="w-full bg-emerald-900 text-white py-6 rounded-[2rem] font-black text-xl shadow-xl active:scale-95 transition-all uppercase italic">
-                                        {isLoading ? "Syncing..." : "Save Transaction"}
+                                    <div className="relative aspect-video bg-slate-100 rounded-2xl overflow-hidden flex items-center justify-center border-2 border-dashed border-slate-300">
+                                        {fForm.photo_url ? <img src={fForm.photo_url} className="w-full h-full object-contain" /> : <span className="text-4xl opacity-20">📷</span>}
+                                        <input type="file" accept="image/*" capture="environment" className="absolute inset-0 opacity-0" onChange={handlePhoto} />
+                                    </div>
+
+                                    <button disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-xl font-black text-lg shadow-xl active:scale-95 transition-all">
+                                        {isLoading ? "Saving..." : "CONFIRM & SAVE"}
                                     </button>
                                 </form>
                             </div>
