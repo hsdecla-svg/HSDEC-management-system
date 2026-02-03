@@ -48,23 +48,28 @@
                     const data = await response.json();
                     
                     if (data && data.length > 0) {
-                        const mapped = data.map(r => ({
-                            ...r,
-                            id: r.row_index,
-                            // スプレッドシートの見出しと完全に一致させてマッピング
-                            date: r["ວັນທີ /Date"] || "---",                     // B
-                            category: r["ປະເພດ / Category"] || "",              // C
-                            method: r["ວິທີຈ່າຍເງິນ / Payment Method"] || "",     // D
-                            total: r["ລວມ / Total"] || 0,                       // E
-                            item_name: r["ລາຍການ / Item"] || "No Description",   // F
-                            qty: r["ຈຳນວນ/Quantity"] || 0,                      // G
-                            price: r["ລາຄາ / Price"] || 0,                      // H
-                            amount: r["ຈຳນວນເງີນ / Amount"] || 0,               // I
-                            // J列はコード上で無視されるため安全です
-                            memo: r["Memo"] || "",                              // K
-                            photo_url: r["Photo"] || ""                         // L
-                        }));
+                        const mapped = data.map(r => {
+                            // 行のデータを配列（リスト）に変換する
+                            const v = Object.values(r); 
+                            
+                            return {
+                                ...r,
+                                id: r.row_index,
+                                // 左から数えた番号で指定（0から数えるので、B列は1、C列は2...）
+                                date: v[1] || "---",                     // B: ວັນທີ /Date
+                                category: v[2] || "Other",              // C: ປະເພດ / Category
+                                method: v[3] || "Cash",                  // D: ວິທີຈ່າຍເງິນ / Payment Method
+                                total: v[4] || 0,                       // E: ລວມ / Total
+                                item_name: v[5] || "No Description",    // F: ລາຍການ / Item
+                                qty: v[6] || 0,                         // G: ຈຳນວນ/Quantity
+                                price: v[7] || 0,                       // H: ລາຄາ / Price
+                                amount: v[8] || 0,                      // I: ຈຳນວນເງີນ / Amount
+                                memo: v[10] || "",                      // K: Memo
+                                photo_url: v[11] || ""                  // L: Photo
+                            };
+                        });
                         setRecords(mapped.reverse());
+                        console.log("Data loaded successfully via Index mapping");
                     }
                 } catch (err) {
                     console.error("Fetch Error:", err);
