@@ -51,16 +51,18 @@
                         const mapped = data.map(r => ({
                             ...r,
                             id: r.row_index,
-                            // シートの列名に合わせて柔軟に取得
-                            date: r["Date"] || r["ວັນທີ /Date."] || "---",
-                            item_name: r["Item"] || r["ລາຍການ / Item."] || "No Name",
-                            total: r["Total"] || r["ລວມ / Total."] || 0,
-                            category: r["Category"] || r["ປະເພດ / Category."] || "Other",
-                            method: r["Method"] || r["ວິທີຈ່າຍເງິນ / Payment Method."] || "Cash",
-                            qty: r["Qty"] || r["ຈຳນວນ/Quantity."] || 1,
-                            price: r["Price"] || r["ລາຄາ / Price."] || 0,
-                            memo: r["Memo"] || r["K"] || "",
-                            photo_url: r["Photo"] || r["L"] || ""
+                            // スプレッドシートの見出しと完全に一致させてマッピング
+                            date: r["ວັນທີ /Date"] || "---",                     // B
+                            category: r["ປະເພດ / Category"] || "",              // C
+                            method: r["ວິທີຈ່າຍເງິນ / Payment Method"] || "",     // D
+                            total: r["ລວມ / Total"] || 0,                       // E
+                            item_name: r["ລາຍການ / Item"] || "No Description",   // F
+                            qty: r["ຈຳນວນ/Quantity"] || 0,                      // G
+                            price: r["ລາຄາ / Price"] || 0,                      // H
+                            amount: r["ຈຳນວນເງີນ / Amount"] || 0,               // I
+                            // J列はコード上で無視されるため安全です
+                            memo: r["Memo"] || "",                              // K
+                            photo_url: r["Photo"] || ""                         // L
                         }));
                         setRecords(mapped.reverse());
                     }
