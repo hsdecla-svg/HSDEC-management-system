@@ -131,11 +131,12 @@
                             <div key={i} onClick={() => { setFForm(r); setView('edit'); }} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center active:bg-slate-50">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
-                                        {r.photo_url ? <img src={r.photo_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xs opacity-20">No Pix</div>}
+                                        {r.photo_url ? <img src={r.photo_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[8px] opacity-20">No Pix</div>}
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase">{r.date}</p>
-                                        <p className="font-black text-slate-800">{r.item_name}</p>
+                                        {/* whitespace-pre-wrap を追加してスプレッドシート内の改行を反映させる */}
+                                        <p className="font-black text-slate-800 text-xs leading-tight whitespace-pre-wrap">{r.item_name}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
