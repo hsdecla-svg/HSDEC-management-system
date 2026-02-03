@@ -47,27 +47,26 @@
                     const response = await fetch(GAS_URL);
                     const data = await response.json();
                     
-                    console.log("Raw Data:", data); // F12でこれが見えるか確認
-
                     if (data && data.length > 0) {
                         const mapped = data.map(r => {
-                            const v = r.v; // GASから届いた配列
+                            // GASの「doGet」の書き方によって「r.v」か「r」そのものか変わるため両方対応
+                            const v = r.v || Object.values(r); 
+                            
                             return {
                                 ...r,
-                                id: r.row_index,
-                                date: v[1] || "---",                     // B: Date
-                                category: v[2] || "Other",              // C: Category
-                                method: v[3] || "Cash",                  // D: Method
-                                total: v[4] || "0",                      // E: Total
-                                item_name: v[5] || "No Description",    // F: Item
-                                qty: v[6] || "",                         // G: Qty
-                                price: v[7] || "",                       // H: Price
-                                amount: v[8] || "",                      // I: Amount
-                                memo: v[10] || "",                       // K: Memo
-                                photo_url: v[11] || ""                   // L: Photo
+                                id: r.row_index || 0,
+                                // 安全にデータを取り出すための予備処理
+                                date: v[1] || v["Date"] || "---",
+                                item_name: v[5] || v["Item"] || "No Data", 
+                                total: v[4] || v["Total"] || 0,
+                                category: v[2] || v["Category"] || "",
+                                method: v[3] || v["Method"] || "",
+                                memo: v[10] || v["Memo"] || "",
+                                photo_url: v[11] || v["Photo"] || ""
                             };
                         });
                         setRecords(mapped.reverse());
+                        console.log("Mapped Records:", mapped);
                     }
                 } catch (err) {
                     console.error("Fetch Error:", err);
