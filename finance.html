@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Finance | Final Sync</title>
+    <title>HSDEC Finance | Smart Dashboard</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -12,12 +12,12 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; }
         .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 700; outline: none; font-size: 14px; background: white; }
-        .form-textarea { min-height: 120px; resize: none; line-height: 1.6; transition: border-color 0.2s; }
-        .form-textarea:focus { border-color: #4f46e5; }
+        .form-textarea { min-height: 100px; resize: none; line-height: 1.6; }
         .label-cap { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
         .modal-full { position: fixed; inset: 0; background: #f8fafc; z-index: 1000; overflow-y: auto; padding: 20px; }
-        .lak-amount { font-weight: 900; letter-spacing: -0.02em; }
+        .lak-amount { font-weight: 900; letter-spacing: -0.01em; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .glass-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); }
     </style>
 </head>
 <body>
@@ -27,14 +27,20 @@
 
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxhodF2QvO8Oqh86eu_Q-OremypNcurab3h54BqDe5TlqR7bXn_XAgSNIY34_zpFmW5hQ/exec';
         const CATEGORIES = ["ALL", "Gasoline", "Office Supplies", "Equipment", "Food/Drink", "Transport", "Other"];
-        const METHODS = ["Transfer", "Cash"];
+        const SORT_OPTIONS = [
+            { label: "Newest", key: "date", desc: true },
+            { label: "Oldest", key: "date", desc: false },
+            { label: "Price ↑", key: "total", desc: true },
+            { label: "Price ↓", key: "total", desc: false }
+        ];
 
         function FinanceApp() {
-            const [view, setView] = useState('list');
+            const [view, setView] = useState('list'); // 'list', 'view', 'edit'
             const [records, setRecords] = useState([]);
             const [fForm, setFForm] = useState({});
             const [isLoading, setIsLoading] = useState(false);
             const [filterTab, setFilterTab] = useState('ALL');
+            const [sortIdx, setSortIdx] = useState(0);
 
             useEffect(() => { fetchSheetData(); }, []);
 
@@ -49,12 +55,9 @@
                             return {
                                 ...r, id: r.row_index,
                                 date: v[1] || "", category: v[2] || "Other", method: v[3] || "Cash",
-                                total: v[4] || 0,        // E: Grand Total
-                                item_name: v[5] || "",    // F: Item List
-                                qty: v[6] || "",          // G: Qty List
-                                price: v[7] || "",        // H: Price List
-                                amount: v[8] || "",       // I: Amount List (Subtotals)
-                                memo: v[10] || "", photo_url: v[11] || ""
+                                total: parseFloat(String(v[4]).replace(/[^0-9.-]+/g, "")) || 0,
+                                item_name: v[5] || "", qty: v[6] || "", price: v[7] || "",
+                                amount: v[8] || "", memo: v[10] || "", photo_url: v[11] || ""
                             };
                         });
                         setRecords(mapped);
@@ -63,50 +66,54 @@
                 setIsLoading(false);
             };
 
-            const { filteredRecords, totalSum } = useMemo(() => {
-                const filtered = filterTab === 'ALL' ? records : records.filter(r => r.category === filterTab);
-                const sum = filtered.reduce((acc, curr) => {
-                    const cleanVal = String(curr.total).replace(/[^0-9.-]+/g, "");
-                    return acc + (parseFloat(cleanVal) || 0);
-                }, 0);
-                return { filteredRecords: filtered, totalSum: sum };
-            }, [records, filterTab]);
+            // 自動計算 (Editモード時のみ)
+            useEffect(() => {
+                if (view !== 'edit') return;
+                const qtys = String(fForm.qty || "").split('\n');
+                const prices = String(fForm.price || "").split('\n');
+                let amounts = [];
+                let grandTotal = 0;
+                const maxLines = Math.max(qtys.length, prices.length);
+                for (let i = 0; i < maxLines; i++) {
+                    const q = parseFloat(String(qtys[i] || "0").replace(/[^0-9.-]+/g, "")) || 0;
+                    const p = parseFloat(String(prices[i] || "0").replace(/[^0-9.-]+/g, "")) || 0;
+                    const lineAmount = q * p;
+                    amounts.push(lineAmount > 0 ? lineAmount.toLocaleString() : "");
+                    grandTotal += lineAmount;
+                }
+                if (grandTotal > 0) {
+                    setFForm(prev => ({ ...prev, amount: amounts.join('\n'), total: grandTotal }));
+                }
+            }, [fForm.qty, fForm.price]);
 
-            const handlePhoto = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const MAX_W = 600;
-                        let w = img.width, h = img.height;
-                        if (w > MAX_W) { h *= MAX_W / w; w = MAX_W; }
-                        canvas.width = w; canvas.height = h;
-                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                        setFForm({...fForm, photo_url: canvas.toDataURL('image/jpeg', 0.6)});
-                    };
-                    img.src = ev.target.result;
-                };
-                reader.readAsDataURL(file);
-            };
+            // フィルタリング & 並び替え
+            const { filteredRecords, totalSum } = useMemo(() => {
+                let result = filterTab === 'ALL' ? [...records] : records.filter(r => r.category === filterTab);
+                
+                const opt = SORT_OPTIONS[sortIdx];
+                result.sort((a, b) => {
+                    let valA = a[opt.key];
+                    let valB = b[opt.key];
+                    if (opt.key === 'date') {
+                        valA = new Date(valA);
+                        valB = new Date(valB);
+                    }
+                    return opt.desc ? valB - valA : valA - valB;
+                });
+
+                const sum = result.reduce((acc, curr) => acc + (curr.total || 0), 0);
+                return { filteredRecords: result, totalSum: sum };
+            }, [records, filterTab, sortIdx]);
 
             const handleSave = async (e) => {
-                e.preventDefault();
+                if(e) e.preventDefault();
                 setIsLoading(true);
-                const payload = {
-                    row_index: fForm.id,
-                    date: fForm.date, category: fForm.category, method: fForm.method,
-                    total: fForm.total,   // E
-                    item: fForm.item_name, // F
-                    qty: fForm.qty,       // G
-                    price: fForm.price,   // H
-                    amount: fForm.amount, // I
-                    memo: fForm.memo || "", photo_url: fForm.photo_url || ""
-                };
                 try {
-                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({
+                        row_index: fForm.id, date: fForm.date, category: fForm.category, method: fForm.method,
+                        total: fForm.total, item: fForm.item_name, qty: fForm.qty, price: fForm.price,
+                        amount: fForm.amount, memo: fForm.memo || "", photo_url: fForm.photo_url || ""
+                    })});
                     setView('list'); fetchSheetData();
                 } catch (err) { alert(err); }
                 setIsLoading(false);
@@ -114,99 +121,153 @@
 
             return (
                 <div className="max-w-xl mx-auto pb-24">
-                    {/* Dashboard */}
+                    {/* Header */}
                     <div className="p-6 pb-2 flex justify-between items-center">
                         <h1 className="font-black text-2xl tracking-tighter text-slate-800 italic uppercase">HSDEC Finance</h1>
-                        <button onClick={() => { setFForm({date: new Date().toISOString().split('T')[0], category: 'Other', method: 'Cash', total: "", item_name: "", qty: "", price: "", amount: ""}); setView('edit'); }} className="bg-indigo-600 text-white w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center text-2xl active:scale-90 transition-all">+</button>
+                        <button onClick={() => { setFForm({date: new Date().toISOString().split('T')[0], category: 'Other', method: 'Cash', total: 0}); setView('edit'); }} className="bg-indigo-600 text-white w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center text-2xl active:scale-90 transition-all">+</button>
                     </div>
 
-                    <div className="m-4 mt-2 p-6 bg-indigo-700 rounded-[32px] text-white shadow-xl shadow-indigo-200">
-                        <p className="text-[10px] font-bold opacity-60 mb-1 uppercase tracking-widest">{filterTab} BALANCE</p>
-                        <h2 className="text-3xl font-black mb-4">₭ {totalSum.toLocaleString()}</h2>
+                    {/* Dashboard */}
+                    <div className="m-4 mt-2 p-6 bg-slate-900 rounded-[32px] text-white shadow-xl">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <p className="text-[10px] font-bold opacity-50 uppercase tracking-widest">Total {filterTab}</p>
+                                <h2 className="text-3xl font-black italic tracking-tighter">₭ {totalSum.toLocaleString()}</h2>
+                            </div>
+                            <button onClick={() => setSortIdx((sortIdx + 1) % SORT_OPTIONS.length)} className="bg-white/10 px-3 py-1 rounded-lg text-[10px] font-black border border-white/20">
+                                ⇅ {SORT_OPTIONS[sortIdx].label}
+                            </button>
+                        </div>
                         <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
                             {CATEGORIES.map(cat => (
-                                <button key={cat} onClick={() => setFilterTab(cat)} className={`px-4 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap transition-all ${filterTab === cat ? 'bg-white text-indigo-700' : 'bg-indigo-600/50 text-white'}`}>{cat}</button>
+                                <button key={cat} onClick={() => setFilterTab(cat)} className={`px-4 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap transition-all ${filterTab === cat ? 'bg-indigo-600 text-white' : 'bg-white/10 text-white/60'}`}>{cat}</button>
                             ))}
                         </div>
                     </div>
 
-                    {/* Records */}
+                    {/* List */}
                     <div className="px-4 space-y-3 mt-6">
-                        {isLoading && <div className="text-center py-10 font-bold text-slate-400 animate-pulse text-[10px] uppercase">Syncing Cloud...</div>}
+                        {isLoading && <div className="text-center py-10 font-black text-slate-400 animate-pulse text-[10px] tracking-[0.5em]">RELOADING...</div>}
                         {filteredRecords.map((r, i) => (
-                            <div key={i} onClick={() => { setFForm(r); setView('edit'); }} className="bg-white p-4 rounded-[24px] shadow-sm flex justify-between items-center active:bg-slate-50 transition-colors border border-white">
+                            <div key={i} onClick={() => { setFForm(r); setView('view'); }} className="bg-white p-4 rounded-[24px] shadow-sm flex justify-between items-center active:scale-[0.97] transition-all border border-white">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 bg-slate-100 rounded-2xl overflow-hidden flex-shrink-0 border border-slate-50">
-                                        {r.photo_url ? <img src={r.photo_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[7px] font-black text-slate-300 uppercase">No Image</div>}
+                                    <div className="w-14 h-14 bg-slate-100 rounded-2xl overflow-hidden flex-shrink-0">
+                                        {r.photo_url ? <img src={r.photo_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[7px] font-black text-slate-300">NO PIX</div>}
                                     </div>
                                     <div className="max-w-[150px]">
                                         <p className="text-[9px] font-black text-indigo-500 uppercase">{r.date}</p>
-                                        <p className="font-bold text-slate-800 text-xs leading-tight whitespace-pre-wrap line-clamp-2">{r.item_name}</p>
+                                        <p className="font-bold text-slate-800 text-xs leading-tight line-clamp-2">{r.item_name}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="lak-amount text-slate-900 font-black text-sm">{r.total}₭</p>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">{r.method}</p>
+                                    <p className="lak-amount text-slate-900 font-black text-sm">{Number(r.total).toLocaleString()}₭</p>
+                                    <p className="text-[9px] font-black text-slate-300 uppercase tracking-tighter">{r.category}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    {/* Edit Modal */}
+                    {/* VIEW MODAL (閲覧モード) */}
+                    {view === 'view' && (
+                        <div className="modal-full bg-white">
+                            <div className="max-w-md mx-auto">
+                                <div className="flex justify-between items-center mb-6">
+                                    <button onClick={() => setView('list')} className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center font-bold">←</button>
+                                    <h2 className="font-black text-[10px] tracking-widest text-slate-400 uppercase">Details</h2>
+                                    <button onClick={() => setView('edit')} className="bg-indigo-600 text-white px-5 py-2 rounded-full font-black text-[10px]">EDIT</button>
+                                </div>
+
+                                <div className="rounded-[32px] overflow-hidden mb-6 bg-slate-100 aspect-square flex items-center justify-center border-4 border-slate-50 shadow-inner">
+                                    {fForm.photo_url ? <img src={fForm.photo_url} className="w-full h-full object-contain" /> : <p className="text-slate-300 font-black text-xs">NO RECEIPT PHOTO</p>}
+                                </div>
+
+                                <div className="space-y-6 px-2">
+                                    <div className="flex justify-between items-end">
+                                        <div>
+                                            <p className="text-[10px] font-black text-indigo-500 uppercase">{fForm.date} • {fForm.category}</p>
+                                            <h2 className="text-3xl font-black text-slate-900 leading-none">₭ {Number(fForm.total).toLocaleString()}</h2>
+                                        </div>
+                                        <div className="text-right"><p className="text-[10px] font-bold text-slate-400 uppercase">Paid by</p><p className="font-black text-sm text-slate-700">{fForm.method}</p></div>
+                                    </div>
+
+                                    <div className="bg-slate-50 p-6 rounded-[28px] space-y-4">
+                                        <div className="flex gap-4">
+                                            <div className="flex-1"><label className="label-cap">Items</label><p className="text-xs font-bold text-slate-800 whitespace-pre-wrap leading-relaxed">{fForm.item_name}</p></div>
+                                            <div className="w-12 text-center"><label className="label-cap">Qty</label><p className="text-xs font-bold text-slate-500 whitespace-pre-wrap leading-relaxed">{fForm.qty}</p></div>
+                                            <div className="w-20 text-right"><label className="label-cap">Amount</label><p className="text-xs font-black text-indigo-600 whitespace-pre-wrap leading-relaxed">{fForm.amount}</p></div>
+                                        </div>
+                                        {fForm.memo && <div className="pt-4 border-t border-slate-200"><label className="label-cap">Memo</label><p className="text-xs font-medium text-slate-500 italic">{fForm.memo}</p></div>}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* EDIT MODAL (編集モード) */}
                     {view === 'edit' && (
                         <div className="modal-full">
                             <div className="max-w-md mx-auto pb-10">
                                 <div className="flex justify-between items-center mb-8">
-                                    <button onClick={() => setView('list')} className="w-10 h-10 bg-white rounded-full flex items-center justify-center text-slate-400 font-bold text-2xl shadow-sm">×</button>
-                                    <h2 className="font-black text-[10px] tracking-widest text-slate-400 uppercase">Edit Record</h2>
+                                    <button onClick={() => setView(fForm.id ? 'view' : 'list')} className="text-slate-400 font-bold text-2xl">×</button>
+                                    <h2 className="font-black text-[10px] tracking-widest text-slate-400 uppercase">Input / Edit</h2>
                                     <div className="w-10"></div>
                                 </div>
 
                                 <form onSubmit={handleSave} className="space-y-6">
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="label-cap text-indigo-500">Date (B)</label><input type="date" className="form-input" value={fForm.date} onChange={e => setFForm({...fForm, date: e.target.value})} required /></div>
-                                        <div><label className="label-cap text-indigo-500">Category (C)</label>
+                                        <div><label className="label-cap text-indigo-500">Date</label><input type="date" className="form-input" value={fForm.date} onChange={e => setFForm({...fForm, date: e.target.value})} required /></div>
+                                        <div><label className="label-cap text-indigo-500">Category</label>
                                             <select className="form-select" value={fForm.category} onChange={e => setFForm({...fForm, category: e.target.value})}>
                                                 {CATEGORIES.filter(c => c !== 'ALL').map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                         </div>
                                     </div>
 
-                                    {/* Detailed Multi-line Section (F,G,H,I) */}
                                     <div className="bg-white p-5 rounded-[28px] border border-slate-100 shadow-sm space-y-4">
-                                        <div>
-                                            <label className="label-cap">ລາຍການ / Item (F)</label>
-                                            <textarea className="form-textarea" placeholder="Item A&#10;Item B..." value={fForm.item_name} onChange={e => setFForm({...fForm, item_name: e.target.value})} required />
-                                        </div>
+                                        <div><label className="label-cap">Item Description (F)</label><textarea className="form-textarea" placeholder="Detail..." value={fForm.item_name} onChange={e => setFForm({...fForm, item_name: e.target.value})} required /></div>
                                         <div className="grid grid-cols-3 gap-2">
-                                            <div><label className="label-cap tracking-tighter">Qty (G)</label><textarea className="form-textarea px-2" placeholder="1&#10;2..." value={fForm.qty} onChange={e => setFForm({...fForm, qty: e.target.value})} /></div>
-                                            <div><label className="label-cap tracking-tighter">Price (H)</label><textarea className="form-textarea px-2" placeholder="50k&#10;10k..." value={fForm.price} onChange={e => setFForm({...fForm, price: e.target.value})} /></div>
-                                            <div><label className="label-cap text-indigo-600 tracking-tighter italic">Amount (I)</label><textarea className="form-textarea px-2 bg-indigo-50/20" placeholder="50k&#10;20k..." value={fForm.amount} onChange={e => setFForm({...fForm, amount: e.target.value})} /></div>
+                                            <div><label className="label-cap">Qty (G)</label><textarea className="form-textarea px-2" value={fForm.qty} onChange={e => setFForm({...fForm, qty: e.target.value})} /></div>
+                                            <div><label className="label-cap">Price (H)</label><textarea className="form-textarea px-2" value={fForm.price} onChange={e => setFForm({...fForm, price: e.target.value})} /></div>
+                                            <div><label className="label-cap text-emerald-600">Amount (I)</label><textarea className="form-textarea px-2 bg-emerald-50/20 font-bold" value={fForm.amount} onChange={e => setFForm({...fForm, amount: e.target.value})} /></div>
                                         </div>
                                     </div>
 
-                                    {/* Grand Total (E) */}
-                                    <div className="p-6 bg-slate-900 rounded-[28px] flex justify-between items-center text-white shadow-xl shadow-slate-200">
-                                        <div className="flex-1">
-                                            <label className="text-[9px] font-black opacity-40 block mb-1 uppercase tracking-[0.2em] text-indigo-300">Final Total (E)</label>
-                                            <input type="text" placeholder="0" className="bg-transparent text-3xl font-black outline-none w-full lak-amount" value={fForm.total} onChange={e => setFForm({...fForm, total: e.target.value})} required />
-                                        </div>
+                                    <div className="p-6 bg-slate-900 rounded-[28px] flex justify-between items-center text-white shadow-xl">
+                                        <div className="flex-1"><label className="text-[9px] font-black opacity-40 block mb-1 uppercase tracking-widest">Total Amount (E)</label>
+                                        <input type="text" className="bg-transparent text-3xl font-black outline-none w-full lak-amount" value={typeof fForm.total === 'number' ? fForm.total.toLocaleString() : fForm.total} onChange={e => setFForm({...fForm, total: e.target.value})} required /></div>
                                         <div className="text-xl font-black italic opacity-30">LAK</div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="label-cap">Method (D)</label><select className="form-select" value={fForm.method} onChange={e => setFForm({...fForm, method: e.target.value})}>{METHODS.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
-                                        <div><label className="label-cap">Memo (K)</label><input type="text" className="form-input" value={fForm.memo} onChange={e => setFForm({...fForm, memo: e.target.value})} /></div>
+                                        <div><label className="label-cap">Method</label><select className="form-select" value={fForm.method} onChange={e => setFForm({...fForm, method: e.target.value})}>{METHODS.map(m => <option key={m} value={m}>{m}</option>)}</select></div>
+                                        <div><label className="label-cap">Memo</label><input type="text" className="form-input" value={fForm.memo} onChange={e => setFForm({...fForm, memo: e.target.value})} /></div>
                                     </div>
 
-                                    {/* Photo area */}
-                                    <div className="relative aspect-video bg-slate-200 rounded-[32px] overflow-hidden flex flex-col items-center justify-center border-4 border-white shadow-inner active:opacity-80 transition-opacity">
-                                        {fForm.photo_url ? <img src={fForm.photo_url} className="w-full h-full object-cover" /> : <div className="text-center font-black text-slate-400 text-[10px] tracking-widest uppercase">Click to add Photo</div>}
-                                        <input type="file" accept="image/*" className="absolute inset-0 opacity-0" onChange={handlePhoto} />
+                                    <div className="relative aspect-video bg-slate-200 rounded-[32px] overflow-hidden flex flex-col items-center justify-center border-4 border-white shadow-inner">
+                                        {fForm.photo_url ? <img src={fForm.photo_url} className="w-full h-full object-cover" /> : <div className="text-center font-black text-slate-400 text-[10px] tracking-widest uppercase italic">Tap to Add Photo</div>}
+                                        <input type="file" accept="image/*" className="absolute inset-0 opacity-0" onChange={(e) => {
+                                            const file = e.target.files[0];
+                                            if (!file) return;
+                                            const reader = new FileReader();
+                                            reader.onload = (ev) => {
+                                                const img = new Image();
+                                                img.onload = () => {
+                                                    const canvas = document.createElement('canvas');
+                                                    const MAX_W = 600;
+                                                    let w = img.width, h = img.height;
+                                                    if (w > MAX_W) { h *= MAX_W / w; w = MAX_W; }
+                                                    canvas.width = w; canvas.height = h;
+                                                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                                                    setFForm({...fForm, photo_url: canvas.toDataURL('image/jpeg', 0.6)});
+                                                };
+                                                img.src = ev.target.result;
+                                            };
+                                            reader.readAsDataURL(file);
+                                        }} />
                                     </div>
 
                                     <button disabled={isLoading} className="w-full bg-indigo-600 text-white py-5 rounded-[28px] font-black text-lg shadow-xl shadow-indigo-100 active:scale-95 transition-all uppercase tracking-widest">
-                                        {isLoading ? "Syncing..." : "Confirm & Save"}
+                                        {isLoading ? "Saving..." : "Save Record"}
                                     </button>
                                 </form>
                             </div>
