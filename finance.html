@@ -49,27 +49,23 @@
                     
                     if (data && data.length > 0) {
                         const mapped = data.map(r => {
-                            // 行のデータを配列（リスト）に変換する
-                            const v = Object.values(r); 
-                            
+                            const v = r.values; 
                             return {
                                 ...r,
                                 id: r.row_index,
-                                // 左から数えた番号で指定（0から数えるので、B列は1、C列は2...）
-                                date: v[1] || "---",                     // B: ວັນທີ /Date
-                                category: v[2] || "Other",              // C: ປະເພດ / Category
-                                method: v[3] || "Cash",                  // D: ວິທີຈ່າຍເງິນ / Payment Method
-                                total: v[4] || 0,                       // E: ລວມ / Total
-                                item_name: v[5] || "No Description",    // F: ລາຍການ / Item
-                                qty: v[6] || 0,                         // G: ຈຳນວນ/Quantity
-                                price: v[7] || 0,                       // H: ລາຄາ / Price
-                                amount: v[8] || 0,                      // I: ຈຳນວນເງີນ / Amount
-                                memo: v[10] || "",                      // K: Memo
-                                photo_url: v[11] || ""                  // L: Photo
+                                date: v[1] || "---",                     // B: Date
+                                category: v[2] || "Other",              // C: Category
+                                method: v[3] || "Cash",                  // D: Method
+                                total: v[4] || "0",                      // E: Total
+                                item_name: v[5] || "",                   // F: Item (改行あり)
+                                qty: v[6] || "",                         // G: Qty (改行あり)
+                                price: v[7] || "",                       // H: Price (改行あり)
+                                amount: v[8] || "",                      // I: Amount (改行あり)
+                                memo: v[10] || "",                       // K: Memo
+                                photo_url: v[11] || ""                   // L: Photo
                             };
                         });
                         setRecords(mapped.reverse());
-                        console.log("Data loaded successfully via Index mapping");
                     }
                 } catch (err) {
                     console.error("Fetch Error:", err);
