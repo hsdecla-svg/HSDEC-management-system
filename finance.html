@@ -44,29 +44,32 @@
             const fetchSheetData = async () => {
                 setIsLoading(true);
                 try {
+                    // ブラウザで確認した「文字がいっぱい出るURL」を正確に指定してください
                     const response = await fetch(GAS_URL);
                     const data = await response.json();
                     
                     if (data && data.length > 0) {
                         const mapped = data.map(r => {
-                            // GASの「doGet」の書き方によって「r.v」か「r」そのものか変わるため両方対応
+                            // GASから届いた1行分のデータ(配列)
                             const v = r.v || Object.values(r); 
                             
                             return {
                                 ...r,
-                                id: r.row_index || 0,
-                                // 安全にデータを取り出すための予備処理
-                                date: v[1] || v["Date"] || "---",
-                                item_name: v[5] || v["Item"] || "No Data", 
-                                total: v[4] || v["Total"] || 0,
-                                category: v[2] || v["Category"] || "",
-                                method: v[3] || v["Method"] || "",
-                                memo: v[10] || v["Memo"] || "",
-                                photo_url: v[11] || v["Photo"] || ""
+                                id: r.row_index,
+                                // 教えてもらった列の順番（0から数える）で指定
+                                date: v[1] || "---",                     // B: ວັນທີ /Date
+                                category: v[2] || "Other",              // C: ປະເພດ / Category
+                                method: v[3] || "Cash",                  // D: ວິທີຈ່າຍເງິນ / Payment Method
+                                total: v[4] || 0,                       // E: ລວມ / Total
+                                item_name: v[5] || "No Description",    // F: ລາຍການ / Item
+                                qty: v[6] || 0,                         // G: ຈຳນວນ/Quantity
+                                price: v[7] || 0,                       // H: ລາຄາ / Price
+                                amount: v[8] || 0,                      // I: ຈຳນວນເງີນ / Amount
+                                memo: v[10] || "",                      // K: Memo
+                                photo_url: v[11] || ""                  // L: Photo
                             };
                         });
                         setRecords(mapped.reverse());
-                        console.log("Mapped Records:", mapped);
                     }
                 } catch (err) {
                     console.error("Fetch Error:", err);
