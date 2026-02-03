@@ -3,30 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Finance | LAK Accounting Sync</title>
+    <title>HSDEC Finance | Dashboard & Multi-Input</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #0f172a; }
-        .form-input, .form-select { border: 2px solid #e2e8f0; padding: 10px; border-radius: 10px; width: 100%; font-weight: 700; outline: none; font-size: 14px; }
-        .label-cap { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; display: block; }
-        .modal-full { position: fixed; inset: 0; background: white; z-index: 1000; overflow-y: auto; padding: 15px; }
-        .table-cell { border: 1px solid #e2e8f0; padding: 8px; text-align: center; font-size: 12px; font-weight: 700; }
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; }
+        .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 700; outline: none; font-size: 14px; background: white; }
+        .form-textarea { min-height: 80px; resize: none; }
+        .label-cap { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
+        .modal-full { position: fixed; inset: 0; background: #f8fafc; z-index: 1000; overflow-y: auto; padding: 20px; }
         .lak-amount { font-weight: 900; letter-spacing: -0.02em; }
+        .card-active:active { transform: scale(0.98); background-color: #f8fafc; }
+        /* スクロールバー非表示 */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
 
-        // あなたのGAS URL
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxhodF2QvO8Oqh86eu_Q-OremypNcurab3h54BqDe5TlqR7bXn_XAgSNIY34_zpFmW5hQ/exec';
-
-        const CATEGORIES = ["Gasoline", "Office Supplies", "Equipment", "Food/Drink", "Transport", "Other"];
+        const CATEGORIES = ["ALL", "Gasoline", "Office Supplies", "Equipment", "Food/Drink", "Transport", "Other"];
         const METHODS = ["Transfer", "Cash"];
 
         function FinanceApp() {
@@ -34,48 +35,47 @@
             const [records, setRecords] = useState([]);
             const [fForm, setFForm] = useState({});
             const [isLoading, setIsLoading] = useState(false);
+            const [filterTab, setFilterTab] = useState('ALL');
 
             useEffect(() => {
-                const savedUser = localStorage.getItem('hsdec_user');
-                if (savedUser) { fetchSheetData(); }
-                else { window.location.href = 'index.html'; }
+                fetchSheetData();
             }, []);
 
             const fetchSheetData = async () => {
                 setIsLoading(true);
                 try {
-                    // ブラウザで確認した「文字がいっぱい出るURL」を正確に指定してください
                     const response = await fetch(GAS_URL);
                     const data = await response.json();
-                    
                     if (data && data.length > 0) {
                         const mapped = data.map(r => {
-                            // GASから届いた1行分のデータ(配列)
                             const v = r.v || Object.values(r); 
-                            
                             return {
                                 ...r,
                                 id: r.row_index,
-                                // 教えてもらった列の順番（0から数える）で指定
-                                date: v[1] || "---",                     // B: ວັນທີ /Date
-                                category: v[2] || "Other",              // C: ປະເພດ / Category
-                                method: v[3] || "Cash",                  // D: ວິທີຈ່າຍເງິນ / Payment Method
-                                total: v[4] || 0,                       // E: ລວມ / Total
-                                item_name: v[5] || "No Description",    // F: ລາຍການ / Item
-                                qty: v[6] || 0,                         // G: ຈຳນວນ/Quantity
-                                price: v[7] || 0,                       // H: ລາຄາ / Price
-                                amount: v[8] || 0,                      // I: ຈຳນວນເງີນ / Amount
-                                memo: v[10] || "",                      // K: Memo
-                                photo_url: v[11] || ""                  // L: Photo
+                                date: v[1] || "---",
+                                category: v[2] || "Other",
+                                method: v[3] || "Cash",
+                                total: parseFloat(v[4]) || 0,
+                                item_name: v[5] || "",
+                                qty: v[6] || "",
+                                price: v[7] || "",
+                                amount: v[8] || "",
+                                memo: v[10] || "",
+                                photo_url: v[11] || ""
                             };
                         });
-                        setRecords(mapped.reverse());
+                        setRecords(mapped);
                     }
-                } catch (err) {
-                    console.error("Fetch Error:", err);
-                }
+                } catch (err) { console.error(err); }
                 setIsLoading(false);
             };
+
+            // ダッシュボード用集計 & フィルタリング
+            const { filteredRecords, totalSum } = useMemo(() => {
+                const filtered = filterTab === 'ALL' ? records : records.filter(r => r.category === filterTab);
+                const sum = filtered.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
+                return { filteredRecords: filtered, totalSum: sum };
+            }, [records, filterTab]);
 
             const handlePhoto = (e) => {
                 const file = e.target.files[0];
@@ -85,12 +85,12 @@
                     const img = new Image();
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        const MAX_W = 400;
+                        const MAX_W = 600;
                         let w = img.width, h = img.height;
                         if (w > MAX_W) { h *= MAX_W / w; w = MAX_W; }
                         canvas.width = w; canvas.height = h;
                         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                        setFForm({...fForm, photo_url: canvas.toDataURL('image/jpeg', 0.5)});
+                        setFForm({...fForm, photo_url: canvas.toDataURL('image/jpeg', 0.7)});
                     };
                     img.src = ev.target.result;
                 };
@@ -115,7 +115,6 @@
                 };
                 try {
                     await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
-                    alert("Saved!");
                     setView('list');
                     fetchSheetData();
                 } catch (err) { alert(err); }
@@ -123,94 +122,128 @@
             };
 
             return (
-                <div className="max-w-2xl mx-auto p-4">
-                    <div className="flex justify-between items-center mb-6">
-                        <h1 className="font-black text-xl italic text-emerald-800 tracking-tighter">HSDEC FINANCE</h1>
-                        <button onClick={() => { setFForm({date: new Date().toISOString().split('T')[0], category: 'Other', method: 'Cash', qty: 1, total: 0}); setView('edit'); }} className="bg-emerald-600 text-white px-4 py-2 rounded-xl font-bold text-sm shadow-lg">+ ADD</button>
+                <div className="max-w-xl mx-auto pb-24">
+                    {/* Header */}
+                    <div className="p-6 pb-2 flex justify-between items-center">
+                        <div>
+                            <h1 className="font-black text-2xl tracking-tighter text-slate-800">HSDEC FINANCE</h1>
+                            <p className="text-[10px] font-bold text-slate-400">SYNCED WITH GOOGLE SHEETS</p>
+                        </div>
+                        <button onClick={() => { setFForm({date: new Date().toISOString().split('T')[0], category: 'Other', method: 'Cash', qty: "", price: "", total: 0}); setView('edit'); }} className="bg-indigo-600 text-white w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center text-2xl font-bold active:scale-90 transition-all">+</button>
                     </div>
 
-                    <div className="space-y-3">
-                        {isLoading && <p className="text-center font-bold text-slate-400">Loading data...</p>}
-                        {records.map((r, i) => (
-                            <div key={i} onClick={() => { setFForm(r); setView('edit'); }} className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center active:bg-slate-50">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
-                                        {r.photo_url ? <img src={r.photo_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[8px] opacity-20">No Pix</div>}
+                    {/* Dashboard Card */}
+                    <div className="m-4 mt-2 p-6 bg-indigo-700 rounded-[32px] text-white shadow-xl shadow-indigo-200">
+                        <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest mb-1">{filterTab} TOTAL</p>
+                        <h2 className="text-3xl font-black mb-4">₭ {totalSum.toLocaleString()}</h2>
+                        
+                        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
+                            {CATEGORIES.map(cat => (
+                                <button 
+                                    key={cat} 
+                                    onClick={() => setFilterTab(cat)}
+                                    className={`px-4 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap transition-all ${filterTab === cat ? 'bg-white text-indigo-700' : 'bg-indigo-600/50 text-white border border-indigo-400/30'}`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Records List */}
+                    <div className="px-4 space-y-3 mt-6">
+                        {isLoading && <div className="text-center py-10 font-bold text-slate-400 animate-pulse text-xs">REFRESHING DATA...</div>}
+                        {filteredRecords.map((r, i) => (
+                            <div key={i} onClick={() => { setFForm(r); setView('edit'); }} className="bg-white p-4 rounded-[24px] shadow-sm flex justify-between items-center card-active border border-white transition-all">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-slate-100 rounded-2xl overflow-hidden flex-shrink-0 border border-slate-50">
+                                        {r.photo_url ? <img src={r.photo_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-slate-300">NO PIX</div>}
                                     </div>
-                                    <div>
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase">{r.date}</p>
-                                        {/* whitespace-pre-wrap でスプレッドシート内の改行を再現 */}
-                                        <p className="font-black text-slate-800 text-xs leading-tight whitespace-pre-wrap">
-                                            {r.item_name}
-                                        </p>
+                                    <div className="max-w-[150px]">
+                                        <p className="text-[9px] font-black text-indigo-500 uppercase">{r.date} • {r.category}</p>
+                                        <p className="font-bold text-slate-800 text-sm leading-tight whitespace-pre-wrap line-clamp-2">{r.item_name}</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="lak-amount text-rose-600 font-black">{Number(r.total || 0).toLocaleString()}₭</p>
-                                    <p className="text-[9px] font-bold text-slate-400">{r.category}</p>
+                                    <p className="lak-amount text-slate-900 font-black text-sm">{(Number(r.total) || 0).toLocaleString()}₭</p>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase">{r.method}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
 
+                    {/* Edit Modal */}
                     {view === 'edit' && (
                         <div className="modal-full">
-                            <div className="max-w-md mx-auto">
-                                <div className="flex justify-between items-center mb-6">
-                                    <button onClick={() => setView('list')} className="text-slate-400 font-bold">Cancel</button>
-                                    <h2 className="font-black text-sm">TRANSACTION</h2>
+                            <div className="max-w-md mx-auto pb-10">
+                                <div className="flex justify-between items-center mb-8">
+                                    <button onClick={() => setView('list')} className="w-10 h-10 bg-white rounded-full shadow-sm flex items-center justify-center text-slate-400 font-bold text-xl">×</button>
+                                    <h2 className="font-black text-xs tracking-widest text-slate-400">TRANSACTION</h2>
                                     <div className="w-10"></div>
                                 </div>
 
-                                <form onSubmit={handleSave} className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div><label className="label-cap">Date (B)</label><input type="date" className="form-input" value={fForm.date} onChange={e => setFForm({...fForm, date: e.target.value})} required /></div>
-                                        <div><label className="label-cap">Category (C)</label>
+                                <form onSubmit={handleSave} className="space-y-5">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="label-cap text-indigo-500">Date (B)</label><input type="date" className="form-input" value={fForm.date} onChange={e => setFForm({...fForm, date: e.target.value})} required /></div>
+                                        <div><label className="label-cap text-indigo-500">Category (C)</label>
                                             <select className="form-select" value={fForm.category} onChange={e => setFForm({...fForm, category: e.target.value})}>
-                                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                                {CATEGORIES.filter(c => c !== 'ALL').map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                         </div>
                                     </div>
 
-                                    <div className="overflow-hidden rounded-xl border border-slate-200">
-                                        <table className="w-full border-collapse bg-slate-50">
-                                            <thead>
-                                                <tr className="bg-slate-100">
-                                                    <th className="table-cell">Item (F)</th>
-                                                    <th className="table-cell">Qty (G)</th>
-                                                    <th className="table-cell">Price (H)</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td className="p-0"><input type="text" className="w-full p-2 text-center text-xs font-bold outline-none bg-white" value={fForm.item_name} onChange={e => setFForm({...fForm, item_name: e.target.value})} required /></td>
-                                                    <td className="p-0"><input type="number" className="w-full p-2 text-center text-xs font-bold outline-none bg-white" value={fForm.qty} onChange={e => {const q = Number(e.target.value); setFForm({...fForm, qty: q, total: q * (fForm.price || 0)})}} /></td>
-                                                    <td className="p-0"><input type="number" className="w-full p-2 text-center text-xs font-bold outline-none bg-white" value={fForm.price} onChange={e => {const p = Number(e.target.value); setFForm({...fForm, price: p, total: p * (fForm.qty || 0)})}} /></td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                        <div className="p-3 bg-emerald-50 flex justify-between items-center border-t border-slate-200">
-                                            <span className="text-[10px] font-black text-emerald-700">TOTAL AMOUNT (E/I)</span>
-                                            <span className="font-black text-emerald-900">{Number(fForm.total || 0).toLocaleString()} ₭</span>
+                                    <div>
+                                        <label className="label-cap text-indigo-500">ລາຍການ / Item (F)</label>
+                                        <textarea className="form-textarea" placeholder="Enter item names..." value={fForm.item_name} onChange={e => setFForm({...fForm, item_name: e.target.value})} required />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="label-cap">ຈຳນວນ/Qty (G)</label>
+                                            <textarea className="form-textarea" placeholder="1, 2, 3..." value={fForm.qty} onChange={e => setFForm({...fForm, qty: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="label-cap">ລາຄາ/Price (H)</label>
+                                            <textarea className="form-textarea" placeholder="50000, 20000..." value={fForm.price} onChange={e => setFForm({...fForm, price: e.target.value})} />
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <label className="label-cap">Payment Method (D)</label>
-                                        <select className="form-select" value={fForm.method} onChange={e => setFForm({...fForm, method: e.target.value})}>
-                                            {METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-                                        </select>
+                                    <div className="p-4 bg-slate-900 rounded-2xl flex justify-between items-center text-white">
+                                        <div className="flex-1">
+                                            <label className="text-[9px] font-bold opacity-50 block mb-1">TOTAL AMOUNT (E/I)</label>
+                                            <input type="number" className="bg-transparent text-xl font-black outline-none w-full" value={fForm.total} onChange={e => setFForm({...fForm, total: Number(e.target.value)})} required />
+                                        </div>
+                                        <div className="text-2xl font-black">₭</div>
                                     </div>
 
-                                    <div><label className="label-cap">Memo (K)</label><textarea className="form-input h-20" value={fForm.memo} onChange={e => setFForm({...fForm, memo: e.target.value})} /></div>
-
-                                    <div className="relative aspect-video bg-slate-100 rounded-2xl overflow-hidden flex items-center justify-center border-2 border-dashed border-slate-300">
-                                        {fForm.photo_url ? <img src={fForm.photo_url} className="w-full h-full object-contain" /> : <span className="text-4xl opacity-20">📷</span>}
-                                        <input type="file" accept="image/*" capture="environment" className="absolute inset-0 opacity-0" onChange={handlePhoto} />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="label-cap">Method (D)</label>
+                                            <select className="form-select" value={fForm.method} onChange={e => setFForm({...fForm, method: e.target.value})}>
+                                                {METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="label-cap">Memo (K)</label>
+                                            <input type="text" className="form-input" value={fForm.memo} onChange={e => setFForm({...fForm, memo: e.target.value})} />
+                                        </div>
                                     </div>
 
-                                    <button disabled={isLoading} className="w-full bg-slate-900 text-white py-4 rounded-xl font-black text-lg shadow-xl active:scale-95 transition-all">
-                                        {isLoading ? "Processing..." : "CONFIRM & SAVE"}
+                                    <div className="relative aspect-video bg-white rounded-[24px] overflow-hidden flex flex-col items-center justify-center border-2 border-dashed border-slate-200">
+                                        {fForm.photo_url ? (
+                                            <img src={fForm.photo_url} className="w-full h-full object-contain" />
+                                        ) : (
+                                            <div className="text-center">
+                                                <span className="text-3xl block mb-2">📸</span>
+                                                <p className="text-[10px] font-black text-slate-400">ADD PHOTO</p>
+                                            </div>
+                                        )}
+                                        {/* capture属性なしでライブラリ、accept="image/*"でカメラも選べる */}
+                                        <input type="file" accept="image/*" className="absolute inset-0 opacity-0" onChange={handlePhoto} />
+                                    </div>
+
+                                    <button disabled={isLoading} className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black text-lg shadow-xl shadow-indigo-100 active:scale-95 transition-all">
+                                        {isLoading ? "SYNCING..." : "CONFIRM & SAVE"}
                                     </button>
                                 </form>
                             </div>
