@@ -47,9 +47,11 @@
                     const response = await fetch(GAS_URL);
                     const data = await response.json();
                     
+                    console.log("Raw Data:", data); // F12でこれが見えるか確認
+
                     if (data && data.length > 0) {
                         const mapped = data.map(r => {
-                            const v = r.values; 
+                            const v = r.v; // GASから届いた配列
                             return {
                                 ...r,
                                 id: r.row_index,
@@ -57,10 +59,10 @@
                                 category: v[2] || "Other",              // C: Category
                                 method: v[3] || "Cash",                  // D: Method
                                 total: v[4] || "0",                      // E: Total
-                                item_name: v[5] || "",                   // F: Item (改行あり)
-                                qty: v[6] || "",                         // G: Qty (改行あり)
-                                price: v[7] || "",                       // H: Price (改行あり)
-                                amount: v[8] || "",                      // I: Amount (改行あり)
+                                item_name: v[5] || "No Description",    // F: Item
+                                qty: v[6] || "",                         // G: Qty
+                                price: v[7] || "",                       // H: Price
+                                amount: v[8] || "",                      // I: Amount
                                 memo: v[10] || "",                       // K: Memo
                                 photo_url: v[11] || ""                   // L: Photo
                             };
