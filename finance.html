@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Finance | v3.2 Ultra Light</title>
+    <title>HSDEC Finance | v4.0 Drive Storage</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -16,8 +16,6 @@
         .label-cap { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
         .modal-full { position: fixed; inset: 0; background: #f8fafc; z-index: 1000; overflow-y: auto; padding: 20px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .shimmer { background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%); background-size: 200% 100%; animation: loading 1.5s infinite; }
-        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     </style>
 </head>
 <body>
@@ -25,7 +23,9 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxhodF2QvO8Oqh86eu_Q-OremypNcurab3h54BqDe5TlqR7bXn_XAgSNIY34_zpFmW5hQ/exec';
+        // 指定された新しいURLを反映
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxhElrrOx8gg_DOdT5XXk34dLzch7G9apzku8k-FJ7NI_3bTXWaUjIUkdoLIpDYQe8cgQ/exec';
+        
         const CATEGORIES = ["ALL", "Gasoline", "Office Supplies", "Equipment", "Food/Drink", "Transport", "Other"];
         const METHODS = ["Cash", "Transfer"];
         const SORT_OPTIONS = [
@@ -118,23 +118,21 @@
                 setIsLoading(false);
             };
 
-            // 画像の超軽量化処理
             const handlePhotoUpload = (e) => {
                 const file = e.target.files[0];
                 if(!file) return;
-                setIsLoading(true); // 圧縮中もインジケーターを出す
+                setIsLoading(true);
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     const img = new Image();
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        const MAX_W = 320; // 超軽量：320px（数10KB狙い）
+                        const MAX_W = 400; 
                         let w = img.width, h = img.height;
                         if(w > MAX_W) { h *= MAX_W/w; w = MAX_W; }
                         canvas.width = w; canvas.height = h;
                         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                        // 画質0.4で極限まで削る
-                        setFForm({ ...fForm, photo_url: canvas.toDataURL('image/jpeg', 0.4) });
+                        setFForm({ ...fForm, photo_url: canvas.toDataURL('image/jpeg', 0.5) });
                         setIsLoading(false);
                     };
                     img.src = ev.target.result;
@@ -174,12 +172,19 @@
                         {sortedRecords.map((r, i) => (
                             <div key={i} onClick={() => { setFForm(r); setView('view'); }} className="bg-white p-4 rounded-[24px] shadow-sm flex justify-between items-center border border-white active:scale-95 transition-all">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 bg-slate-100 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center">
-                                        {r.photo_url ? <img src={r.photo_url} className="w-full h-full object-cover" loading="lazy" /> : <span className="text-[8px] font-black text-slate-300 uppercase">No pic</span>}
+                                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center border-2 border-slate-100 flex-shrink-0">
+                                        <span className="text-xl">{r.photo_url ? "📎" : "📄"}</span>
                                     </div>
-                                    <div className="max-w-[150px]"><p className="text-[9px] font-black text-indigo-500 uppercase">{r.date}</p><p className="font-bold text-slate-800 text-xs line-clamp-1">{r.item_name || "(No Title)"}</p><p className="text-[8px] text-slate-400 font-bold uppercase">{r.method}</p></div>
+                                    <div className="max-w-[150px]">
+                                        <p className="text-[9px] font-black text-indigo-500 uppercase">{r.date}</p>
+                                        <p className="font-bold text-slate-800 text-xs line-clamp-1">{r.item_name || "(No Title)"}</p>
+                                        <p className="text-[8px] text-slate-400 font-bold uppercase">{r.method}</p>
+                                    </div>
                                 </div>
-                                <div className="text-right"><p className="font-black text-sm text-slate-900">{Number(r.total || 0).toLocaleString()}₭</p><p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{r.category}</p></div>
+                                <div className="text-right">
+                                    <p className="font-black text-sm text-slate-900">{Number(r.total || 0).toLocaleString()}₭</p>
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{r.category}</p>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -190,8 +195,13 @@
                                 <button onClick={() => setView('list')} className="w-10 h-10 bg-slate-100 rounded-full font-bold">←</button>
                                 <button onClick={() => setView('edit')} className="bg-indigo-600 text-white px-6 py-2 rounded-full font-black text-xs">EDIT</button>
                             </div>
-                            <div className="rounded-[32px] overflow-hidden mb-6 bg-slate-50 aspect-square flex items-center justify-center shadow-inner">
-                                {fForm.photo_url ? <img src={fForm.photo_url} className="w-full h-full object-contain" /> : <p className="text-slate-400 font-bold text-xs uppercase italic">No Receipt Attached</p>}
+                            <div className="rounded-[32px] overflow-hidden mb-6 bg-slate-50 aspect-square flex items-center justify-center shadow-inner relative">
+                                {fForm.photo_url ? (
+                                    <img src={fForm.photo_url} className="w-full h-full object-contain" onError={(e) => {e.target.style.display='none'; e.target.nextSibling.style.display='block'}} />
+                                ) : null}
+                                <div style={{display: fForm.photo_url ? 'none' : 'block'}} className="text-slate-400 font-bold text-[10px] uppercase italic text-center px-10">
+                                    {fForm.photo_url ? "Loading Image..." : "No Receipt Attached"}
+                                </div>
                             </div>
                             <div className="space-y-6">
                                 <div className="flex justify-between items-end">
