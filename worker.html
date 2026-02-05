@@ -27,7 +27,6 @@
         .doc-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; border: 2px solid #f1f5f9; cursor: pointer; font-size: 11px; font-weight: 700;}
         .doc-item.done { border-color: #10b981; background: #f0fdf4; color: #166534; }
         .doc-item.pending { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
-        /* クイックリスト用アニメーション */
         .fade-in { animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -53,7 +52,8 @@
             const [workers, setWorkers] = useState([]);
             const [form, setForm] = useState({});
             const [globalSearch, setGlobalSearch] = useState('');
-            const [quickListView, setQuickListView] = useState(null); // どのバッチの名前リストを開いているか
+            const [quickListView, setQuickListView] = useState(null);
+            const [sortBy, setSortBy] = useState('newest'); // デフォルトは最新順
 
             useEffect(() => {
                 const savedUser = localStorage.getItem('hsdec_user');
@@ -62,7 +62,7 @@
             }, []);
 
             const fetchWorkers = async () => {
-                const { data } = await supabase.from('workers').select('*').order('name');
+                const { data } = await supabase.from('workers').select('*').order('created_at', { ascending: false });
                 if (data) setWorkers(data);
             };
 
@@ -100,10 +100,23 @@
                 else alert(error.message);
             };
 
-            const searchedWorkers = workers.filter(w => {
-                const searchStr = `${w.name} ${w.nickname} ${w.province} ${w.batch}期`.toLowerCase();
+            // 並び替えロジック
+            const getSortedWorkers = (list) => {
+                let sorted = [...list];
+                switch (sortBy) {
+                    case 'newest': sorted.sort((a, b) => b.id - a.id); break;
+                    case 'oldest': sorted.sort((a, b) => a.id - b.id); break;
+                    case 'city': sorted.sort((a, b) => (a.city || "").localeCompare(b.city || "")); break;
+                    case 'couple': sorted.sort((a, b) => (b.is_couple === a.is_couple) ? 0 : b.is_couple ? 1 : -1); break;
+                    case 'reentry': sorted.sort((a, b) => (b.is_reentry === a.is_reentry) ? 0 : b.is_reentry ? 1 : -1); break;
+                }
+                return sorted;
+            };
+
+            const searchedWorkers = getSortedWorkers(workers.filter(w => {
+                const searchStr = `${w.name} ${w.nickname} ${w.province} ${w.city} ${w.village} ${w.batch}期`.toLowerCase();
                 return searchStr.includes(globalSearch.toLowerCase());
-            });
+            }));
 
             if (!user) return null;
 
@@ -124,7 +137,7 @@
                         <label className="label-cap text-blue-500 mb-2">Global Search</label>
                         <input 
                             type="text" 
-                            placeholder="Type name, nickname or batch (e.g. 1期)..." 
+                            placeholder="Type name, nickname, province, city or village..." 
                             className="form-input shadow-xl text-lg py-5 border-blue-100"
                             value={globalSearch}
                             onChange={(e) => setGlobalSearch(e.target.value)}
@@ -147,6 +160,9 @@
                                                 <h4 className="font-black text-lg uppercase">{w.name} <span className="text-[10px] text-blue-500 ml-1">B{w.batch}</span></h4>
                                                 <span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded">DOCS: {count}/11</span>
                                             </div>
+                                            <div className="text-[9px] font-bold text-slate-500 uppercase flex gap-2">
+                                                <span>{w.province}</span> • <span>{w.city}</span> • <span>{w.village}</span>
+                                            </div>
                                             <div className="progress-bg"><div className="progress-fill bg-blue-500" style={{width: `${percent}%`}}></div></div>
                                         </div>
                                     </div>
@@ -161,7 +177,6 @@
                                 return (
                                     <div key={num} className="space-y-4">
                                         <div className="bg-white p-8 rounded-[3rem] border-2 border-slate-100 shadow-xl flex justify-between items-center group relative overflow-hidden transition-all">
-                                            {/* 名前のリストを表示させるためのメインクリック領域 */}
                                             <div onClick={() => setQuickListView(isExpanded ? null : num)} className="flex-grow cursor-pointer z-10">
                                                 <span className="text-slate-400 font-black text-[10px] uppercase tracking-[0.2em]">Batch Group</span>
                                                 <h2 className="text-4xl font-black italic text-slate-800 uppercase flex items-center gap-3">
@@ -170,19 +185,14 @@
                                                 </h2>
                                                 <p className="text-[10px] font-bold text-blue-500 uppercase mt-1">{batchWorkers.length} Persons registered</p>
                                             </div>
-
-                                            {/* 右側のViewボタン：従来のリストへ直接飛ぶ */}
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); setCurrentBatch(num); setView('list'); }}
                                                 className="relative z-20 bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all hover:bg-blue-700"
                                             >
                                                 View Photos
                                             </button>
-
                                             <div className="absolute left-0 top-0 text-9xl opacity-[0.03] font-black italic -translate-x-6 -translate-y-6">{num}</div>
                                         </div>
-
-                                        {/* クイック名前リスト：Batchをクリックすると展開 */}
                                         {isExpanded && (
                                             <div className="bg-white/50 rounded-[2rem] p-4 grid grid-cols-2 md:grid-cols-3 gap-2 border-2 border-dashed border-slate-200 fade-in">
                                                 {batchWorkers.length > 0 ? batchWorkers.map(w => (
@@ -204,42 +214,80 @@
                 </div>
             );
 
-            // --- 📋 PHOTO LIST VIEW (従来のもの) ---
-            if (view === 'list') return (
-                <div className="max-w-4xl mx-auto p-4 fade-in">
-                    <header className="flex justify-between items-end py-8 px-2">
-                        <div>
-                            <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 hover:text-blue-500">← Back to Dashboard</button>
-                            <h2 className="text-4xl font-black italic uppercase">Batch {currentBatch}</h2>
-                        </div>
-                        <button onClick={() => { setForm({batch: currentBatch, gender:'Male', diseases:'None', allergies:'None', tattoos:'None'}); setView('edit'); }} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs shadow-lg">+ NEW WORKER</button>
-                    </header>
-                    <div className="grid gap-4">
-                        {workers.filter(w => w.batch == currentBatch).map(w => {
-                            const { count, percent } = calculateDocs(w);
-                            return (
-                                <div key={w.id} onClick={() => { setForm(w); setView('edit'); }} 
-                                     className={`worker-card bg-white p-6 rounded-[2.5rem] shadow-sm flex items-center gap-6 ${w.is_couple ? 'is-couple' : ''} ${w.is_reentry ? 'is-reentry' : ''}`}>
-                                    <div className="w-20 h-20 bg-slate-200 rounded-[1.5rem] overflow-hidden flex-shrink-0 shadow-inner">
-                                        {w.photo_url ? <img src={w.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px] font-black text-slate-400 uppercase">Photo</div>}
-                                    </div>
-                                    <div className="flex-grow">
-                                        <div className="flex justify-between items-start">
-                                            <div><h3 className="font-black text-2xl uppercase tracking-tight">{w.name}</h3><p className="text-[10px] font-bold text-slate-400 uppercase">{w.nickname || 'No Nickname'}</p></div>
-                                            <div className="text-right"><span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded">DOCS: {count}/11</span></div>
-                                        </div>
-                                        <div className="progress-bg"><div className={`progress-fill ${percent === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{width: `${percent}%`}}></div></div>
-                                        <div className="flex gap-2 mt-3">
-                                            {w.is_reentry && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase">Re-entry (B{w.prev_batch})</span>}
-                                            {w.is_couple && <span className="bg-pink-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase">Couple</span>}
-                                        </div>
-                                    </div>
+            // --- 📋 PHOTO LIST VIEW ---
+            if (view === 'list') {
+                const filteredAndSorted = getSortedWorkers(workers.filter(w => w.batch == currentBatch));
+                return (
+                    <div className="max-w-4xl mx-auto p-4 fade-in">
+                        <header className="py-8 px-2">
+                            <div className="flex justify-between items-end mb-6">
+                                <div>
+                                    <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 hover:text-blue-500 flex items-center gap-1">← DASHBOARD</button>
+                                    <h2 className="text-4xl font-black italic uppercase leading-none">Batch {currentBatch}</h2>
                                 </div>
-                            );
-                        })}
+                                <button onClick={() => { setForm({batch: currentBatch, gender:'Male', diseases:'None', allergies:'None', tattoos:'None'}); setView('edit'); }} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs shadow-lg">+ NEW WORKER</button>
+                            </div>
+                            
+                            {/* ソートボタン群 */}
+                            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                                {[
+                                    {id: 'newest', label: 'NEWEST'},
+                                    {id: 'oldest', label: 'OLDEST'},
+                                    {id: 'city', label: 'CITY'},
+                                    {id: 'couple', label: 'COUPLE'},
+                                    {id: 'reentry', label: 'RE-ENTRY'}
+                                ].map(btn => (
+                                    <button 
+                                        key={btn.id}
+                                        onClick={() => setSortBy(btn.id)}
+                                        className={`flex-shrink-0 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-tighter transition-all ${sortBy === btn.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}`}
+                                    >
+                                        SORT: {btn.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </header>
+
+                        <div className="grid gap-4">
+                            {filteredAndSorted.map(w => {
+                                const { count, percent } = calculateDocs(w);
+                                return (
+                                    <div key={w.id} onClick={() => { setForm(w); setView('edit'); }} 
+                                         className={`worker-card bg-white p-6 rounded-[2.5rem] shadow-sm flex items-center gap-6 ${w.is_couple ? 'is-couple' : ''} ${w.is_reentry ? 'is-reentry' : ''}`}>
+                                        <div className="w-20 h-20 bg-slate-200 rounded-[1.5rem] overflow-hidden flex-shrink-0 shadow-inner">
+                                            {w.photo_url ? <img src={w.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px] font-black text-slate-400 uppercase">Photo</div>}
+                                        </div>
+                                        <div className="flex-grow">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h3 className="font-black text-2xl uppercase tracking-tight">{w.name}</h3>
+                                                    <div className="flex gap-2 items-center">
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">{w.nickname || 'No Nickname'}</span>
+                                                        <span className="text-[9px] bg-slate-800 text-white px-2 py-0.5 rounded italic font-black">{w.province || 'No State'}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right"><span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded">DOCS: {count}/11</span></div>
+                                            </div>
+                                            
+                                            {/* 村・市・県の表示 */}
+                                            <div className="flex gap-1 mt-2 mb-1">
+                                                <span className="text-[8px] font-black border border-slate-200 px-2 py-0.5 rounded text-slate-500 uppercase">CITY: {w.city || '-'}</span>
+                                                <span className="text-[8px] font-black border border-slate-200 px-2 py-0.5 rounded text-slate-500 uppercase">VILLAGE: {w.village || '-'}</span>
+                                            </div>
+
+                                            <div className="progress-bg"><div className={`progress-fill ${percent === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{width: `${percent}%`}}></div></div>
+                                            <div className="flex gap-2 mt-3">
+                                                {w.is_reentry && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase">Re-entry (B{w.prev_batch})</span>}
+                                                {w.is_couple && <span className="bg-pink-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase">Couple</span>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
-            );
+                );
+            }
 
             // --- ✍️ EDIT VIEW ---
             return (
@@ -267,15 +315,21 @@
                         </div>
 
                         <div className="section-header">2. Details & History</div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div><label className="label-cap">Current Batch</label><select className="form-select border-blue-200" value={form.batch || 1} onChange={e => setForm({...form, batch: parseInt(e.target.value)})}><option value="1">Batch 1</option><option value="2">Batch 2</option><option value="3">Batch 3</option></select></div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div><label className="label-cap">Batch</label><select className="form-select border-blue-200" value={form.batch || 1} onChange={e => setForm({...form, batch: parseInt(e.target.value)})}><option value="1">Batch 1</option><option value="2">Batch 2</option><option value="3">Batch 3</option></select></div>
                             <div><label className="label-cap">Gender</label><select className="form-select" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}><option value="Male">Male</option><option value="Female">Female</option></select></div>
-                            <div><label className="label-cap">Name</label><input className="form-input" value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} required /></div>
+                            <div><label className="label-cap">Full Name</label><input className="form-input" value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} required /></div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div><label className="label-cap">Province (県)</label><input className="form-input" value={form.province || ''} onChange={e => setForm({...form, province: e.target.value})} placeholder="Vientiane" /></div>
+                            <div><label className="label-cap">City (市)</label><input className="form-input" value={form.city || ''} onChange={e => setForm({...form, city: e.target.value})} placeholder="Vang Vieng" /></div>
+                            <div><label className="label-cap">Village (村)</label><input className="form-input" value={form.village || ''} onChange={e => setForm({...form, village: e.target.value})} placeholder="Village Name" /></div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mt-6">
                             <div onClick={() => setForm({...form, is_reentry: !form.is_reentry})} className={`doc-item ${form.is_reentry ? 'done border-emerald-500' : 'pending'}`}>RE-ENTRY</div>
-                            <div onClick={() => setForm({...form, is_couple: !form.is_couple})} className={`doc-item ${form.is_couple ? 'bg-pink-500 text-white' : 'pending'}`}>COUPLE</div>
+                            <div onClick={() => setForm({...form, is_couple: !form.is_couple})} className={`doc-item ${form.is_couple ? 'bg-pink-500 text-white border-pink-500' : 'pending'}`}>COUPLE</div>
                         </div>
 
                         {form.is_reentry && (
