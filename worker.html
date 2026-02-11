@@ -40,16 +40,20 @@
             }, []);
 
             const fetchData = async () => {
-                setLoading(true);
-                try {
-                    const res = await fetch(GAS_URL);
-                    const data = await res.json();
-                    setWorkers(data);
-                } catch (e) {
-                    console.error("Fetch Error:", e);
-                }
-                setLoading(false);
-            };
+    setLoading(true);
+    try {
+        // redirect: 'follow' を追加することで、Googleの転送処理を正しく扱えるようになります
+        const res = await fetch(GAS_URL, {
+            method: 'GET',
+            redirect: 'follow',
+        });
+        const data = await res.json();
+        setWorkers(data);
+    } catch (e) {
+        console.error("Fetch Error:", e);
+    }
+    setLoading(false);
+};
 
             const batches = [...new Set(workers.map(w => w.batch))].sort((a, b) => a - b);
 
