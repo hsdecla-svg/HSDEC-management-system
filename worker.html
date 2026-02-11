@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC DATABASE EDITOR</title>
+    <title>HSDEC Management System</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; }
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 20px; }
-        .input-edit { background: #0f172a; border: 2px solid #334155; color: #fff; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; transition: 0.3s; }
-        .input-edit:focus { border-color: #3b82f6; background: #1e293b; outline: none; }
-        .label-style { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; margin-top: 12px; }
-        .save-btn { background: #3b82f6; color: white; width: 100%; padding: 20px; border-radius: 15px; font-weight: 900; text-transform: uppercase; margin-top: 30px; box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.5); }
-        .save-btn:active { transform: scale(0.98); }
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; }
+        .batch-card { background: white; border-radius: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); overflow: hidden; margin-bottom: 16px; }
+        .input-edit { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e2e8f0; font-weight: 600; font-size: 14px; margin-top: 4px; transition: 0.2s; }
+        .input-edit:focus { border-color: #3b82f6; outline: none; background: #f8fafc; }
+        .label-style { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-left: 4px; }
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -24,14 +24,15 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // ★あなたの最新のGAS URL
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyo7HL6BMEH1DapcAhrTRSgmraG9CvaXkgQhbMZ4uN6L5eUcMhiuCe9GqzTnO3_OJoHXg/exec';
+        // ★あなたのGAS URLをここに
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdAZAcryW4C9u3VE-DoBWBpBeB-lUIlxHPU3qBgq3oS2DKOr-fWuN239iNyhGTq7o0Nw/exec';
 
         function App() {
-            const [view, setView] = useState('list');
+            const [view, setView] = useState('folders'); 
             const [workers, setWorkers] = useState([]);
             const [loading, setLoading] = useState(true);
             const [selectedWorker, setSelectedWorker] = useState(null);
+            const [expandedBatch, setExpandedBatch] = useState(null);
             const [isSaving, setIsSaving] = useState(false);
 
             useEffect(() => { fetchData(); }, []);
@@ -41,58 +42,67 @@
                 try {
                     const res = await fetch(GAS_URL);
                     const data = await res.json();
-                    setWorkers(data.filter(w => w['Full Name']));
+                    setWorkers(data);
                 } catch (e) { console.error(e); }
                 setLoading(false);
             };
 
-            const handleSave = async () => {
+            const handleUpdate = async () => {
                 setIsSaving(true);
                 try {
-                    const response = await fetch(GAS_URL, {
-                        method: 'POST',
-                        body: JSON.stringify(selectedWorker)
-                    });
-                    alert("Spreadsheet Updated Successfully! ✅");
+                    await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(selectedWorker) });
+                    alert("シートを更新しました！ ✅");
                     fetchData();
-                    setView('list');
-                } catch (e) { alert("Error saving data ❌"); }
+                    setView('folders');
+                } catch (e) { alert("エラーが発生しました ❌"); }
                 setIsSaving(false);
             };
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-black text-blue-500 animate-pulse uppercase tracking-widest">Loading Database...</div>;
+            const batches = [...new Set(workers.map(w => w.batch || w._sheetName.replace("Batch","")))].sort((a,b)=>a-b);
 
-            // --- 1. リスト画面 ---
-            if (view === 'list') return (
-                <div className="max-w-xl mx-auto p-6">
-                    <h1 className="text-3xl font-black italic mb-8 text-center text-blue-400">HSDEC EDITOR</h1>
-                    <div className="space-y-3">
-                        {workers.map((w, i) => (
-                            <div key={i} onClick={() => { setSelectedWorker({...w}); setView('edit'); }} 
-                                 className="card p-5 flex justify-between items-center cursor-pointer hover:border-blue-500 transition-all">
-                                <div>
-                                    <div className="font-black uppercase text-sm">{w['Full Name']}</div>
-                                    <div className="text-[10px] text-slate-400 font-bold">BATCH {w.batch} • {w['Passport No.']}</div>
+            if (loading) return <div className="h-screen flex items-center justify-center font-black text-slate-400 animate-pulse uppercase tracking-widest">Loading Master...</div>;
+
+            // --- 📂 フォルダ表示 (第〇期生) ---
+            if (view === 'folders') return (
+                <div className="max-w-xl mx-auto p-6 fade-in">
+                    <h1 className="text-3xl font-black italic mb-8 text-center uppercase tracking-tighter">Master Database</h1>
+                    {batches.map(num => {
+                        const batchList = workers.filter(w => (w.batch || w._sheetName.replace("Batch","")) == num);
+                        return (
+                            <div key={num} className="batch-card">
+                                <div onClick={() => setExpandedBatch(expandedBatch === num ? null : num)} 
+                                     className="p-6 flex justify-between items-center cursor-pointer hover:bg-slate-50">
+                                    <h2 className="text-2xl font-black italic uppercase">Batch {num}</h2>
+                                    <span className="text-blue-500 font-bold text-xs">{batchList.length} Workers</span>
                                 </div>
-                                <div className="text-blue-500 font-black text-[11px]">EDIT →</div>
+                                {expandedBatch === num && (
+                                    <div className="p-4 bg-slate-50 border-t grid gap-2">
+                                        {batchList.map((w, i) => (
+                                            <div key={i} onClick={() => { setSelectedWorker({...w}); setView('edit'); }} 
+                                                 className="bg-white p-4 rounded-xl shadow-sm cursor-pointer hover:border-blue-400 border border-transparent flex justify-between items-center">
+                                                <span className="font-bold text-sm uppercase">{w['Full Name']}</span>
+                                                <span className="text-blue-500 font-black text-[10px]">EDIT →</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                        ))}
-                    </div>
+                        );
+                    })}
                 </div>
             );
 
-            // --- 2. 編集画面 (ログインには戻りません！) ---
+            // --- 👤 編集画面 (シートの全情報を表示) ---
             if (view === 'edit') return (
-                <div className="max-w-xl mx-auto p-6">
-                    <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase">← Back to List</button>
+                <div className="max-w-xl mx-auto p-6 fade-in">
+                    <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 mb-6 uppercase">← Back to List</button>
                     
-                    <div className="card p-8 shadow-2xl">
-                        <h2 className="text-2xl font-black italic text-blue-400 uppercase leading-none mb-1">Edit Worker</h2>
-                        <p className="text-xs font-bold text-slate-500 mb-8 border-b border-slate-700 pb-4 tracking-tighter">Updating data for: {selectedWorker['Full Name']}</p>
-
-                        <div className="space-y-1">
+                    <div className="bg-white rounded-[2rem] shadow-2xl p-8 space-y-6">
+                        <h2 className="text-2xl font-black italic border-b pb-4 uppercase tracking-tighter text-blue-600">Edit Profile</h2>
+                        
+                        <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[60vh] pr-2">
                             {Object.keys(selectedWorker).map(key => {
-                                if (key.startsWith('_')) return null; // 内部用データは隠す
+                                if (key.startsWith('_')) return null; // 内部データは非表示
                                 return (
                                     <div key={key}>
                                         <label className="label-style">{key}</label>
@@ -107,11 +117,11 @@
                         </div>
 
                         <button 
-                            onClick={handleSave}
+                            onClick={handleUpdate}
                             disabled={isSaving}
-                            className="save-btn"
+                            className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-black transition-all"
                         >
-                            {isSaving ? 'Saving to Sheet...' : 'Save & Update SpreadSheet 💾'}
+                            {isSaving ? 'Updating Sheet...' : 'Save & Update SpreadSheet 💾'}
                         </button>
                     </div>
                 </div>
