@@ -7,342 +7,171 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; }
-        .form-input, .form-select, .form-textarea { 
-            border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; 
-            font-weight: 700; background: white; outline: none; transition: border-color 0.2s;
-        }
-        .form-input:focus { border-color: #3b82f6; }
         .label-cap { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
-        .section-header { font-size: 11px; font-weight: 900; color: #3b82f6; background: #eff6ff; padding: 8px 16px; border-radius: 8px; margin-top: 24px; margin-bottom: 12px; text-transform: uppercase; display: inline-block; }
-        .progress-bg { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 8px; }
-        .progress-fill { height: 100%; transition: width 0.3s ease; }
         .worker-card { border-width: 4px; border-color: transparent; transition: 0.3s; cursor: pointer; }
-        .is-couple { border-color: #fbcfe8 !important; background-color: #fff1f2 !important; }
         .is-reentry { border-color: #bbf7d0 !important; background-color: #f0fdf4 !important; }
-        .doc-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: 12px; border: 2px solid #f1f5f9; cursor: pointer; font-size: 11px; font-weight: 700;}
-        .doc-item.done { border-color: #10b981; background: #f0fdf4; color: #166534; }
-        .doc-item.pending { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
         .fade-in { animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect } = React;
-        const SUPABASE_URL = 'https://zgmqllufmqanixgwdjok.supabase.co';
-        const SUPABASE_ANON_KEY = 'sb_publishable_vOgl-K0RTxyK9i0WJp7UwA_PlwVgESz';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const DOC_LIST = [
-            "Identity card", "Census", "Certificate of address", "Mobile phone", 
-            "Land title", "Picture 3*4", "Picture 3,5*4,6", 
-            "Agriculture certificate", "Health certificate", "Dollar bank account book", "Penalty notice"
-        ];
+        // ★ Paste your New GAS Web App URL here
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyGd0rNepTG-7gD6eW_uHH_bwNf0jkhl_HoLe_PGAbwmCJKQsGIrSbJq9_TMoCZyWtMIw/exec'; 
 
         function App() {
-            const [user, setUser] = useState(null);
             const [view, setView] = useState('folders'); 
-            const [currentBatch, setCurrentBatch] = useState(null);
             const [workers, setWorkers] = useState([]);
-            const [form, setForm] = useState({});
+            const [loading, setLoading] = useState(true);
+            const [currentBatch, setCurrentBatch] = useState(null);
             const [globalSearch, setGlobalSearch] = useState('');
             const [quickListView, setQuickListView] = useState(null);
-            const [sortBy, setSortBy] = useState('newest'); // デフォルトは最新順
 
             useEffect(() => {
-                const savedUser = localStorage.getItem('hsdec_user');
-                if (!savedUser) window.location.href = 'index.html';
-                else { setUser(JSON.parse(savedUser)); fetchWorkers(); }
+                fetchData();
             }, []);
 
-            const fetchWorkers = async () => {
-                const { data } = await supabase.from('workers').select('*').order('created_at', { ascending: false });
-                if (data) setWorkers(data);
-            };
-
-            const calculateDocs = (w) => {
-                const count = DOC_LIST.filter(doc => w[doc] === true).length;
-                const percent = Math.round((count / DOC_LIST.length) * 100);
-                return { count, percent };
-            };
-
-            const handlePhotoUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const img = new Image();
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 300;
-                        let width = img.width, height = img.height;
-                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-                        canvas.width = width; canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        setForm({...form, photo_url: canvas.toDataURL('image/jpeg', 0.6)});
-                    };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
-            };
-
-            const handleSave = async (e) => {
-                e.preventDefault();
-                const { error } = await supabase.from('workers').upsert([form]);
-                if (!error) { setView('list'); setGlobalSearch(''); fetchWorkers(); }
-                else alert(error.message);
-            };
-
-            // 並び替えロジック
-            const getSortedWorkers = (list) => {
-                let sorted = [...list];
-                switch (sortBy) {
-                    case 'newest': sorted.sort((a, b) => b.id - a.id); break;
-                    case 'oldest': sorted.sort((a, b) => a.id - b.id); break;
-                    case 'city': sorted.sort((a, b) => (a.city || "").localeCompare(b.city || "")); break;
-                    case 'couple': sorted.sort((a, b) => (b.is_couple === a.is_couple) ? 0 : b.is_couple ? 1 : -1); break;
-                    case 'reentry': sorted.sort((a, b) => (b.is_reentry === a.is_reentry) ? 0 : b.is_reentry ? 1 : -1); break;
+            const fetchData = async () => {
+                setLoading(true);
+                try {
+                    const res = await fetch(GAS_URL);
+                    const data = await res.json();
+                    setWorkers(data);
+                } catch (e) {
+                    console.error("Fetch Error:", e);
                 }
-                return sorted;
+                setLoading(false);
             };
 
-            const searchedWorkers = getSortedWorkers(workers.filter(w => {
-                const searchStr = `${w.name} ${w.nickname} ${w.province} ${w.city} ${w.village} ${w.batch}期`.toLowerCase();
+            // Get unique batches from data
+            const batches = [...new Set(workers.map(w => w.batch))].sort((a, b) => a - b);
+
+            const filteredWorkers = workers.filter(w => {
+                const searchStr = `${w['Full Name']} ${w['Passport No.']} ${w['Province']} Batch ${w.batch}`.toLowerCase();
                 return searchStr.includes(globalSearch.toLowerCase());
-            }));
+            });
 
-            if (!user) return null;
+            if (loading) return (
+                <div className="flex h-screen flex-col items-center justify-center font-black animate-pulse text-slate-400">
+                    <div className="text-4xl italic mb-2 tracking-tighter">HSDEC</div>
+                    <div className="text-[10px] tracking-[0.3em]">CONNECTING TO DATABASE...</div>
+                </div>
+            );
 
-            // --- 📂 FOLDER & DASHBOARD VIEW ---
+            // --- 📂 FOLDER / DASHBOARD VIEW ---
             if (view === 'folders') return (
                 <div className="max-w-4xl mx-auto p-6">
-                    <h1 className="text-4xl font-black italic mb-8 tracking-tighter text-slate-800 uppercase text-center">HSDEC Master DB</h1>
+                    <h1 className="text-4xl font-black italic mb-8 tracking-tighter text-slate-800 uppercase text-center">Master Database</h1>
                     
-                    <div className="flex justify-center mb-10">
-                        <div className="bg-slate-900 text-white px-8 py-3 rounded-full flex items-center gap-4 shadow-2xl">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Registered</span>
-                            <span className="text-2xl font-black italic leading-none">{workers.length}</span>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-blue-400">Workers</span>
-                        </div>
-                    </div>
-
                     <div className="mb-10 relative">
-                        <label className="label-cap text-blue-500 mb-2">Global Search</label>
+                        <label className="label-cap text-blue-500 mb-2">Global Search (Name, Passport, Province...)</label>
                         <input 
                             type="text" 
-                            placeholder="Type name, nickname, province, city or village..." 
-                            className="form-input shadow-xl text-lg py-5 border-blue-100"
+                            placeholder="Type to search workers..." 
+                            className="w-full p-5 rounded-2xl border-2 border-blue-100 shadow-xl text-lg font-bold outline-none focus:border-blue-400 transition-all"
                             value={globalSearch}
                             onChange={(e) => setGlobalSearch(e.target.value)}
                         />
                     </div>
 
-                    {globalSearch ? (
-                        <div className="grid gap-4 fade-in">
-                            <h3 className="font-black text-xs text-slate-400 uppercase tracking-widest px-2">Results ({searchedWorkers.length})</h3>
-                            {searchedWorkers.map(w => {
-                                const { count, percent } = calculateDocs(w);
-                                return (
-                                    <div key={w.id} onClick={() => { setForm(w); setView('edit'); }} 
-                                         className={`worker-card bg-white p-4 rounded-[2rem] shadow-md flex items-center gap-4 ${w.is_couple ? 'is-couple' : ''} ${w.is_reentry ? 'is-reentry' : ''}`}>
-                                        <div className="w-14 h-14 bg-slate-200 rounded-2xl overflow-hidden flex-shrink-0">
-                                            {w.photo_url ? <img src={w.photo_url} className="w-full h-full object-cover" /> : <div className="text-[8px] flex items-center justify-center h-full text-slate-400">N/A</div>}
+                    <div className="grid grid-cols-1 gap-6">
+                        {batches.map(num => {
+                            const batchWorkers = workers.filter(w => w.batch == num);
+                            const isExpanded = quickListView === num;
+                            return (
+                                <div key={num} className="space-y-4">
+                                    <div className="bg-white p-8 rounded-[3rem] border-2 border-slate-100 shadow-xl flex justify-between items-center relative overflow-hidden transition-transform active:scale-[0.98]">
+                                        <div onClick={() => setQuickListView(isExpanded ? null : num)} className="flex-grow cursor-pointer z-10">
+                                            <span className="text-slate-400 font-black text-[10px] uppercase tracking-widest">Generation Group</span>
+                                            <h2 className="text-4xl font-black italic text-slate-800 uppercase">Batch {num}</h2>
+                                            <p className="text-[10px] font-bold text-blue-500 uppercase mt-1">{batchWorkers.length} Workers Registered</p>
                                         </div>
-                                        <div className="flex-grow">
-                                            <div className="flex justify-between items-center">
-                                                <h4 className="font-black text-lg uppercase">{w.name} <span className="text-[10px] text-blue-500 ml-1">B{w.batch}</span></h4>
-                                                <span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded">DOCS: {count}/11</span>
-                                            </div>
-                                            <div className="text-[9px] font-bold text-slate-500 uppercase flex gap-2">
-                                                <span>{w.province}</span> • <span>{w.city}</span> • <span>{w.village}</span>
-                                            </div>
-                                            <div className="progress-bg"><div className="progress-fill bg-blue-500" style={{width: `${percent}%`}}></div></div>
-                                        </div>
+                                        <button 
+                                            onClick={() => { setCurrentBatch(num); setView('list'); }}
+                                            className="z-20 bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-blue-700 transition-colors"
+                                        >View List</button>
+                                        <div className="absolute left-0 top-0 text-9xl opacity-[0.03] font-black italic -translate-x-6 -translate-y-6">{num}</div>
                                     </div>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 gap-6">
-                            {[1, 2, 3].map(num => {
-                                const batchWorkers = workers.filter(w => w.batch == num);
-                                const isExpanded = quickListView === num;
-                                return (
-                                    <div key={num} className="space-y-4">
-                                        <div className="bg-white p-8 rounded-[3rem] border-2 border-slate-100 shadow-xl flex justify-between items-center group relative overflow-hidden transition-all">
-                                            <div onClick={() => setQuickListView(isExpanded ? null : num)} className="flex-grow cursor-pointer z-10">
-                                                <span className="text-slate-400 font-black text-[10px] uppercase tracking-[0.2em]">Batch Group</span>
-                                                <h2 className="text-4xl font-black italic text-slate-800 uppercase flex items-center gap-3">
-                                                    Batch {num}
-                                                    <span className={`text-sm transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
-                                                </h2>
-                                                <p className="text-[10px] font-bold text-blue-500 uppercase mt-1">{batchWorkers.length} Persons registered</p>
-                                            </div>
-                                            <button 
-                                                onClick={(e) => { e.stopPropagation(); setCurrentBatch(num); setView('list'); }}
-                                                className="relative z-20 bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all hover:bg-blue-700"
-                                            >
-                                                View Photos
-                                            </button>
-                                            <div className="absolute left-0 top-0 text-9xl opacity-[0.03] font-black italic -translate-x-6 -translate-y-6">{num}</div>
+                                    {isExpanded && (
+                                        <div className="bg-white/50 rounded-[2rem] p-4 grid grid-cols-1 md:grid-cols-2 gap-2 border-2 border-dashed border-slate-200 fade-in">
+                                            {batchWorkers.map((w, i) => (
+                                                <div key={i} className="bg-white px-4 py-3 rounded-xl border border-slate-100 shadow-sm font-bold text-[11px] truncate uppercase flex justify-between">
+                                                    <span className="text-slate-700">{w['Full Name']}</span>
+                                                    <span className="text-slate-300 text-[9px]">{w['Sex']}</span>
+                                                </div>
+                                            ))}
                                         </div>
-                                        {isExpanded && (
-                                            <div className="bg-white/50 rounded-[2rem] p-4 grid grid-cols-2 md:grid-cols-3 gap-2 border-2 border-dashed border-slate-200 fade-in">
-                                                {batchWorkers.length > 0 ? batchWorkers.map(w => (
-                                                    <div 
-                                                        key={w.id} 
-                                                        onClick={() => { setForm(w); setView('edit'); }}
-                                                        className="bg-white px-4 py-3 rounded-xl border border-slate-100 shadow-sm hover:border-blue-300 hover:text-blue-600 cursor-pointer font-bold text-xs truncate uppercase transition-colors"
-                                                    >
-                                                        • {w.name}
-                                                    </div>
-                                                )) : <p className="text-[10px] font-bold text-slate-400 p-4 col-span-full text-center">No workers registered in this batch.</p>}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             );
 
-            // --- 📋 PHOTO LIST VIEW ---
+            // --- 📋 BATCH LIST VIEW ---
             if (view === 'list') {
-                const filteredAndSorted = getSortedWorkers(workers.filter(w => w.batch == currentBatch));
+                const listData = workers.filter(w => w.batch == currentBatch);
                 return (
-                    <div className="max-w-4xl mx-auto p-4 fade-in">
-                        <header className="py-8 px-2">
-                            <div className="flex justify-between items-end mb-6">
-                                <div>
-                                    <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 hover:text-blue-500 flex items-center gap-1">← DASHBOARD</button>
-                                    <h2 className="text-4xl font-black italic uppercase leading-none">Batch {currentBatch}</h2>
-                                </div>
-                                <button onClick={() => { setForm({batch: currentBatch, gender:'Male', diseases:'None', allergies:'None', tattoos:'None'}); setView('edit'); }} className="bg-black text-white px-8 py-4 rounded-2xl font-black text-xs shadow-lg">+ NEW WORKER</button>
+                    <div className="max-w-4xl mx-auto p-4 fade-in pb-20">
+                        <header className="py-8 px-2 flex justify-between items-end">
+                            <div>
+                                <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase mb-2 hover:text-blue-500 transition-colors">← Back to Dashboard</button>
+                                <h2 className="text-4xl font-black italic uppercase leading-none">Batch {currentBatch}</h2>
                             </div>
-                            
-                            {/* ソートボタン群 */}
-                            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                                {[
-                                    {id: 'newest', label: 'NEWEST'},
-                                    {id: 'oldest', label: 'OLDEST'},
-                                    {id: 'city', label: 'CITY'},
-                                    {id: 'couple', label: 'COUPLE'},
-                                    {id: 'reentry', label: 'RE-ENTRY'}
-                                ].map(btn => (
-                                    <button 
-                                        key={btn.id}
-                                        onClick={() => setSortBy(btn.id)}
-                                        className={`flex-shrink-0 px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-tighter transition-all ${sortBy === btn.id ? 'bg-blue-600 text-white' : 'bg-white text-slate-400 border border-slate-200'}`}
-                                    >
-                                        SORT: {btn.label}
-                                    </button>
-                                ))}
+                            <div className="text-right">
+                                <span className="text-[10px] font-black bg-slate-200 px-3 py-1 rounded-full">{listData.length} Workers</span>
                             </div>
                         </header>
 
                         <div className="grid gap-4">
-                            {filteredAndSorted.map(w => {
-                                const { count, percent } = calculateDocs(w);
-                                return (
-                                    <div key={w.id} onClick={() => { setForm(w); setView('edit'); }} 
-                                         className={`worker-card bg-white p-6 rounded-[2.5rem] shadow-sm flex items-center gap-6 ${w.is_couple ? 'is-couple' : ''} ${w.is_reentry ? 'is-reentry' : ''}`}>
-                                        <div className="w-20 h-20 bg-slate-200 rounded-[1.5rem] overflow-hidden flex-shrink-0 shadow-inner">
-                                            {w.photo_url ? <img src={w.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px] font-black text-slate-400 uppercase">Photo</div>}
+                            {listData.map((w, i) => (
+                                <div key={i} className={`worker-card bg-white p-6 rounded-[2.5rem] shadow-sm flex items-center gap-6 ${w['Re-entry'] ? 'is-reentry' : ''}`}>
+                                    <div className={`w-16 h-16 rounded-2xl flex-shrink-0 flex items-center justify-center font-black text-white text-xl ${w['Sex'] === 'Female' ? 'bg-pink-400' : 'bg-blue-400'}`}>
+                                        {w['Sex'] === 'Female' ? 'F' : 'M'}
+                                    </div>
+                                    <div className="flex-grow">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h3 className="font-black text-xl uppercase tracking-tight">{w['Full Name']}</h3>
+                                                <p className="text-[11px] font-bold text-slate-400">{w['ຊື່ ແລະ ນາມສະກຸນ']}</p>
+                                            </div>
+                                            {w['Re-entry'] && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-1 rounded uppercase shadow-sm">RE-ENTRY</span>}
                                         </div>
-                                        <div className="flex-grow">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h3 className="font-black text-2xl uppercase tracking-tight">{w.name}</h3>
-                                                    <div className="flex gap-2 items-center">
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">{w.nickname || 'No Nickname'}</span>
-                                                        <span className="text-[9px] bg-slate-800 text-white px-2 py-0.5 rounded italic font-black">{w.province || 'No State'}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right"><span className="text-[10px] font-black bg-slate-100 px-2 py-1 rounded">DOCS: {count}/11</span></div>
+                                        
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                                            <div>
+                                                <span className="label-cap !mb-0 text-slate-300">Passport</span>
+                                                <span className="text-[11px] font-bold">{w['Passport No.'] || 'N/A'}</span>
                                             </div>
-                                            
-                                            {/* 村・市・県の表示 */}
-                                            <div className="flex gap-1 mt-2 mb-1">
-                                                <span className="text-[8px] font-black border border-slate-200 px-2 py-0.5 rounded text-slate-500 uppercase">CITY: {w.city || '-'}</span>
-                                                <span className="text-[8px] font-black border border-slate-200 px-2 py-0.5 rounded text-slate-500 uppercase">VILLAGE: {w.village || '-'}</span>
+                                            <div>
+                                                <span className="label-cap !mb-0 text-slate-300">Age</span>
+                                                <span className="text-[11px] font-bold">{w['Age'] || '-'}</span>
                                             </div>
-
-                                            <div className="progress-bg"><div className={`progress-fill ${percent === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} style={{width: `${percent}%`}}></div></div>
-                                            <div className="flex gap-2 mt-3">
-                                                {w.is_reentry && <span className="bg-emerald-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase">Re-entry (B{w.prev_batch})</span>}
-                                                {w.is_couple && <span className="bg-pink-500 text-white text-[8px] font-black px-2 py-0.5 rounded uppercase">Couple</span>}
+                                            <div>
+                                                <span className="label-cap !mb-0 text-slate-300">Province</span>
+                                                <span className="text-[11px] font-bold">{w['Province'] || '-'}</span>
+                                            </div>
+                                            <div>
+                                                <span className="label-cap !mb-0 text-slate-300">Drive</span>
+                                                <a href={w['Google drive']} target="_blank" className="text-[10px] font-black text-blue-500 underline block">VIEW FILE ↗</a>
                                             </div>
                                         </div>
                                     </div>
-                                );
-                            })}
+                                </div>
+                            ))}
                         </div>
                     </div>
                 );
             }
-
-            // --- ✍️ EDIT VIEW ---
-            return (
-                <div className="max-w-4xl mx-auto p-4 pb-24 fade-in">
-                    <form onSubmit={handleSave} className="bg-white p-8 md:p-12 rounded-[3.5rem] shadow-2xl border relative">
-                        <button type="button" onClick={() => setView(currentBatch ? 'list' : 'folders')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8 hover:text-blue-500">← Cancel / Back</button>
-                        <div className="flex justify-between items-start mb-10">
-                            <h2 className="text-3xl font-black italic uppercase leading-none">{form.name || 'New Profile'}</h2>
-                            <div className="w-32 h-32 bg-slate-100 rounded-3xl border-4 border-white shadow-lg overflow-hidden flex-shrink-0 relative group">
-                                {form.photo_url ? <img src={form.photo_url} className="w-full h-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px] font-black text-slate-400 uppercase">Photo</div>}
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                                    <label htmlFor="photo-upload" className="text-white text-[10px] font-black uppercase cursor-pointer">Update</label>
-                                </div>
-                                <input type="file" id="photo-upload" className="hidden" accept="image/*" onChange={handlePhotoUpload} />
-                            </div>
-                        </div>
-
-                        <div className="section-header">1. Documents Status</div>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-6">
-                            {DOC_LIST.map(d => (
-                                <div key={d} onClick={() => setForm({...form, [d]: !form[d]})} className={`doc-item ${form[d] ? 'done' : 'pending'}`}>
-                                    <span>{d}</span><span>{form[d] ? '✓' : '○'}</span>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="section-header">2. Details & History</div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <div><label className="label-cap">Batch</label><select className="form-select border-blue-200" value={form.batch || 1} onChange={e => setForm({...form, batch: parseInt(e.target.value)})}><option value="1">Batch 1</option><option value="2">Batch 2</option><option value="3">Batch 3</option></select></div>
-                            <div><label className="label-cap">Gender</label><select className="form-select" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}><option value="Male">Male</option><option value="Female">Female</option></select></div>
-                            <div><label className="label-cap">Full Name</label><input className="form-input" value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} required /></div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div><label className="label-cap">Province (県)</label><input className="form-input" value={form.province || ''} onChange={e => setForm({...form, province: e.target.value})} placeholder="Vientiane" /></div>
-                            <div><label className="label-cap">City (市)</label><input className="form-input" value={form.city || ''} onChange={e => setForm({...form, city: e.target.value})} placeholder="Vang Vieng" /></div>
-                            <div><label className="label-cap">Village (村)</label><input className="form-input" value={form.village || ''} onChange={e => setForm({...form, village: e.target.value})} placeholder="Village Name" /></div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 mt-6">
-                            <div onClick={() => setForm({...form, is_reentry: !form.is_reentry})} className={`doc-item ${form.is_reentry ? 'done border-emerald-500' : 'pending'}`}>RE-ENTRY</div>
-                            <div onClick={() => setForm({...form, is_couple: !form.is_couple})} className={`doc-item ${form.is_couple ? 'bg-pink-500 text-white border-pink-500' : 'pending'}`}>COUPLE</div>
-                        </div>
-
-                        {form.is_reentry && (
-                            <div className="bg-emerald-50 p-6 rounded-[2rem] mt-4 border border-emerald-100">
-                                <label className="label-cap text-emerald-600">Prev Batch?</label>
-                                <select className="form-select" value={form.prev_batch || ''} onChange={e => setForm({...form, prev_batch: e.target.value})}><option value="">Select...</option><option value="1">Batch 1</option><option value="2">Batch 2</option></select>
-                            </div>
-                        )}
-
-                        <button type="submit" className="w-full bg-blue-600 text-white py-6 rounded-[2rem] font-black text-xl mt-10 shadow-2xl hover:bg-blue-700 uppercase italic">Save Master Record</button>
-                    </form>
-                </div>
-            );
         }
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
