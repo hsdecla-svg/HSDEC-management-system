@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Management System</title>
+    <title>HSDEC DATABASE EDITOR</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; }
-        .input-box { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; font-weight: 600; margin-top: 4px; }
-        .label-cap { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; }
-        .fade-in { animation: fadeIn 0.2s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #f8fafc; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 20px; }
+        .input-edit { background: #0f172a; border: 2px solid #334155; color: #fff; padding: 12px; border-radius: 12px; width: 100%; font-weight: 600; transition: 0.3s; }
+        .input-edit:focus { border-color: #3b82f6; background: #1e293b; outline: none; }
+        .label-style { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block; margin-top: 12px; }
+        .save-btn { background: #3b82f6; color: white; width: 100%; padding: 20px; border-radius: 15px; font-weight: 900; text-transform: uppercase; margin-top: 30px; box-shadow: 0 10px 20px -5px rgba(59, 130, 246, 0.5); }
+        .save-btn:active { transform: scale(0.98); }
     </style>
 </head>
 <body>
@@ -22,15 +24,15 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // ★あなたのGAS URL（新しくデプロイしたものに書き換えてください）
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyo7HL6BMEH1DapcAhrTRSgmraG9CvaXkgQhbMZ4uN6L5eUcMhiuCe9GqzTnO3_OJoHXg/exec'; 
+        // ★あなたの最新のGAS URL
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyo7HL6BMEH1DapcAhrTRSgmraG9CvaXkgQhbMZ4uN6L5eUcMhiuCe9GqzTnO3_OJoHXg/exec';
 
         function App() {
-            const [view, setView] = useState('folders'); 
+            const [view, setView] = useState('list');
             const [workers, setWorkers] = useState([]);
             const [loading, setLoading] = useState(true);
             const [selectedWorker, setSelectedWorker] = useState(null);
-            const [saving, setSaving] = useState(false);
+            const [isSaving, setIsSaving] = useState(false);
 
             useEffect(() => { fetchData(); }, []);
 
@@ -39,66 +41,63 @@
                 try {
                     const res = await fetch(GAS_URL);
                     const data = await res.json();
-                    setWorkers(data);
+                    setWorkers(data.filter(w => w['Full Name']));
                 } catch (e) { console.error(e); }
                 setLoading(false);
             };
 
             const handleSave = async () => {
-                setSaving(true);
+                setIsSaving(true);
                 try {
-                    await fetch(GAS_URL, {
+                    const response = await fetch(GAS_URL, {
                         method: 'POST',
                         body: JSON.stringify(selectedWorker)
                     });
-                    alert("シートを更新しました！");
+                    alert("Spreadsheet Updated Successfully! ✅");
                     fetchData();
-                    setView('folders');
-                } catch (e) { alert("更新に失敗しました"); }
-                setSaving(false);
+                    setView('list');
+                } catch (e) { alert("Error saving data ❌"); }
+                setIsSaving(false);
             };
 
-            const batches = [...new Set(workers.map(w => w._sheetName))].sort();
+            if (loading) return <div className="h-screen flex items-center justify-center font-black text-blue-500 animate-pulse uppercase tracking-widest">Loading Database...</div>;
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-black text-slate-400 animate-pulse">SYNCING...</div>;
-
-            if (view === 'folders') return (
-                <div className="max-w-2xl mx-auto p-6 fade-in">
-                    <h1 className="text-3xl font-black italic mb-8 text-center uppercase tracking-tighter text-slate-800">HSDEC Master</h1>
-                    <div className="space-y-4">
-                        {batches.map(bName => (
-                            <div key={bName} className="bg-white rounded-3xl shadow-sm border p-6">
-                                <h2 className="text-xl font-black italic border-b pb-2 mb-4 uppercase">{bName}</h2>
-                                <div className="grid gap-2">
-                                    {workers.filter(w => w._sheetName === bName).map((w, i) => (
-                                        <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} className="p-3 bg-slate-50 rounded-xl hover:bg-blue-50 cursor-pointer flex justify-between items-center transition-all">
-                                            <span className="font-bold text-sm uppercase">{w['Full Name']}</span>
-                                            <span className="text-[10px] font-black text-blue-500 uppercase">Edit Profile →</span>
-                                        </div>
-                                    ))}
+            // --- 1. リスト画面 ---
+            if (view === 'list') return (
+                <div className="max-w-xl mx-auto p-6">
+                    <h1 className="text-3xl font-black italic mb-8 text-center text-blue-400">HSDEC EDITOR</h1>
+                    <div className="space-y-3">
+                        {workers.map((w, i) => (
+                            <div key={i} onClick={() => { setSelectedWorker({...w}); setView('edit'); }} 
+                                 className="card p-5 flex justify-between items-center cursor-pointer hover:border-blue-500 transition-all">
+                                <div>
+                                    <div className="font-black uppercase text-sm">{w['Full Name']}</div>
+                                    <div className="text-[10px] text-slate-400 font-bold">BATCH {w.batch} • {w['Passport No.']}</div>
                                 </div>
+                                <div className="text-blue-500 font-black text-[11px]">EDIT →</div>
                             </div>
                         ))}
                     </div>
                 </div>
             );
 
-            if (view === 'detail') return (
-                <div className="max-w-2xl mx-auto p-6 fade-in">
-                    <div className="flex justify-between items-center mb-6">
-                        <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase">← Back</button>
-                        <h2 className="text-xl font-black uppercase italic">Worker Detail</h2>
-                    </div>
+            // --- 2. 編集画面 (ログインには戻りません！) ---
+            if (view === 'edit') return (
+                <div className="max-w-xl mx-auto p-6">
+                    <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase">← Back to List</button>
+                    
+                    <div className="card p-8 shadow-2xl">
+                        <h2 className="text-2xl font-black italic text-blue-400 uppercase leading-none mb-1">Edit Worker</h2>
+                        <p className="text-xs font-bold text-slate-500 mb-8 border-b border-slate-700 pb-4 tracking-tighter">Updating data for: {selectedWorker['Full Name']}</p>
 
-                    <div className="bg-white rounded-[2rem] shadow-2xl p-8 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1">
                             {Object.keys(selectedWorker).map(key => {
-                                if (key.startsWith('_')) return null; // システム用データは隠す
+                                if (key.startsWith('_')) return null; // 内部用データは隠す
                                 return (
                                     <div key={key}>
-                                        <label className="label-cap">{key}</label>
+                                        <label className="label-style">{key}</label>
                                         <input 
-                                            className="input-box"
+                                            className="input-edit"
                                             value={selectedWorker[key] || ''} 
                                             onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})}
                                         />
@@ -106,12 +105,13 @@
                                 );
                             })}
                         </div>
+
                         <button 
                             onClick={handleSave}
-                            disabled={saving}
-                            className={`w-full py-5 rounded-2xl text-white font-black text-xs uppercase shadow-xl transition-all ${saving ? 'bg-slate-400' : 'bg-blue-600 hover:bg-black'}`}
+                            disabled={isSaving}
+                            className="save-btn"
                         >
-                            {saving ? 'Updating Sheet...' : 'Save & Update SpreadSheet 💾'}
+                            {isSaving ? 'Saving to Sheet...' : 'Save & Update SpreadSheet 💾'}
                         </button>
                     </div>
                 </div>
