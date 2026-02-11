@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Worker Master Database</title>
+    <title>HSDEC Management System</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -11,9 +11,8 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; }
-        .label-cap { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
-        .worker-card { border-width: 4px; border-color: transparent; transition: 0.3s; }
-        .is-reentry { border-color: #10b981 !important; background-color: #f0fdf4 !important; }
+        .input-box { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; font-weight: 600; margin-top: 4px; }
+        .label-cap { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; }
         .fade-in { animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -23,146 +22,100 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwGBZSvNPrPjj1JvMmF9-3CMW7qf5wsE6VA2HLs5Vc8H623Wk5zG7otyHFCALaZsXWF/exec'; 
-        // 修正ボタン用のスプレッドシートURL
-        const SS_URL = 'https://hsdecla-svg.github.io/HSDEC-management-system/index.html';
+        // ★あなたのGAS URL（新しくデプロイしたものに書き換えてください）
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyo7HL6BMEH1DapcAhrTRSgmraG9CvaXkgQhbMZ4uN6L5eUcMhiuCe9GqzTnO3_OJoHXg/exec'; 
 
         function App() {
             const [view, setView] = useState('folders'); 
             const [workers, setWorkers] = useState([]);
             const [loading, setLoading] = useState(true);
             const [selectedWorker, setSelectedWorker] = useState(null);
-            const [globalSearch, setGlobalSearch] = useState('');
-            const [expandedBatch, setExpandedBatch] = useState(null);
+            const [saving, setSaving] = useState(false);
 
             useEffect(() => { fetchData(); }, []);
 
             const fetchData = async () => {
                 setLoading(true);
                 try {
-                    const res = await fetch(GAS_URL, { method: 'GET', redirect: 'follow' });
+                    const res = await fetch(GAS_URL);
                     const data = await res.json();
                     setWorkers(data);
-                } catch (e) { console.error("Fetch Error:", e); }
+                } catch (e) { console.error(e); }
                 setLoading(false);
             };
 
-            const batches = [...new Set(workers.map(w => w.batch))].sort((a, b) => a - b);
+            const handleSave = async () => {
+                setSaving(true);
+                try {
+                    await fetch(GAS_URL, {
+                        method: 'POST',
+                        body: JSON.stringify(selectedWorker)
+                    });
+                    alert("シートを更新しました！");
+                    fetchData();
+                    setView('folders');
+                } catch (e) { alert("更新に失敗しました"); }
+                setSaving(false);
+            };
 
-            const searchResults = workers.filter(w => {
-                const searchStr = `${w['Full Name']} ${w['Passport No.']} ${w['Province']}`.toLowerCase();
-                return globalSearch && searchStr.includes(globalSearch.toLowerCase());
-            });
+            const batches = [...new Set(workers.map(w => w._sheetName))].sort();
 
-            if (loading) return (
-                <div className="flex h-screen flex-col items-center justify-center font-black animate-pulse text-slate-400 uppercase tracking-widest">
-                    <div className="text-4xl italic mb-2 tracking-tighter text-slate-800">HSDEC</div>
-                    <div>Connecting...</div>
-                </div>
-            );
+            if (loading) return <div className="h-screen flex items-center justify-center font-black text-slate-400 animate-pulse">SYNCING...</div>;
 
-            // --- 📂 フォルダ表示（ダッシュボード） ---
             if (view === 'folders') return (
                 <div className="max-w-2xl mx-auto p-6 fade-in">
-                    <h1 className="text-4xl font-black italic mb-8 tracking-tighter text-slate-800 uppercase text-center">Master Database</h1>
-                    
-                    <div className="mb-10">
-                        <input 
-                            type="text" placeholder="Search Workers..." 
-                            className="w-full p-5 rounded-2xl border-2 border-white shadow-xl text-lg font-bold outline-none focus:border-blue-400 transition-all"
-                            value={globalSearch}
-                            onChange={(e) => setGlobalSearch(e.target.value)}
-                        />
-                    </div>
-
-                    {/* 検索結果 */}
-                    {globalSearch && (
-                        <div className="mb-10 space-y-2">
-                            <p className="label-cap px-2">Results ({searchResults.length})</p>
-                            {searchResults.map((w, i) => (
-                                <div key={i} onClick={() => { setSelectedWorker(w); setView('detail'); }} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center cursor-pointer hover:border-blue-400 border-2 border-transparent">
-                                    <span className="font-black text-sm uppercase">{w['Full Name']}</span>
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Batch {w.batch}</span>
+                    <h1 className="text-3xl font-black italic mb-8 text-center uppercase tracking-tighter text-slate-800">HSDEC Master</h1>
+                    <div className="space-y-4">
+                        {batches.map(bName => (
+                            <div key={bName} className="bg-white rounded-3xl shadow-sm border p-6">
+                                <h2 className="text-xl font-black italic border-b pb-2 mb-4 uppercase">{bName}</h2>
+                                <div className="grid gap-2">
+                                    {workers.filter(w => w._sheetName === bName).map((w, i) => (
+                                        <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} className="p-3 bg-slate-50 rounded-xl hover:bg-blue-50 cursor-pointer flex justify-between items-center transition-all">
+                                            <span className="font-bold text-sm uppercase">{w['Full Name']}</span>
+                                            <span className="text-[10px] font-black text-blue-500 uppercase">Edit Profile →</span>
+                                        </div>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* バッチリスト */}
-                    <div className="space-y-6">
-                        {batches.map(num => (
-                            <div key={num} className="bg-white rounded-[2.5rem] shadow-lg overflow-hidden">
-                                <div 
-                                    onClick={() => setExpandedBatch(expandedBatch === num ? null : num)}
-                                    className="p-8 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-all"
-                                >
-                                    <div>
-                                        <h2 className="text-3xl font-black italic text-slate-800 uppercase tracking-tighter">Batch {num}</h2>
-                                        <p className="text-[10px] font-bold text-blue-500 uppercase">{workers.filter(w => w.batch == num).length} Workers</p>
-                                    </div>
-                                    <span className={`text-xl transition-transform ${expandedBatch === num ? 'rotate-180' : ''}`}>▼</span>
-                                </div>
-                                
-                                {expandedBatch === num && (
-                                    <div className="p-4 bg-slate-50 border-t grid gap-2 fade-in">
-                                        {workers.filter(w => w.batch == num).map((w, i) => (
-                                            <div key={i} 
-                                                 onClick={() => { setSelectedWorker(w); setView('detail'); }}
-                                                 className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center cursor-pointer hover:scale-[1.01] transition-transform">
-                                                <span className="font-bold text-xs text-slate-700 uppercase">{w['Full Name']}</span>
-                                                <span className="text-blue-500 font-black text-[10px]">VIEW PROFILE →</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
                             </div>
                         ))}
                     </div>
                 </div>
             );
 
-            // --- 👤 個人詳細表示 ---
-            if (view === 'detail' && selectedWorker) {
-                const w = selectedWorker;
-                return (
-                    <div className="max-w-2xl mx-auto p-6 fade-in">
-                        <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase mb-6 hover:text-blue-500 flex items-center gap-1">← Dashboard</button>
-                        
-                        <div className={`bg-white rounded-[3rem] shadow-2xl overflow-hidden border-4 ${w['Re-entry'] ? 'border-emerald-400' : 'border-white'}`}>
-                            <div className={`p-10 ${w['Sex'] === 'Female' ? 'bg-pink-500' : 'bg-blue-600'} text-white`}>
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <span className="text-[10px] font-black opacity-70 uppercase tracking-widest">Batch {w.batch}</span>
-                                        <h2 className="text-4xl font-black uppercase tracking-tighter leading-none mt-1">{w['Full Name']}</h2>
-                                        <p className="text-sm font-bold opacity-80 mt-2">{w['ຊື່ ແລະ ນາມສະກຸນ']}</p>
-                                    </div>
-                                    {w['Re-entry'] && <span className="bg-white text-emerald-600 text-[10px] font-black px-4 py-2 rounded-full shadow-lg">RE-ENTRY</span>}
-                                </div>
-                            </div>
-
-                            <div className="p-10 space-y-8">
-                                <div className="grid grid-cols-2 gap-8">
-                                    <div><p className="label-cap">Passport</p><p className="font-black text-lg">{w['Passport No.'] || '---'}</p></div>
-                                    <div><p className="label-cap">Sex / Age</p><p className="font-black text-lg">{w['Sex']} / {w['Age'] || '-'}</p></div>
-                                    <div><p className="label-cap">Province</p><p className="font-black text-lg">{w['Province'] || '-'}</p></div>
-                                    <div><p className="label-cap">Birth Date</p><p className="font-black text-lg">{w['Date of birth'] ? new Date(w['Date of birth']).toLocaleDateString() : '-'}</p></div>
-                                </div>
-
-                                <div className="pt-8 border-t space-y-4">
-                                    <a href={w['Google drive']} target="_blank" className="block w-full bg-blue-50 text-blue-600 py-5 rounded-2xl text-center font-black text-xs uppercase hover:bg-blue-600 hover:text-white transition-all border border-blue-100 shadow-sm">
-                                        View Documents (Drive) ↗
-                                    </a>
-                                    
-                                    {/* 修正ボタン */}
-                                    <a href={SS_URL} target="_blank" className="block w-full bg-slate-900 text-white py-5 rounded-2xl text-center font-black text-xs uppercase hover:bg-black transition-all shadow-xl">
-                                        Edit Worker Info ✎
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
+            if (view === 'detail') return (
+                <div className="max-w-2xl mx-auto p-6 fade-in">
+                    <div className="flex justify-between items-center mb-6">
+                        <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase">← Back</button>
+                        <h2 className="text-xl font-black uppercase italic">Worker Detail</h2>
                     </div>
-                );
-            }
+
+                    <div className="bg-white rounded-[2rem] shadow-2xl p-8 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {Object.keys(selectedWorker).map(key => {
+                                if (key.startsWith('_')) return null; // システム用データは隠す
+                                return (
+                                    <div key={key}>
+                                        <label className="label-cap">{key}</label>
+                                        <input 
+                                            className="input-box"
+                                            value={selectedWorker[key] || ''} 
+                                            onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <button 
+                            onClick={handleSave}
+                            disabled={saving}
+                            className={`w-full py-5 rounded-2xl text-white font-black text-xs uppercase shadow-xl transition-all ${saving ? 'bg-slate-400' : 'bg-blue-600 hover:bg-black'}`}
+                        >
+                            {saving ? 'Updating Sheet...' : 'Save & Update SpreadSheet 💾'}
+                        </button>
+                    </div>
+                </div>
+            );
         }
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
