@@ -16,7 +16,6 @@
         .is-reentry { border-color: #10b981 !important; background-color: #f0fdf4 !important; }
         .fade-in { animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
@@ -24,174 +23,142 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // ★ PASTE YOUR NEW GAS URL HERE
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbwbw3ZnqpsI09pKT5x-D9XURXgphCTolS3QpFPU8c9z0WpF5XgV_77ea3f2ert4VMWG/exec'; 
+        // 修正ボタン用のスプレッドシートURL
+        const SS_URL = 'https://hsdecla-svg.github.io/HSDEC-management-system/index.html';
 
         function App() {
             const [view, setView] = useState('folders'); 
             const [workers, setWorkers] = useState([]);
             const [loading, setLoading] = useState(true);
-            const [currentBatch, setCurrentBatch] = useState(null);
+            const [selectedWorker, setSelectedWorker] = useState(null);
             const [globalSearch, setGlobalSearch] = useState('');
-            const [quickListView, setQuickListView] = useState(null); // Clicked Batch ID
+            const [expandedBatch, setExpandedBatch] = useState(null);
 
-            useEffect(() => {
-                fetchData();
-            }, []);
+            useEffect(() => { fetchData(); }, []);
 
             const fetchData = async () => {
-    setLoading(true);
-    try {
-        // redirect: 'follow' を追加することで、Googleの転送処理を正しく扱えるようになります
-        const res = await fetch(GAS_URL, {
-            method: 'GET',
-            redirect: 'follow',
-        });
-        const data = await res.json();
-        setWorkers(data);
-    } catch (e) {
-        console.error("Fetch Error:", e);
-    }
-    setLoading(false);
-};
+                setLoading(true);
+                try {
+                    const res = await fetch(GAS_URL, { method: 'GET', redirect: 'follow' });
+                    const data = await res.json();
+                    setWorkers(data);
+                } catch (e) { console.error("Fetch Error:", e); }
+                setLoading(false);
+            };
 
             const batches = [...new Set(workers.map(w => w.batch))].sort((a, b) => a - b);
 
             const searchResults = workers.filter(w => {
-                const searchStr = `${w['Full Name']} ${w['Passport No.']} ${w['Province']} Batch ${w.batch}`.toLowerCase();
+                const searchStr = `${w['Full Name']} ${w['Passport No.']} ${w['Province']}`.toLowerCase();
                 return globalSearch && searchStr.includes(globalSearch.toLowerCase());
             });
 
             if (loading) return (
-                <div className="flex h-screen flex-col items-center justify-center font-black animate-pulse text-slate-400">
-                    <div className="text-4xl italic mb-2 tracking-tighter">HSDEC</div>
-                    <div className="text-[10px] tracking-[0.3em]">CONNECTING TO DATABASE...</div>
+                <div className="flex h-screen flex-col items-center justify-center font-black animate-pulse text-slate-400 uppercase tracking-widest">
+                    <div className="text-4xl italic mb-2 tracking-tighter text-slate-800">HSDEC</div>
+                    <div>Connecting...</div>
                 </div>
             );
 
-            // --- 📂 DASHBOARD / FOLDER VIEW ---
+            // --- 📂 フォルダ表示（ダッシュボード） ---
             if (view === 'folders') return (
-                <div className="max-w-4xl mx-auto p-6">
+                <div className="max-w-2xl mx-auto p-6 fade-in">
                     <h1 className="text-4xl font-black italic mb-8 tracking-tighter text-slate-800 uppercase text-center">Master Database</h1>
                     
-                    <div className="mb-10 relative">
-                        <label className="label-cap text-blue-500 mb-2">Global Search</label>
+                    <div className="mb-10">
                         <input 
-                            type="text" 
-                            placeholder="Type Name, Passport or Province..." 
-                            className="w-full p-5 rounded-2xl border-2 border-blue-100 shadow-xl text-lg font-bold outline-none focus:border-blue-400 transition-all bg-white"
+                            type="text" placeholder="Search Workers..." 
+                            className="w-full p-5 rounded-2xl border-2 border-white shadow-xl text-lg font-bold outline-none focus:border-blue-400 transition-all"
                             value={globalSearch}
                             onChange={(e) => setGlobalSearch(e.target.value)}
                         />
                     </div>
 
-                    {/* Search Results Display */}
+                    {/* 検索結果 */}
                     {globalSearch && (
-                        <div className="mb-10 grid gap-2 fade-in">
-                            <p className="label-cap italic px-2">Search Results ({searchResults.length})</p>
+                        <div className="mb-10 space-y-2">
+                            <p className="label-cap px-2">Results ({searchResults.length})</p>
                             {searchResults.map((w, i) => (
-                                <div key={i} onClick={() => { setCurrentBatch(w.batch); setView('list'); }} className="bg-white p-4 rounded-2xl shadow-sm flex justify-between items-center cursor-pointer border-2 border-transparent hover:border-blue-400">
-                                    <div>
-                                        <div className="font-black text-sm uppercase">{w['Full Name']}</div>
-                                        <div className="text-[9px] font-bold text-slate-400 uppercase">Batch {w.batch} • {w['Province']}</div>
-                                    </div>
-                                    <div className="text-blue-500 font-black text-[10px]">DETAILS →</div>
+                                <div key={i} onClick={() => { setSelectedWorker(w); setView('detail'); }} className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center cursor-pointer hover:border-blue-400 border-2 border-transparent">
+                                    <span className="font-black text-sm uppercase">{w['Full Name']}</span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Batch {w.batch}</span>
                                 </div>
                             ))}
                         </div>
                     )}
 
-                    {/* Batch Folders */}
-                    <div className="grid grid-cols-1 gap-6">
-                        {batches.map(num => {
-                            const batchWorkers = workers.filter(w => w.batch == num);
-                            const isExpanded = quickListView === num;
-                            return (
-                                <div key={num} className="space-y-4">
-                                    <div className="bg-white p-8 rounded-[3rem] border-2 border-slate-100 shadow-xl flex justify-between items-center relative overflow-hidden transition-all active:scale-95">
-                                        <div onClick={() => setQuickListView(isExpanded ? null : num)} className="flex-grow cursor-pointer z-10">
-                                            <span className="text-slate-400 font-black text-[10px] uppercase tracking-widest">Generation Group</span>
-                                            <h2 className="text-4xl font-black italic text-slate-800 uppercase flex items-center gap-3">
-                                                Batch {num}
-                                                <span className={`text-sm transition-transform ${isExpanded ? 'rotate-180' : ''}`}>▼</span>
-                                            </h2>
-                                            <p className="text-[10px] font-bold text-blue-500 uppercase mt-1">{batchWorkers.length} Workers</p>
-                                        </div>
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); setCurrentBatch(num); setView('list'); }}
-                                            className="relative z-20 bg-blue-600 text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase shadow-lg hover:bg-blue-700"
-                                        >
-                                            View Details
-                                        </button>
-                                        <div className="absolute left-0 top-0 text-9xl opacity-[0.03] font-black italic -translate-x-6 -translate-y-6">{num}</div>
+                    {/* バッチリスト */}
+                    <div className="space-y-6">
+                        {batches.map(num => (
+                            <div key={num} className="bg-white rounded-[2.5rem] shadow-lg overflow-hidden">
+                                <div 
+                                    onClick={() => setExpandedBatch(expandedBatch === num ? null : num)}
+                                    className="p-8 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-all"
+                                >
+                                    <div>
+                                        <h2 className="text-3xl font-black italic text-slate-800 uppercase tracking-tighter">Batch {num}</h2>
+                                        <p className="text-[10px] font-bold text-blue-500 uppercase">{workers.filter(w => w.batch == num).length} Workers</p>
                                     </div>
-
-                                    {/* Name List (Revealed when clicked) */}
-                                    {isExpanded && (
-                                        <div className="bg-white/50 rounded-[2.5rem] p-4 grid grid-cols-1 md:grid-cols-2 gap-2 border-2 border-dashed border-slate-200 fade-in">
-                                            {batchWorkers.map((w, i) => (
-                                                <div key={i} className="bg-white px-5 py-3 rounded-xl border border-slate-100 shadow-sm font-bold text-xs truncate uppercase flex justify-between items-center">
-                                                    <span className="text-slate-700 font-black tracking-tight">{w['Full Name']}</span>
-                                                    <span className={`text-[8px] px-2 py-0.5 rounded font-black ${w['Sex'] === 'Female' ? 'bg-pink-100 text-pink-500' : 'bg-blue-100 text-blue-500'}`}>
-                                                        {w['Sex'] === 'Female' ? 'FEMALE' : 'MALE'}
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <span className={`text-xl transition-transform ${expandedBatch === num ? 'rotate-180' : ''}`}>▼</span>
                                 </div>
-                            );
-                        })}
+                                
+                                {expandedBatch === num && (
+                                    <div className="p-4 bg-slate-50 border-t grid gap-2 fade-in">
+                                        {workers.filter(w => w.batch == num).map((w, i) => (
+                                            <div key={i} 
+                                                 onClick={() => { setSelectedWorker(w); setView('detail'); }}
+                                                 className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center cursor-pointer hover:scale-[1.01] transition-transform">
+                                                <span className="font-bold text-xs text-slate-700 uppercase">{w['Full Name']}</span>
+                                                <span className="text-blue-500 font-black text-[10px]">VIEW PROFILE →</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 </div>
             );
 
-            // --- 📋 DETAILED LIST VIEW ---
-            if (view === 'list') {
-                const listData = workers.filter(w => w.batch == currentBatch);
+            // --- 👤 個人詳細表示 ---
+            if (view === 'detail' && selectedWorker) {
+                const w = selectedWorker;
                 return (
-                    <div className="max-w-4xl mx-auto p-4 fade-in pb-20">
-                        <header className="py-8 px-2 flex justify-between items-end">
-                            <div>
-                                <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase mb-2 hover:text-blue-500 flex items-center gap-1">← Back to Dashboard</button>
-                                <h2 className="text-4xl font-black italic uppercase leading-none tracking-tighter">Batch {currentBatch} Profile</h2>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-xs font-black bg-slate-900 text-white px-4 py-2 rounded-full uppercase tracking-widest">{listData.length} TOTAL</span>
-                            </div>
-                        </header>
-
-                        <div className="grid gap-4">
-                            {listData.map((w, i) => (
-                                <div key={i} className={`worker-card bg-white p-6 rounded-[2.5rem] shadow-sm flex items-center gap-6 ${w['Re-entry'] ? 'is-reentry' : ''}`}>
-                                    <div className={`w-16 h-16 rounded-2xl flex-shrink-0 flex items-center justify-center font-black text-white text-xl shadow-inner ${w['Sex'] === 'Female' ? 'bg-pink-400' : 'bg-blue-500'}`}>
-                                        {w['Sex'] === 'Female' ? 'F' : 'M'}
+                    <div className="max-w-2xl mx-auto p-6 fade-in">
+                        <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 uppercase mb-6 hover:text-blue-500 flex items-center gap-1">← Dashboard</button>
+                        
+                        <div className={`bg-white rounded-[3rem] shadow-2xl overflow-hidden border-4 ${w['Re-entry'] ? 'border-emerald-400' : 'border-white'}`}>
+                            <div className={`p-10 ${w['Sex'] === 'Female' ? 'bg-pink-500' : 'bg-blue-600'} text-white`}>
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <span className="text-[10px] font-black opacity-70 uppercase tracking-widest">Batch {w.batch}</span>
+                                        <h2 className="text-4xl font-black uppercase tracking-tighter leading-none mt-1">{w['Full Name']}</h2>
+                                        <p className="text-sm font-bold opacity-80 mt-2">{w['ຊື່ ແລະ ນາມສະກຸນ']}</p>
                                     </div>
-                                    <div className="flex-grow">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="font-black text-xl uppercase tracking-tight">{w['Full Name']}</h3>
-                                                <p className="text-[11px] font-bold text-slate-400 uppercase italic">{w['ຊື່ ແລະ ນາມສະກຸນ']}</p>
-                                            </div>
-                                            {w['Re-entry'] && <span className="bg-emerald-500 text-white text-[8px] font-black px-3 py-1 rounded-full uppercase shadow-sm">RE-ENTRY</span>}
-                                        </div>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 border-t pt-4">
-                                            <div>
-                                                <span className="label-cap !mb-0 text-slate-300">Passport</span>
-                                                <span className="text-[11px] font-black">{w['Passport No.'] || '---'}</span>
-                                            </div>
-                                            <div>
-                                                <span className="label-cap !mb-0 text-slate-300">Province</span>
-                                                <span className="text-[11px] font-black">{w['Province'] || '-'}</span>
-                                            </div>
-                                            <div className="col-span-1">
-                                                <span className="label-cap !mb-0 text-slate-300">Files</span>
-                                                <a href={w['Google drive']} target="_blank" className="text-[10px] font-black text-blue-500 underline uppercase block">Open Drive ↗</a>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    {w['Re-entry'] && <span className="bg-white text-emerald-600 text-[10px] font-black px-4 py-2 rounded-full shadow-lg">RE-ENTRY</span>}
                                 </div>
-                            ))}
+                            </div>
+
+                            <div className="p-10 space-y-8">
+                                <div className="grid grid-cols-2 gap-8">
+                                    <div><p className="label-cap">Passport</p><p className="font-black text-lg">{w['Passport No.'] || '---'}</p></div>
+                                    <div><p className="label-cap">Sex / Age</p><p className="font-black text-lg">{w['Sex']} / {w['Age'] || '-'}</p></div>
+                                    <div><p className="label-cap">Province</p><p className="font-black text-lg">{w['Province'] || '-'}</p></div>
+                                    <div><p className="label-cap">Birth Date</p><p className="font-black text-lg">{w['Date of birth'] ? new Date(w['Date of birth']).toLocaleDateString() : '-'}</p></div>
+                                </div>
+
+                                <div className="pt-8 border-t space-y-4">
+                                    <a href={w['Google drive']} target="_blank" className="block w-full bg-blue-50 text-blue-600 py-5 rounded-2xl text-center font-black text-xs uppercase hover:bg-blue-600 hover:text-white transition-all border border-blue-100 shadow-sm">
+                                        View Documents (Drive) ↗
+                                    </a>
+                                    
+                                    {/* 修正ボタン */}
+                                    <a href={SS_URL} target="_blank" className="block w-full bg-slate-900 text-white py-5 rounded-2xl text-center font-black text-xs uppercase hover:bg-black transition-all shadow-xl">
+                                        Edit Worker Info ✎
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 );
