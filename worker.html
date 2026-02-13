@@ -12,10 +12,11 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; }
         .batch-card { background: white; border-radius: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); overflow: hidden; margin-bottom: 16px; }
-        .input-edit { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e2e8f0; font-weight: 600; font-size: 14px; margin-top: 4px; transition: 0.2s; }
-        .input-edit:focus { border-color: #3b82f6; outline: none; background: #f8fafc; }
-        .label-style { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-left: 4px; }
-        .fade-in { animation: fadeIn 0.2s ease-out; }
+        .input-edit { width: 100%; padding: 10px; border-radius: 10px; border: 2px solid #e2e8f0; font-weight: 600; font-size: 14px; margin-top: 4px; }
+        .input-edit:focus { border-color: #3b82f6; outline: none; background: #fff; }
+        .label-style { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; }
+        .section-title { font-size: 12px; font-weight: 900; color: #3b82f6; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 12px; margin-top: 24px; }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
@@ -24,11 +25,10 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // ★あなたのGAS URLをここに
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdAZAcryW4C9u3VE-DoBWBpBeB-lUIlxHPU3qBgq3oS2DKOr-fWuN239iNyhGTq7o0Nw/exec';
 
         function App() {
-            const [view, setView] = useState('folders'); 
+            const [view, setView] = useState('folders'); // folders, detail, edit
             const [workers, setWorkers] = useState([]);
             const [loading, setLoading] = useState(true);
             const [selectedWorker, setSelectedWorker] = useState(null);
@@ -51,10 +51,10 @@
                 setIsSaving(true);
                 try {
                     await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(selectedWorker) });
-                    alert("シートを更新しました！ ✅");
-                    fetchData();
+                    alert("Updated Successfully! ✅");
+                    await fetchData();
                     setView('folders');
-                } catch (e) { alert("エラーが発生しました ❌"); }
+                } catch (e) { alert("Error! ❌"); }
                 setIsSaving(false);
             };
 
@@ -62,7 +62,7 @@
 
             if (loading) return <div className="h-screen flex items-center justify-center font-black text-slate-400 animate-pulse uppercase tracking-widest">Loading Master...</div>;
 
-            // --- 📂 フォルダ表示 (第〇期生) ---
+            // --- 📂 フォルダ表示 (Dashboard) ---
             if (view === 'folders') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
                     <h1 className="text-3xl font-black italic mb-8 text-center uppercase tracking-tighter">Master Database</h1>
@@ -71,17 +71,16 @@
                         return (
                             <div key={num} className="batch-card">
                                 <div onClick={() => setExpandedBatch(expandedBatch === num ? null : num)} 
-                                     className="p-6 flex justify-between items-center cursor-pointer hover:bg-slate-50">
+                                     className="p-6 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-all">
                                     <h2 className="text-2xl font-black italic uppercase">Batch {num}</h2>
-                                    <span className="text-blue-500 font-bold text-xs">{batchList.length} Workers</span>
+                                    <span className="text-blue-500 font-black text-xs bg-blue-50 px-3 py-1 rounded-full">{batchList.length} Workers</span>
                                 </div>
                                 {expandedBatch === num && (
-                                    <div className="p-4 bg-slate-50 border-t grid gap-2">
+                                    <div className="p-4 bg-slate-50 border-t grid grid-cols-2 gap-3 fade-in">
                                         {batchList.map((w, i) => (
-                                            <div key={i} onClick={() => { setSelectedWorker({...w}); setView('edit'); }} 
-                                                 className="bg-white p-4 rounded-xl shadow-sm cursor-pointer hover:border-blue-400 border border-transparent flex justify-between items-center">
-                                                <span className="font-bold text-sm uppercase">{w['Full Name']}</span>
-                                                <span className="text-blue-500 font-black text-[10px]">EDIT →</span>
+                                            <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
+                                                 className="bg-white p-3 rounded-xl shadow-sm cursor-pointer hover:border-blue-400 border border-transparent text-center transition-all active:scale-95">
+                                                <span className="font-bold text-[11px] uppercase block truncate">{w['Full Name']}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -92,17 +91,57 @@
                 </div>
             );
 
-            // --- 👤 編集画面 (シートの全情報を表示) ---
+            // --- 👤 詳細閲覧表示 (View Profile) ---
+            if (view === 'detail') return (
+                <div className="max-w-xl mx-auto p-6 fade-in">
+                    <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 mb-6 uppercase flex items-center gap-1">← Back to Dashboard</button>
+                    
+                    <div className="bg-white rounded-[2.5rem] shadow-2xl p-8">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h2 className="text-3xl font-black italic uppercase text-slate-800 leading-none">{selectedWorker['Full Name']}</h2>
+                                <p className="text-sm font-bold text-slate-400 mt-2 tracking-widest uppercase">Batch {selectedWorker.batch}</p>
+                            </div>
+                            <button onClick={() => setView('edit')} className="bg-slate-100 text-slate-600 px-4 py-2 rounded-full font-black text-[10px] uppercase hover:bg-blue-600 hover:text-white transition-all">Edit Info ✎</button>
+                        </div>
+
+                        <div className="section-title">Personal Information</div>
+                        <div className="grid grid-cols-2 gap-y-4">
+                            <div><label className="label-style">Gender</label><p className="font-bold">{selectedWorker['Sex'] || '-'}</p></div>
+                            <div><label className="label-style">Age</label><p className="font-bold">{selectedWorker['Age'] || '-'}</p></div>
+                            <div className="col-span-2"><label className="label-style">Date of Birth</label><p className="font-bold">{selectedWorker['Date of birth'] ? new Date(selectedWorker['Date of birth']).toLocaleDateString() : '-'}</p></div>
+                        </div>
+
+                        <div className="section-title">Address</div>
+                        <div className="grid grid-cols-1 gap-y-4">
+                            <div><label className="label-style">Village</label><p className="font-bold">{selectedWorker['Village'] || '-'}</p></div>
+                            <div><label className="label-style">District</label><p className="font-bold">{selectedWorker['District'] || '-'}</p></div>
+                            <div><label className="label-style">Province</label><p className="font-bold">{selectedWorker['Province'] || '-'}</p></div>
+                        </div>
+
+                        <div className="section-title">Other Details</div>
+                        <div className="grid grid-cols-1 gap-y-4">
+                            <div><label className="label-style">Passport No.</label><p className="font-bold">{selectedWorker['Passport No.'] || '-'}</p></div>
+                            <div>
+                                <label className="label-style">Google Drive</label>
+                                <a href={selectedWorker['Google drive']} target="_blank" className="block text-blue-600 font-bold underline truncate text-sm">Open Link ↗</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // --- ✏️ 編集入力画面 (Edit Profile) ---
             if (view === 'edit') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
-                    <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 mb-6 uppercase">← Back to List</button>
+                    <button onClick={() => setView('detail')} className="text-[10px] font-black text-slate-400 mb-6 uppercase">← Cancel Edit</button>
                     
-                    <div className="bg-white rounded-[2rem] shadow-2xl p-8 space-y-6">
-                        <h2 className="text-2xl font-black italic border-b pb-4 uppercase tracking-tighter text-blue-600">Edit Profile</h2>
+                    <div className="bg-white rounded-[2.5rem] shadow-2xl p-8 space-y-6">
+                        <h2 className="text-2xl font-black italic border-b pb-4 uppercase text-blue-600">Edit Mode</h2>
                         
                         <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[60vh] pr-2">
                             {Object.keys(selectedWorker).map(key => {
-                                if (key.startsWith('_')) return null; // 内部データは非表示
+                                if (key.startsWith('_') || key === 'batch') return null;
                                 return (
                                     <div key={key}>
                                         <label className="label-style">{key}</label>
@@ -121,7 +160,7 @@
                             disabled={isSaving}
                             className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-black transition-all"
                         >
-                            {isSaving ? 'Updating Sheet...' : 'Save & Update SpreadSheet 💾'}
+                            {isSaving ? 'Saving...' : 'Save & Update Cloud 💾'}
                         </button>
                     </div>
                 </div>
