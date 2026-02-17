@@ -14,27 +14,27 @@
         body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; margin: 0; overflow-x: hidden; }
         .title-glow { text-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
 
-        /* --- カレンダー枠線と圧縮の強化 --- */
-        .fc { border: none !important; font-size: 11px; max-height: 280px; }
+        /* --- カレンダー表示の修正 --- */
+        .fc { border: none !important; font-size: 11px; }
         
-        /* 日付の枠（グリッド）をしっかり出す */
+        /* max-heightを削除し、コンテナに合わせる */
+        .fc-view-harness { height: auto !important; min-height: 250px; } 
+
         .fc-theme-standard td, .fc-theme-standard th { 
             border: 1px solid rgba(255, 255, 255, 0.1) !important; 
         }
         
-        /* 曜日ヘッダーの背景を少し明るく */
         .fc-col-header-cell { background: rgba(255, 255, 255, 0.03); padding: 4px 0 !important; }
         
         .fc-day-sat { color: #60a5fa !important; background: rgba(96, 165, 250, 0.02); }
         .fc-day-sun { color: #f87171 !important; background: rgba(248, 113, 113, 0.02); }
         
-        /* 日付数字の配置調整 */
         .fc-daygrid-day-number { 
             font-weight: 700; padding: 2px 4px !important; display: block; width: 100%; text-align: center; 
         }
         
-        /* マスの高さを最小限に */
-        .fc-daygrid-day-frame { min-height: 38px !important; cursor: pointer; transition: background 0.2s; }
+        /* マスの高さを調整（見切れ防止） */
+        .fc-daygrid-day-frame { min-height: 42px !important; cursor: pointer; transition: background 0.2s; }
         .fc-daygrid-day-frame:active { background: rgba(16, 185, 129, 0.2); }
 
         /* 予定がある日のドット */
@@ -92,7 +92,7 @@
     <div id="eventModal" onclick="closeModal()">
         <div class="bg-slate-900 border border-emerald-500/30 rounded-[2.5rem] p-8 w-[85%] max-w-xs text-center shadow-2xl" onclick="event.stopPropagation()">
             <h3 id="modalTitle" class="text-xl font-black text-white mb-2 italic uppercase leading-tight"></h3>
-            <p id="modalDate" class="text-[10px] font-bold text-emerald-500 mb-6 tracking-widest uppercase"></p>
+            <p id="modalDate" class="text-[10px] font-bold text-emerald-500 mb-4 tracking-widest uppercase"></p>
             <div id="modalDesc" class="text-xs text-slate-400 mb-8 leading-relaxed text-left border-t border-white/10 pt-4 max-h-[200px] overflow-y-auto"></div>
             <button onclick="closeModal()" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg active:scale-95">OK</button>
         </div>
@@ -118,10 +118,10 @@
                 initialView: 'dayGridMonth',
                 locale: 'en',
                 headerToolbar: { left: 'prev', center: 'title', right: 'next' },
-                fixedWeekCount: false,
+                fixedWeekCount: false, // 週数に合わせて高さを自動調整
                 googleCalendarApiKey: 'AIzaSyCzE9RsYu1ec6_b0ePHj_7FEOh9aF0fQi0',
                 events: { googleCalendarId: 'hsdec.la@gmail.com' },
-                height: 'auto',
+                height: 'auto', // コンテンツに合わせて高さを自動決定
                 eventDidMount: function(info) {
                     const dayEl = info.el.closest('.fc-daygrid-day');
                     if (dayEl) {
