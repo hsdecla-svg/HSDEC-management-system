@@ -2,92 +2,78 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Global Hub - Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HSDEC Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; overflow-x: hidden; }
+        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; margin: 0; padding: 0; }
         
-        /* メニューカードのデザイン */
-        .menu-card { 
-            background: rgba(255, 255, 255, 0.03); 
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .menu-card:hover { 
-            background: rgba(255, 255, 255, 0.08); 
-            transform: translateY(-8px); 
-            border-color: #10b981;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-        }
-
-        /* カレンダーのカスタマイズ */
-        .fc { background: rgba(255,255,255,0.03); border-radius: 20px; padding: 10px; border: 1px solid rgba(255,255,255,0.1); }
-        .fc-day-sat { color: #60a5fa !important; } /* 土曜：青 */
-        .fc-day-sun { color: #f87171 !important; } /* 日曜：赤 */
-        .fc-day-today { background: rgba(16, 185, 129, 0.1) !important; font-weight: bold; } /* 今日 */
-        .fc .fc-toolbar-title { font-size: 1.2rem !important; font-weight: 900; text-transform: uppercase; }
-        .fc .fc-button-primary { background-color: #1e293b; border: none; font-size: 0.8rem; font-weight: bold; }
-        .fc .fc-button-primary:hover { background-color: #10b981; }
+        /* カレンダーのコンパクト調整 */
+        .fc { background: rgba(255,255,255,0.02); border-radius: 20px; font-size: 13px; border: none !important; }
+        .fc-day-sat { color: #60a5fa !important; }
+        .fc-day-sun { color: #f87171 !important; }
+        .fc-day-today { background: rgba(16, 185, 129, 0.15) !important; border-radius: 8px; }
+        .fc-toolbar { margin-bottom: 10px !important; padding: 5px; }
+        .fc-toolbar-title { font-size: 16px !important; font-weight: 900; text-transform: uppercase; color: #10b981; }
+        .fc-button { background: #1e293b !important; border: none !important; padding: 4px 8px !important; text-transform: uppercase !important; font-size: 10px !important; font-weight: 900 !important; }
         
-        /* ポップアップ用 */
-        #eventModal { display: none; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
+        /* ログインフォームのシンプル化 */
+        .input-minimal { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; transition: 0.3s; }
+        .input-minimal:focus { border-color: #10b981; background: rgba(255,255,255,0.1); outline: none; }
+        
+        #eventModal { display: none; background: rgba(0,0,0,0.9); backdrop-filter: blur(8px); }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-6">
+<body class="min-h-screen flex flex-col">
 
-    <div id="auth-section" class="w-full max-w-6xl flex flex-col lg:flex-row gap-12 items-center">
+    <div class="w-full max-w-md mx-auto flex flex-col flex-grow p-4 space-y-6">
         
-        <div class="w-full max-w-md">
-            <div class="text-center mb-10">
-                <h1 class="text-5xl font-black italic text-emerald-500 tracking-tighter">HSDEC</h1>
-                <p class="text-slate-500 font-black uppercase tracking-[0.3em] text-[10px] mt-2">Central Management System</p>
-            </div>
-            <div class="bg-white/5 p-10 rounded-[2.5rem] border border-white/10 shadow-2xl">
-                <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Select User</label>
-                <select id="user-select" class="w-full bg-slate-800 border-none p-4 rounded-xl mb-4 text-white font-bold outline-none cursor-pointer">
-                    <option value="Takashi">Takashi (Admin)</option>
-                    <option value="Chansouk">Chansouk (Staff)</option>
-                    <option value="Mim">Mim (Staff)</option>
-                    <option value="Chanthaviphone">Chanthaviphone (VV)</option>
-                    <option value="Sengmala">Sengmala (SV)</option>
-                    <option value="Guest">Guest</option>
-                </select>
+        <div class="w-full">
+            <header class="flex justify-between items-center mb-2 px-2">
+                <h1 class="text-xl font-black italic text-emerald-500 tracking-tighter">HSDEC HUB</h1>
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Schedule</p>
+            </header>
+            <div id="calendar" class="w-full overflow-hidden"></div>
+        </div>
+
+        <hr class="border-white/5">
+
+        <div class="w-full pb-8">
+            <div class="bg-white/5 p-6 rounded-3xl border border-white/10 shadow-xl">
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="col-span-1">
+                        <label class="text-[9px] font-black text-slate-500 uppercase ml-1">User</label>
+                        <select id="user-select" class="input-minimal w-full p-3 text-sm font-bold text-white outline-none">
+                            <option value="Takashi">Takashi</option>
+                            <option value="Chansouk">Chansouk</option>
+                            <option value="Mim">Mim</option>
+                            <option value="Chanthaviphone">Chanthaviphone</option>
+                            <option value="Sengmala">Sengmala</option>
+                        </select>
+                    </div>
+                    <div class="col-span-1">
+                        <label class="text-[9px] font-black text-slate-500 uppercase ml-1">Password</label>
+                        <input type="password" id="pass" placeholder="••••" class="input-minimal w-full p-3 text-sm text-center font-bold text-white">
+                    </div>
+                </div>
                 
-                <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Password</label>
-                <input type="password" id="pass" placeholder="••••••••" class="w-full bg-slate-800 border-none p-5 rounded-2xl mb-8 text-white text-center text-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all">
-                
-                <button onclick="login()" class="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-lg hover:bg-emerald-400 transition shadow-xl shadow-emerald-500/20 active:scale-95">ENTER SYSTEM</button>
-                <p id="error" class="text-rose-500 text-xs mt-6 text-center hidden font-black uppercase tracking-widest italic">Access Denied.</p>
+                <button onclick="login()" class="w-full bg-emerald-500 text-white py-4 rounded-xl font-black text-sm uppercase shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+                    Login →
+                </button>
+                <p id="error" class="text-rose-500 text-[10px] mt-3 text-center hidden font-black italic">Access Denied.</p>
             </div>
         </div>
 
-        <div class="w-full flex-1 min-h-[500px]">
-            <p class="text-[10px] font-black text-slate-500 uppercase mb-4 tracking-[0.3em] text-center lg:text-left">Team Calendar & Holidays</p>
-            <div id="calendar"></div>
-        </div>
     </div>
 
-    <div id="menu-section" class="w-full max-w-5xl hidden">
-        <div class="flex justify-between items-end mb-16 px-4">
-            <div>
-                <h2 class="text-5xl font-black italic tracking-tighter">CONTROL HUB</h2>
-                <p id="welcome-msg" class="text-emerald-500 font-black uppercase text-xs tracking-widest mt-2">Logged in</p>
-            </div>
-            <button onclick="location.reload()" class="text-[10px] font-black text-slate-500 hover:text-white uppercase border border-slate-700 px-4 py-2 rounded-full transition">Logout</button>
-        </div>
-        <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4"></div>
-    </div>
-
-    <div id="eventModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-white/10 rounded-3xl p-8 max-w-sm w-full shadow-2xl">
-            <h3 id="modalTitle" class="text-xl font-black text-emerald-500 mb-2 uppercase italic"></h3>
-            <p id="modalDate" class="text-[10px] font-bold text-slate-400 mb-4 tracking-widest"></p>
-            <p id="modalDesc" class="text-sm text-slate-300 mb-8 leading-relaxed"></p>
-            <button onclick="closeModal()" class="w-full bg-white/10 text-white py-3 rounded-xl font-black text-xs uppercase hover:bg-emerald-500 transition-all">Close</button>
+    <div id="eventModal" class="fixed inset-0 z-50 flex items-center justify-center p-6">
+        <div class="bg-slate-800 border border-white/10 rounded-3xl p-6 w-full max-w-xs shadow-2xl">
+            <h3 id="modalTitle" class="text-lg font-black text-emerald-500 mb-1 italic"></h3>
+            <p id="modalDate" class="text-[9px] font-bold text-slate-400 mb-3 tracking-widest"></p>
+            <p id="modalDesc" class="text-xs text-slate-300 mb-6 leading-relaxed"></p>
+            <button onclick="closeModal()" class="w-full bg-emerald-500/10 text-emerald-500 py-3 rounded-xl font-black text-[10px] uppercase">Close</button>
         </div>
     </div>
 
@@ -97,22 +83,21 @@
             "Chansouk": { pw: "97372185", role: "staff" },
             "Mim": { pw: "78277996", role: "staff" },
             "Chanthaviphone": { pw: "96086112", role: "vv" },
-            "Sengmala": { pw: "22886998", role: "sv" },
-            "Guest": { pw: "HSDEC2025", role: "guest" }
+            "Sengmala": { pw: "22886998", role: "sv" }
         };
 
-        // カレンダーの初期化
         document.addEventListener('DOMContentLoaded', function() {
             const calendarEl = document.getElementById('calendar');
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'en',
-                headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
-                // ★ ここにあなたの情報を入れてください
+                headerToolbar: { left: 'prev', center: 'title', right: 'next' }, // 左右にスクロールボタン
+                // ★ あなたの情報を入れてください
                 googleCalendarApiKey: 'AIzaSyCzE9RsYu1ec6_b0ePHj_7FEOh9aF0fQi0', 
                 events: {
                     googleCalendarId: 'hsdec.la@gmail.com'
                 },
+                height: 'auto',
                 eventClick: function(info) {
                     info.jsEvent.preventDefault();
                     showModal(info.event);
@@ -128,47 +113,19 @@
             document.getElementById('eventModal').style.display = 'flex';
         }
 
-        function closeModal() {
-            document.getElementById('eventModal').style.display = 'none';
-        }
+        function closeModal() { document.getElementById('eventModal').style.display = 'none'; }
 
         function login() {
             const name = document.getElementById('user-select').value;
             const pass = document.getElementById('pass').value;
             const error = document.getElementById('error');
             if (USER_DB[name] && USER_DB[name].pw === pass) {
-                const role = USER_DB[name].role;
-                showMenu(name, role);
+                // ログイン成功時の処理（リンク先を調整してください）
+                location.href = 'worker.html'; 
             } else {
                 error.classList.remove('hidden');
                 setTimeout(() => { error.classList.add('hidden'); }, 2000);
             }
-        }
-
-        function showMenu(name, role) {
-            document.getElementById('auth-section').classList.add('hidden');
-            document.getElementById('menu-section').classList.remove('hidden');
-            document.getElementById('welcome-msg').innerText = `Logged in as ${name} (${role.toUpperCase()})`;
-            const grid = document.getElementById('menu-grid');
-            grid.innerHTML = '';
-            const allMenus = [
-                { title: 'Workers', desc: '労働者・名簿管理', icon: '👤', url: 'worker.html', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
-                { title: 'Finance', desc: '支出・収支・自動計算', icon: '💰', url: 'finance.html', roles: ['admin', 'staff'] },
-                { title: 'Diary', desc: '日報作成・現場写真', icon: '📝', url: 'diary.html', roles: ['admin', 'staff', 'sv'] },
-                { title: 'Contracts', desc: '契約書類管理', icon: '📄', url: 'contracts.html', roles: ['admin', 'staff'] },
-                { title: 'Cloud', desc: 'Google Drive 共有', icon: '📸', url: 'https://drive.google.com/', roles: ['admin', 'staff', 'sv', 'vv'] }
-            ];
-            allMenus.forEach(m => {
-                if (m.roles.includes(role)) {
-                    grid.innerHTML += `
-                        <a href="${m.url}" target="_blank" class="menu-card p-10 rounded-[2.5rem] block">
-                            <div class="text-4xl mb-4">${m.icon}</div>
-                            <h3 class="text-2xl font-black tracking-tight">${m.title}</h3>
-                            <p class="text-slate-500 text-sm mt-3 font-bold">${m.desc}</p>
-                        </a>
-                    `;
-                }
-            });
         }
     </script>
 </body>
