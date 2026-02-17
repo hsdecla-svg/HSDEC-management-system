@@ -13,7 +13,6 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; overflow-x: hidden; }
         
-        /* メニューカードのスタイル（以前のコードを継承） */
         .menu-card {
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(15px);
@@ -27,9 +26,22 @@
             box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
 
-        /* カレンダーのスタイル調整（ログイン画面用） */
+        /* --- カレンダー：曜日・土日の色設定 --- */
         .fc { border: none !important; font-size: 11px; }
         .fc-theme-standard td, .fc-theme-standard th { border: 1px solid rgba(255, 255, 255, 0.1) !important; }
+        
+        /* 曜日ヘッダー */
+        .fc-col-header-cell-cushion { color: #94a3b8; font-weight: 900; text-transform: uppercase; }
+        
+        /* 土曜日 (Saturday) */
+        .fc-day-sat .fc-col-header-cell-cushion,
+        .fc-day-sat .fc-daygrid-day-number { color: #60a5fa !important; } /* 青色 */
+        
+        /* 日曜日・祝日 (Sunday/Holiday) */
+        .fc-day-sun .fc-col-header-cell-cushion,
+        .fc-day-sun .fc-daygrid-day-number,
+        .fc-day-holiday .fc-daygrid-day-number { color: #f87171 !important; } /* 赤色 */
+
         .fc-daygrid-day-frame { min-height: 45px !important; cursor: pointer; transition: background 0.2s; }
         .fc-daygrid-day-frame:active { background: rgba(16, 185, 129, 0.2); }
         .fc-daygrid-event-harness { display: none !important; }
@@ -41,7 +53,6 @@
         .fc-toolbar-title { font-size: 16px !important; font-weight: 900 !important; color: #10b981; }
         .fc-button { background: transparent !important; border: none !important; color: #64748b !important; font-weight: 900 !important; }
 
-        /* モーダル */
         #eventModal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); align-items: center; justify-content: center; }
     </style>
 </head>
@@ -81,17 +92,15 @@
             </div>
             <button onclick="location.reload()" class="text-[10px] font-black text-slate-500 hover:text-white uppercase border border-slate-700 px-6 py-3 rounded-full transition">Logout</button>
         </div>
-
-        <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4">
-            </div>
+        <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4"></div>
     </div>
 
     <div id="eventModal" onclick="this.style.display='none'">
         <div class="bg-slate-900 border border-emerald-500/30 rounded-[2.5rem] p-8 w-[85%] max-w-xs text-center" onclick="event.stopPropagation()">
-            <h3 id="modalTitle" class="text-xl font-black text-white mb-2 italic uppercase leading-tight"></h3>
+            <h3 id="modalTitle" class="text-xl font-black text-white mb-2 italic uppercase"></h3>
             <p id="modalDate" class="text-[10px] font-bold text-emerald-500 mb-6 tracking-widest"></p>
             <div id="modalDesc" class="text-xs text-slate-400 mb-8 text-left border-t border-white/10 pt-4 max-h-[200px] overflow-y-auto"></div>
-            <button onclick="document.getElementById('eventModal').style.display='none'" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg">Close</button>
+            <button onclick="document.getElementById('eventModal').style.display='none'" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-[12px] uppercase">Close</button>
         </div>
     </div>
 
@@ -105,16 +114,14 @@
             "Guest": { pw: "HSDEC2025", role: "guest" }
         };
 
-        // ページ読み込み時にカレンダーを初期化
-        window.onload = function() {
-            initCalendar();
-        };
+        window.onload = function() { initCalendar(); };
 
         function initCalendar() {
             const calendarEl = document.getElementById('calendar');
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
-                locale: 'en',
+                locale: 'en', // 英語表記に固定
+                dayHeaderFormat: { weekday: 'short' }, // SUN, MON...形式
                 headerToolbar: { left: 'prev', center: 'title', right: 'next' },
                 fixedWeekCount: false,
                 googleCalendarApiKey: 'AIzaSyCzE9RsYu1ec6_b0ePHj_7FEOh9aF0fQi0',
@@ -126,10 +133,6 @@
                         dayEl.classList.add('has-event');
                         dayEl.onclick = () => showModal(info.event);
                     }
-                },
-                eventClick: (info) => {
-                    info.jsEvent.preventDefault();
-                    showModal(info.event);
                 }
             });
             calendar.render();
@@ -137,7 +140,7 @@
 
         function showModal(event) {
             document.getElementById('modalTitle').innerText = event.title;
-            document.getElementById('modalDate').innerText = event.start.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' });
+            document.getElementById('modalDate').innerText = event.start.toLocaleDateString('en-US', { month: 'long', day: 'numeric', weekday: 'short' });
             document.getElementById('modalDesc').innerText = event.extendedProps.description || 'No additional details.';
             document.getElementById('eventModal').style.display = 'flex';
         }
@@ -145,14 +148,11 @@
         function login() {
             const name = document.getElementById('user-select').value;
             const pass = document.getElementById('pass').value;
-            const error = document.getElementById('error');
-
             if (USER_DB[name] && USER_DB[name].pw === pass) {
-                const role = USER_DB[name].role;
-                showMenu(name, role);
+                showMenu(name, USER_DB[name].role);
             } else {
-                error.classList.remove('hidden');
-                setTimeout(() => { error.classList.add('hidden'); }, 2000);
+                document.getElementById('error').classList.remove('hidden');
+                setTimeout(() => { document.getElementById('error').classList.add('hidden'); }, 2000);
             }
         }
 
@@ -160,10 +160,8 @@
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('menu-section').classList.remove('hidden');
             document.getElementById('welcome-msg').innerText = `Logged in as ${name} (${role.toUpperCase()})`;
-
             const grid = document.getElementById('menu-grid');
             grid.innerHTML = ''; 
-
             const allMenus = [
                 { title: 'Workers', desc: '労働者・名簿管理', icon: '👤', url: 'worker.html', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
                 { title: 'Finance', desc: '支出・収支・自動計算', icon: '💰', url: 'finance.html', roles: ['admin', 'staff'] },
@@ -171,7 +169,6 @@
                 { title: 'Contracts', desc: '契約書類管理', icon: '📄', url: 'contracts.html', roles: ['admin', 'staff'] },
                 { title: 'Cloud Photo', desc: 'Google Drive 共有', icon: '📸', url: 'https://drive.google.com/', roles: ['admin', 'staff', 'sv', 'vv'] }
             ];
-
             allMenus.forEach(m => {
                 if (m.roles.includes(role)) {
                     grid.innerHTML += `
@@ -179,8 +176,7 @@
                             <div class="text-4xl mb-4">${m.icon}</div>
                             <h3 class="text-2xl font-black tracking-tight uppercase italic">${m.title}</h3>
                             <p class="text-slate-500 text-sm mt-3 font-bold leading-relaxed">${m.desc}</p>
-                        </a>
-                    `;
+                        </a>`;
                 }
             });
         }
