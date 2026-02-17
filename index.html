@@ -5,9 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HSDEC Global Hub - Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; overflow-x: hidden; }
+        
+        /* メニューカードのデザイン */
         .menu-card { 
             background: rgba(255, 255, 255, 0.03); 
             backdrop-filter: blur(15px);
@@ -20,36 +23,51 @@
             border-color: #10b981;
             box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
-        .icon-circle {
-            width: 56px; height: 56px; border-radius: 18px;
-            display: flex; align-items: center; justify-content: center;
-            margin-bottom: 20px;
-        }
+
+        /* カレンダーのカスタマイズ */
+        .fc { background: rgba(255,255,255,0.03); border-radius: 20px; padding: 10px; border: 1px solid rgba(255,255,255,0.1); }
+        .fc-day-sat { color: #60a5fa !important; } /* 土曜：青 */
+        .fc-day-sun { color: #f87171 !important; } /* 日曜：赤 */
+        .fc-day-today { background: rgba(16, 185, 129, 0.1) !important; font-weight: bold; } /* 今日 */
+        .fc .fc-toolbar-title { font-size: 1.2rem !important; font-weight: 900; text-transform: uppercase; }
+        .fc .fc-button-primary { background-color: #1e293b; border: none; font-size: 0.8rem; font-weight: bold; }
+        .fc .fc-button-primary:hover { background-color: #10b981; }
+        
+        /* ポップアップ用 */
+        #eventModal { display: none; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-6">
 
-    <div id="auth-section" class="w-full max-w-md">
-        <div class="text-center mb-10">
-            <h1 class="text-5xl font-black italic text-emerald-500 tracking-tighter">HSDEC</h1>
-            <p class="text-slate-500 font-black uppercase tracking-[0.3em] text-[10px] mt-2">Central Management System</p>
+    <div id="auth-section" class="w-full max-w-6xl flex flex-col lg:flex-row gap-12 items-center">
+        
+        <div class="w-full max-w-md">
+            <div class="text-center mb-10">
+                <h1 class="text-5xl font-black italic text-emerald-500 tracking-tighter">HSDEC</h1>
+                <p class="text-slate-500 font-black uppercase tracking-[0.3em] text-[10px] mt-2">Central Management System</p>
+            </div>
+            <div class="bg-white/5 p-10 rounded-[2.5rem] border border-white/10 shadow-2xl">
+                <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Select User</label>
+                <select id="user-select" class="w-full bg-slate-800 border-none p-4 rounded-xl mb-4 text-white font-bold outline-none cursor-pointer">
+                    <option value="Takashi">Takashi (Admin)</option>
+                    <option value="Chansouk">Chansouk (Staff)</option>
+                    <option value="Mim">Mim (Staff)</option>
+                    <option value="Chanthaviphone">Chanthaviphone (VV)</option>
+                    <option value="Sengmala">Sengmala (SV)</option>
+                    <option value="Guest">Guest</option>
+                </select>
+                
+                <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Password</label>
+                <input type="password" id="pass" placeholder="••••••••" class="w-full bg-slate-800 border-none p-5 rounded-2xl mb-8 text-white text-center text-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all">
+                
+                <button onclick="login()" class="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-lg hover:bg-emerald-400 transition shadow-xl shadow-emerald-500/20 active:scale-95">ENTER SYSTEM</button>
+                <p id="error" class="text-rose-500 text-xs mt-6 text-center hidden font-black uppercase tracking-widest italic">Access Denied.</p>
+            </div>
         </div>
-        <div class="bg-white/5 p-10 rounded-[2.5rem] border border-white/10 shadow-2xl">
-            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Select User</label>
-            <select id="user-select" class="w-full bg-slate-800 border-none p-4 rounded-xl mb-4 text-white font-bold outline-none">
-                <option value="Takashi">Takashi (Admin)</option>
-                <option value="Chansouk">Chansouk (Staff)</option>
-                <option value="Mim">Mim (Staff)</option>
-                <option value="Chanthaviphone">Chanthaviphone (VV)</option>
-                <option value="Sengmala">Sengmala (SV)</option>
-                <option value="Guest">Guest</option>
-            </select>
-            
-            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Password</label>
-            <input type="password" id="pass" placeholder="••••••••" class="w-full bg-slate-800 border-none p-5 rounded-2xl mb-8 text-white text-center text-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all">
-            
-            <button onclick="login()" class="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-lg hover:bg-emerald-400 transition shadow-xl shadow-emerald-500/20 active:scale-95">ENTER SYSTEM</button>
-            <p id="error" class="text-rose-500 text-xs mt-6 text-center hidden font-black uppercase tracking-widest italic">Access Denied.</p>
+
+        <div class="w-full flex-1 min-h-[500px]">
+            <p class="text-[10px] font-black text-slate-500 uppercase mb-4 tracking-[0.3em] text-center lg:text-left">Team Calendar & Holidays</p>
+            <div id="calendar"></div>
         </div>
     </div>
 
@@ -61,9 +79,16 @@
             </div>
             <button onclick="location.reload()" class="text-[10px] font-black text-slate-500 hover:text-white uppercase border border-slate-700 px-4 py-2 rounded-full transition">Logout</button>
         </div>
+        <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4"></div>
+    </div>
 
-        <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4">
-            </div>
+    <div id="eventModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-white/10 rounded-3xl p-8 max-w-sm w-full shadow-2xl">
+            <h3 id="modalTitle" class="text-xl font-black text-emerald-500 mb-2 uppercase italic"></h3>
+            <p id="modalDate" class="text-[10px] font-bold text-slate-400 mb-4 tracking-widest"></p>
+            <p id="modalDesc" class="text-sm text-slate-300 mb-8 leading-relaxed"></p>
+            <button onclick="closeModal()" class="w-full bg-white/10 text-white py-3 rounded-xl font-black text-xs uppercase hover:bg-emerald-500 transition-all">Close</button>
+        </div>
     </div>
 
     <script>
@@ -76,14 +101,43 @@
             "Guest": { pw: "HSDEC2025", role: "guest" }
         };
 
+        // カレンダーの初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            const calendarEl = document.getElementById('calendar');
+            const calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                locale: 'en',
+                headerToolbar: { left: 'prev,next today', center: 'title', right: '' },
+                // ★ ここにあなたの情報を入れてください
+                googleCalendarApiKey: 'AIzaSyCzE9RsYu1ec6_b0ePHj_7FEOh9aF0fQi0', 
+                events: {
+                    googleCalendarId: 'hsdec.la@gmail.com'
+                },
+                eventClick: function(info) {
+                    info.jsEvent.preventDefault();
+                    showModal(info.event);
+                }
+            });
+            calendar.render();
+        });
+
+        function showModal(event) {
+            document.getElementById('modalTitle').innerText = event.title;
+            document.getElementById('modalDate').innerText = event.start.toDateString();
+            document.getElementById('modalDesc').innerText = event.extendedProps.description || 'No additional details.';
+            document.getElementById('eventModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('eventModal').style.display = 'none';
+        }
+
         function login() {
             const name = document.getElementById('user-select').value;
             const pass = document.getElementById('pass').value;
             const error = document.getElementById('error');
-
             if (USER_DB[name] && USER_DB[name].pw === pass) {
                 const role = USER_DB[name].role;
-                localStorage.setItem('hsdec_user', JSON.stringify({ name, role }));
                 showMenu(name, role);
             } else {
                 error.classList.remove('hidden');
@@ -95,26 +149,22 @@
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('menu-section').classList.remove('hidden');
             document.getElementById('welcome-msg').innerText = `Logged in as ${name} (${role.toUpperCase()})`;
-
             const grid = document.getElementById('menu-grid');
-            grid.innerHTML = ''; // クリア
-
+            grid.innerHTML = '';
             const allMenus = [
-                { id: 'worker', title: 'Workers', desc: '労働者・名簿管理', icon: '👤', url: 'worker.html', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
-                { id: 'finance', title: 'Finance', desc: '支出・収支・自動計算', icon: '💰', url: 'finance.html', roles: ['admin', 'staff'] },
-                { id: 'diary', title: 'Diary', desc: '日報作成・現場写真', icon: '📝', url: 'diary.html', roles: ['admin', 'staff', 'sv'] },
-                { id: 'contracts', title: 'Contracts', desc: '契約書類管理', icon: '📄', url: 'contracts.html', roles: ['admin', 'staff'] },
-                { id: 'cloud', title: 'Cloud Photo', desc: 'Google Drive 共有', icon: '📸', url: 'https://drive.google.com/', roles: ['admin', 'staff', 'sv', 'vv'] }
+                { title: 'Workers', desc: '労働者・名簿管理', icon: '👤', url: 'worker.html', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
+                { title: 'Finance', desc: '支出・収支・自動計算', icon: '💰', url: 'finance.html', roles: ['admin', 'staff'] },
+                { title: 'Diary', desc: '日報作成・現場写真', icon: '📝', url: 'diary.html', roles: ['admin', 'staff', 'sv'] },
+                { title: 'Contracts', desc: '契約書類管理', icon: '📄', url: 'contracts.html', roles: ['admin', 'staff'] },
+                { title: 'Cloud', desc: 'Google Drive 共有', icon: '📸', url: 'https://drive.google.com/', roles: ['admin', 'staff', 'sv', 'vv'] }
             ];
-
-            // 権限に合わせてメニューを表示
             allMenus.forEach(m => {
                 if (m.roles.includes(role)) {
                     grid.innerHTML += `
-                        <a href="${m.url}" target="_blank" class="menu-card p-10 rounded-[2.5rem] block group">
+                        <a href="${m.url}" target="_blank" class="menu-card p-10 rounded-[2.5rem] block">
                             <div class="text-4xl mb-4">${m.icon}</div>
                             <h3 class="text-2xl font-black tracking-tight">${m.title}</h3>
-                            <p class="text-slate-500 text-sm mt-3 font-bold leading-relaxed">${m.desc}</p>
+                            <p class="text-slate-500 text-sm mt-3 font-bold">${m.desc}</p>
                         </a>
                     `;
                 }
