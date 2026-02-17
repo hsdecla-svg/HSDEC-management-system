@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Portal</title>
+    <title>HSDEC Global Hub - Portal</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
@@ -11,155 +11,168 @@
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; margin: 0; overflow-x: hidden; }
-        .title-glow { text-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
-
-        /* --- カレンダー表示の修正 --- */
-        .fc { border: none !important; font-size: 11px; }
+        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; overflow-x: hidden; }
         
-        /* max-heightを削除し、コンテナに合わせる */
-        .fc-view-harness { height: auto !important; min-height: 250px; } 
-
-        .fc-theme-standard td, .fc-theme-standard th { 
-            border: 1px solid rgba(255, 255, 255, 0.1) !important; 
+        .menu-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        
-        .fc-col-header-cell { background: rgba(255, 255, 255, 0.03); padding: 4px 0 !important; }
-        
-        .fc-day-sat { color: #60a5fa !important; background: rgba(96, 165, 250, 0.02); }
-        .fc-day-sun { color: #f87171 !important; background: rgba(248, 113, 113, 0.02); }
-        
-        .fc-daygrid-day-number { 
-            font-weight: 700; padding: 2px 4px !important; display: block; width: 100%; text-align: center; 
+        .menu-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-8px);
+            border-color: #10b981;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
-        
-        /* マスの高さを調整（見切れ防止） */
-        .fc-daygrid-day-frame { min-height: 42px !important; cursor: pointer; transition: background 0.2s; }
-        .fc-daygrid-day-frame:active { background: rgba(16, 185, 129, 0.2); }
 
-        /* 予定がある日のドット */
+        /* カレンダー調整（メニュー画面の邪魔をしないように） */
+        .fc { border: none !important; font-size: 11px; margin-bottom: 10px; }
+        .fc-theme-standard td, .fc-theme-standard th { border: 1px solid rgba(255, 255, 255, 0.05) !important; }
+        .fc-daygrid-day-frame { min-height: 40px !important; cursor: pointer; }
         .fc-daygrid-event-harness { display: none !important; }
         .has-event { position: relative; }
         .has-event::after {
             content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
-            width: 5px; height: 5px; background: #10b981; border-radius: 50%; 
-            box-shadow: 0 0 8px #10b981; z-index: 10;
+            width: 5px; height: 5px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981;
         }
+        .fc-toolbar-title { font-size: 14px !important; font-weight: 900 !important; }
+        .fc-button { background: transparent !important; border: none !important; color: #64748b !important; }
 
-        /* フォーム系 */
-        .big-input { background: rgba(255, 255, 255, 0.07); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 20px; font-size: 18px; width: 100%; padding: 1.25rem; }
-        .big-input:focus { border-color: #10b981; background: rgba(255, 255, 255, 0.12); outline: none; }
-        
-        .fc-toolbar-title { font-size: 15px !important; font-weight: 900; }
-        .fc-button { background: transparent !important; border: none !important; color: #64748b !important; font-weight: 900 !important; }
-
-        /* ポップアップ */
-        #eventModal { 
-            display: none; position: fixed; inset: 0; z-index: 100;
-            background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px); 
-            align-items: center; justify-content: center;
-        }
+        #eventModal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); align-items: center; justify-content: center; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col p-4">
+<body class="min-h-screen flex items-center justify-center p-6">
 
-    <div class="w-full max-w-md mx-auto flex flex-col space-y-4">
-        <header class="text-center py-2">
-            <h1 class="text-3xl font-black italic text-emerald-500 title-glow uppercase">HSDEC</h1>
-            <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Central Management System</p>
-        </header>
-
-        <div class="w-full bg-white/5 rounded-[1.2rem] p-1 border border-white/10 shadow-2xl overflow-hidden">
-            <div id="calendar"></div>
+    <div id="auth-section" class="w-full max-w-md">
+        <div class="text-center mb-10">
+            <h1 class="text-5xl font-black italic text-emerald-500 tracking-tighter">HSDEC</h1>
+            <p class="text-slate-500 font-black uppercase tracking-[0.3em] text-[10px] mt-2">Central Management System</p>
         </div>
-
-        <div class="w-full bg-white/5 p-6 rounded-[2rem] border border-white/10 space-y-5 shadow-xl">
-            <select id="user-select" class="big-input text-white font-bold outline-none appearance-none">
-                <option value="Takashi">Takashi</option>
-                <option value="Chansouk">Chansouk</option>
-                <option value="Mim">Mim</option>
-                <option value="Chanthaviphone">Chanthaviphone</option>
-                <option value="Sengmala">Sengmala</option>
+        <div class="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
+            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Select User</label>
+            <select id="user-select" class="w-full bg-slate-800 border-none p-4 rounded-xl mb-4 text-white font-bold outline-none">
+                <option value="Takashi">Takashi (Admin)</option>
+                <option value="Chansouk">Chansouk (Staff)</option>
+                <option value="Mim">Mim (Staff)</option>
+                <option value="Chanthaviphone">Chanthaviphone (VV)</option>
+                <option value="Sengmala">Sengmala (SV)</option>
+                <option value="Guest">Guest</option>
             </select>
-            <input type="password" id="pass" placeholder="PASSWORD" class="big-input text-center font-bold text-white tracking-[0.5em]">
-            <button onclick="login()" class="w-full bg-emerald-500 text-white py-5 rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-lg active:scale-95 transition-all">
-                Access System →
-            </button>
-            <p id="error" class="text-rose-500 text-[10px] text-center hidden font-black uppercase italic mt-2">Access Denied.</p>
+            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Password</label>
+            <input type="password" id="pass" placeholder="••••••••" class="w-full bg-slate-800 border-none p-5 rounded-2xl mb-8 text-white text-center text-2xl focus:ring-2 focus:ring-emerald-500 outline-none transition-all">
+            <button onclick="login()" class="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-emerald-500/20 active:scale-95">ENTER SYSTEM</button>
+            <p id="error" class="text-rose-500 text-xs mt-6 text-center hidden font-black uppercase tracking-widest italic">Access Denied.</p>
         </div>
     </div>
 
-    <div id="eventModal" onclick="closeModal()">
-        <div class="bg-slate-900 border border-emerald-500/30 rounded-[2.5rem] p-8 w-[85%] max-w-xs text-center shadow-2xl" onclick="event.stopPropagation()">
-            <h3 id="modalTitle" class="text-xl font-black text-white mb-2 italic uppercase leading-tight"></h3>
-            <p id="modalDate" class="text-[10px] font-bold text-emerald-500 mb-4 tracking-widest uppercase"></p>
-            <div id="modalDesc" class="text-xs text-slate-400 mb-8 leading-relaxed text-left border-t border-white/10 pt-4 max-h-[200px] overflow-y-auto"></div>
-            <button onclick="closeModal()" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg active:scale-95">OK</button>
+    <div id="menu-section" class="w-full max-w-5xl hidden flex flex-col space-y-8">
+        <div class="flex justify-between items-end px-4">
+            <div>
+                <h2 class="text-4xl font-black italic tracking-tighter">CONTROL HUB</h2>
+                <p id="welcome-msg" class="text-emerald-500 font-black uppercase text-[10px] tracking-widest mt-1">Logged in</p>
+            </div>
+            <button onclick="location.reload()" class="text-[10px] font-black text-slate-500 hover:text-white uppercase border border-slate-700 px-4 py-2 rounded-full transition">Logout</button>
+        </div>
+
+        <div class="bg-white/5 rounded-[2rem] p-4 border border-white/10 shadow-xl mx-4">
+            <div id="calendar"></div>
+        </div>
+
+        <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-4 pb-10">
+            </div>
+    </div>
+
+    <div id="eventModal" onclick="this.style.display='none'">
+        <div class="bg-slate-900 border border-emerald-500/30 rounded-[2.5rem] p-8 w-[85%] max-w-xs text-center" onclick="event.stopPropagation()">
+            <h3 id="modalTitle" class="text-xl font-black text-white mb-2 italic uppercase"></h3>
+            <p id="modalDate" class="text-[10px] font-bold text-emerald-500 mb-6 tracking-widest"></p>
+            <div id="modalDesc" class="text-xs text-slate-400 mb-8 text-left border-t border-white/10 pt-4"></div>
+            <button onclick="document.getElementById('eventModal').style.display='none'" class="w-full bg-white text-black py-4 rounded-2xl font-black text-[10px] uppercase">Close</button>
         </div>
     </div>
 
     <script>
         const USER_DB = {
-            "Takashi": { pw: "Tks83446412" },
-            "Chansouk": { pw: "97372185" },
-            "Mim": { pw: "78277996" },
-            "Chanthaviphone": { pw: "96086112" },
-            "Sengmala": { pw: "22886998" }
+            "Takashi": { pw: "Tks83446412", role: "admin" },
+            "Chansouk": { pw: "97372185", role: "staff" },
+            "Mim": { pw: "78277996", role: "staff" },
+            "Chanthaviphone": { pw: "96086112", role: "vv" },
+            "Sengmala": { pw: "22886998", role: "sv" },
+            "Guest": { pw: "HSDEC2025", role: "guest" }
         };
 
-        function initCalendar() {
-            if (typeof FullCalendar === 'undefined') {
-                setTimeout(initCalendar, 100);
-                return;
-            }
+        function login() {
+            const name = document.getElementById('user-select').value;
+            const pass = document.getElementById('pass').value;
+            const error = document.getElementById('error');
 
+            if (USER_DB[name] && USER_DB[name].pw === pass) {
+                const role = USER_DB[name].role;
+                showMenu(name, role);
+                initCalendar(); // ログイン後にカレンダーを描画
+            } else {
+                error.classList.remove('hidden');
+                setTimeout(() => { error.classList.add('hidden'); }, 2000);
+            }
+        }
+
+        function showMenu(name, role) {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('menu-section').classList.remove('hidden');
+            document.body.classList.remove('items-center', 'justify-center'); // 中央配置解除
+            document.getElementById('welcome-msg').innerText = `Logged in as ${name} (${role.toUpperCase()})`;
+
+            const grid = document.getElementById('menu-grid');
+            grid.innerHTML = ''; 
+
+            const allMenus = [
+                { title: 'Workers', desc: '労働者・名簿管理', icon: '👤', url: 'worker.html', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
+                { title: 'Finance', desc: '支出・収支・自動計算', icon: '💰', url: 'finance.html', roles: ['admin', 'staff'] },
+                { title: 'Diary', desc: '日報作成・現場写真', icon: '📝', url: 'diary.html', roles: ['admin', 'staff', 'sv'] },
+                { title: 'Contracts', desc: '契約書類管理', icon: '📄', url: 'contracts.html', roles: ['admin', 'staff'] },
+                { title: 'Cloud Photo', desc: 'Google Drive 共有', icon: '📸', url: 'https://drive.google.com/', roles: ['admin', 'staff', 'sv', 'vv'] }
+            ];
+
+            allMenus.forEach(m => {
+                if (m.roles.includes(role)) {
+                    grid.innerHTML += `
+                        <a href="${m.url}" class="menu-card p-10 rounded-[2.5rem] block group">
+                            <div class="text-4xl mb-4">${m.icon}</div>
+                            <h3 class="text-2xl font-black tracking-tight uppercase italic">${m.title}</h3>
+                            <p class="text-slate-500 text-sm mt-3 font-bold leading-relaxed">${m.desc}</p>
+                        </a>
+                    `;
+                }
+            });
+        }
+
+        function initCalendar() {
             const calendarEl = document.getElementById('calendar');
             const calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'en',
                 headerToolbar: { left: 'prev', center: 'title', right: 'next' },
-                fixedWeekCount: false, // 週数に合わせて高さを自動調整
+                fixedWeekCount: false,
                 googleCalendarApiKey: 'AIzaSyCzE9RsYu1ec6_b0ePHj_7FEOh9aF0fQi0',
                 events: { googleCalendarId: 'hsdec.la@gmail.com' },
-                height: 'auto', // コンテンツに合わせて高さを自動決定
-                eventDidMount: function(info) {
+                height: 'auto',
+                eventDidMount: (info) => {
                     const dayEl = info.el.closest('.fc-daygrid-day');
                     if (dayEl) {
                         dayEl.classList.add('has-event');
                         dayEl.onclick = () => showModal(info.event);
                     }
-                },
-                eventClick: function(info) {
-                    info.jsEvent.preventDefault();
-                    showModal(info.event);
                 }
             });
             calendar.render();
         }
 
-        window.onload = initCalendar;
-
         function showModal(event) {
             document.getElementById('modalTitle').innerText = event.title;
-            const dateStr = event.start.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' });
-            document.getElementById('modalDate').innerText = dateStr;
+            document.getElementById('modalDate').innerText = event.start.toLocaleDateString('ja-JP', { month: 'long', day: 'numeric', weekday: 'short' });
             document.getElementById('modalDesc').innerText = event.extendedProps.description || 'No additional details.';
             document.getElementById('eventModal').style.display = 'flex';
-        }
-
-        function closeModal() {
-            document.getElementById('eventModal').style.display = 'none';
-        }
-
-        function login() {
-            const name = document.getElementById('user-select').value;
-            const pass = document.getElementById('pass').value;
-            if (USER_DB[name] && USER_DB[name].pw === pass) {
-                location.href = 'worker.html'; 
-            } else {
-                document.getElementById('error').classList.remove('hidden');
-                setTimeout(() => { document.getElementById('error').classList.add('hidden'); }, 2000);
-            }
         }
     </script>
 </body>
