@@ -99,26 +99,32 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             const calendarEl = document.getElementById('calendar');
-            const calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: 'dayGridMonth',
-                locale: 'en',
-                headerToolbar: { left: 'prev', center: 'title', right: 'next' },
-                // 週の数を自動調整する設定
-                fixedWeekCount: false, 
-                showNonCurrentDates: true, // 前後の月の日付を表示（隙間を埋める）
-                googleCalendarApiKey: 'AIzaSyCzE9RsYu1ec6_b0ePHj_7FEOh9aF0fQi0', 
-                events: { googleCalendarId: 'hsdec.la@gmail.com' },
-                height: 'auto',
-                eventDidMount: function(info) {
-                    info.el.closest('.fc-daygrid-day').classList.add('has-event');
-                },
-                eventClick: function(info) {
-                    info.jsEvent.preventDefault();
-                    showModal(info.event);
-                }
-            });
-            calendar.render();
-        });
+            // FullCalendarの初期化部分
+const calendar = new FullCalendar.Calendar(calendarEl, {
+    initialView: 'dayGridMonth',
+    locale: 'en',
+    headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+    fixedWeekCount: false,
+    googleCalendarApiKey: 'AIzaSyCzE9RsYu1ec6_b0ePHj_7FEOh9aF0fQi0',
+    events: {
+        googleCalendarId: 'hsdec.la@gmail.com'
+    },
+    // 予定が読み込まれたらコンソールにログを出す（確認用）
+    eventSourceSuccess: function(content, response) {
+        console.log("イベントの取得に成功しました:", content);
+    },
+    eventSourceFailure: function(error) {
+        console.error("イベントの取得に失敗しました。原因:", error);
+        alert("カレンダーの読み込みに失敗しました。公開設定を確認してください。");
+    },
+    eventDidMount: function(info) {
+        info.el.closest('.fc-daygrid-day').classList.add('has-event');
+    },
+    eventClick: function(info) {
+        info.jsEvent.preventDefault();
+        showModal(info.event);
+    }
+});
 
         function showModal(event) {
             document.getElementById('modalTitle').innerText = event.title;
