@@ -14,7 +14,7 @@
         body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; margin: 0; overflow-x: hidden; }
         .title-glow { text-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
 
-        /* カレンダーを究極にコンパクトに */
+        /* カレンダー圧縮 */
         .fc { border: none !important; font-size: 13px; max-height: 320px; }
         .fc-theme-standard td, .fc-theme-standard th { border: none !important; }
         .fc-day-sat { color: #60a5fa !important; }
@@ -22,8 +22,8 @@
         .fc-daygrid-day-number { font-weight: 700; padding: 4px !important; display: block; width: 100%; text-align: center; }
         .fc-daygrid-day-frame { min-height: 40px !important; }
 
-        /* 予定がある日のドット (緑色に光る点) */
-        .fc-daygrid-event-harness { display: none !important; } /* バーを隠す */
+        /* 予定がある日のドット */
+        .fc-daygrid-event-harness { display: none !important; }
         .has-event { position: relative; }
         .has-event::after {
             content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
@@ -31,8 +31,8 @@
             box-shadow: 0 0 8px #10b981; z-index: 10;
         }
 
-        /* ログイン項目のスタイル */
-        .big-input { background: rgba(255, 255, 255, 0.07); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 20px; font-size: 18px; transition: 0.3s; width: 100%; padding: 1.25rem; }
+        /* ログイン項目 */
+        .big-input { background: rgba(255, 255, 255, 0.07); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 20px; font-size: 18px; width: 100%; padding: 1.25rem; }
         .big-input:focus { border-color: #10b981; background: rgba(255, 255, 255, 0.12); outline: none; }
         
         .fc-toolbar-title { font-size: 16px !important; font-weight: 900; }
@@ -68,7 +68,6 @@
                 <label class="text-[10px] font-black text-slate-500 uppercase ml-2 tracking-widest">Password</label>
                 <input type="password" id="pass" placeholder="••••" class="big-input text-center font-bold text-white mt-1 tracking-[0.5em]">
             </div>
-            
             <button onclick="login()" class="w-full bg-emerald-500 text-white py-5 rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
                 Access System →
             </button>
@@ -86,7 +85,6 @@
     </div>
 
     <script>
-        // ユーザーパスワード設定
         const USER_DB = {
             "Takashi": { pw: "Tks83446412", role: "admin" },
             "Chansouk": { pw: "97372185", role: "staff" },
@@ -95,32 +93,28 @@
             "Sengmala": { pw: "22886998", role: "sv" }
         };
 
-        // カレンダー初期化
         function initCalendar() {
-            // ライブラリの読み込み待ち
-            if (typeof FullCalendar === 'undefined' || typeof FullCalendar.GoogleCalendar === 'undefined' && !FullCalendar.globalPlugins) {
+            // ライブラリの存在をより厳密にチェック
+            if (typeof FullCalendar === 'undefined' || !window.FullCalendar.GoogleCalendar) {
                 setTimeout(initCalendar, 100);
                 return;
             }
 
             const calendarEl = document.getElementById('calendar');
             const calendar = new FullCalendar.Calendar(calendarEl, {
-                // Googleカレンダープラグインを有効化
-                plugins: [ 'googleCalendar' ],
+                // ↓ここが修正ポイント：文字列ではなく、グローバル変数のプラグインオブジェクトを直接渡します
+                plugins: [ window.FullCalendar.GoogleCalendar ], 
                 initialView: 'dayGridMonth',
                 locale: 'en',
                 headerToolbar: { left: 'prev', center: 'title', right: 'next' },
                 fixedWeekCount: false,
-                // APIキーとIDを直接反映
                 googleCalendarApiKey: 'AIzaSyCzE9RsYu1ec6_b0ePHj_7FEOh9aF0fQi0',
                 events: { googleCalendarId: 'hsdec.la@gmail.com' },
                 height: 'auto',
-                // 予定がある日にドット用のクラスを付与
                 eventDidMount: function(info) {
                     const dayEl = info.el.closest('.fc-daygrid-day');
                     if (dayEl) dayEl.classList.add('has-event');
                 },
-                // タップで詳細表示
                 eventClick: function(info) {
                     info.jsEvent.preventDefault();
                     showModal(info.event);
@@ -129,7 +123,6 @@
             calendar.render();
         }
 
-        // ページロード完了時に実行
         window.onload = initCalendar;
 
         function showModal(event) {
