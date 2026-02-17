@@ -88,16 +88,15 @@
         };
 
         function initCalendar() {
-            // FullCalendarとGoogleCalendarプラグインの両方が準備できるまで待つ
-            if (typeof FullCalendar === 'undefined' || !window.FullCalendar.GoogleCalendar) {
+            // ライブラリの読み込み確認
+            if (typeof FullCalendar === 'undefined') {
                 setTimeout(initCalendar, 100);
                 return;
             }
 
             const calendarEl = document.getElementById('calendar');
             const calendar = new FullCalendar.Calendar(calendarEl, {
-                // 文字列の配列ではなく、直接プラグインオブジェクトを指定
-                plugins: [ window.FullCalendar.GoogleCalendar ], 
+                // 【重要】pluginsオプションを削除しました。ブラウザ版は読み込むだけで機能します。
                 initialView: 'dayGridMonth',
                 locale: 'en',
                 headerToolbar: { left: 'prev', center: 'title', right: 'next' },
