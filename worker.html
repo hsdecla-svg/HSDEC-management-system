@@ -27,6 +27,23 @@
 
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdAZAcryW4C9u3VE-DoBWBpBeB-lUIlxHPU3qBgq3oS2DKOr-fWuN239iNyhGTq7o0Nw/exec';
 
+        // --- 日付フォーマット関数 ---
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '-';
+            // もしISO文字列(T07:00:00...)なら、最初の10文字(YYYY-MM-DD)だけ抜く
+            if (typeof dateStr === 'string' && dateStr.includes('T')) {
+                return dateStr.split('T')[0].replace(/-/g, '/');
+            }
+            // その他の形式も念のため処理
+            try {
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return dateStr; // 変換不能ならそのまま返す
+                return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+            } catch (e) {
+                return dateStr;
+            }
+        };
+
         function App() {
             const [view, setView] = useState('folders');
             const [workers, setWorkers] = useState([]);
@@ -62,7 +79,6 @@
 
             if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse uppercase tracking-widest">Loading Master DB...</div>;
 
-            // --- 📂 Dashboard ---
             if (view === 'folders') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
                     <header className="flex justify-between items-center mb-8">
@@ -94,7 +110,6 @@
                 </div>
             );
 
-            // --- 👤 Detail View ---
             if (view === 'detail') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
                     <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to Dashboard</button>
@@ -112,7 +127,7 @@
                         <div className="grid grid-cols-2 gap-y-4">
                             <div><label className="label-style">Gender</label><p className="font-bold">{selectedWorker['Sex'] || '-'}</p></div>
                             <div><label className="label-style">Age</label><p className="font-bold">{selectedWorker['Age'] || '-'}</p></div>
-                            <div><label className="label-style">DOB</label><p className="font-bold">{selectedWorker['Date of birth'] || '-'}</p></div>
+                            <div><label className="label-style">DOB</label><p className="font-bold">{formatDate(selectedWorker['Date of birth'])}</p></div>
                             <div><label className="label-style">Cloth Size</label><p className="font-bold text-emerald-400">{selectedWorker['Cloth size'] || selectedWorker['Size'] || '-'}</p></div>
                         </div>
 
@@ -120,8 +135,9 @@
                         <div className="grid grid-cols-1 gap-y-4">
                             <div><label className="label-style">Passport No.</label><p className="font-bold">{selectedWorker['Passport No.'] || '-'}</p></div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div><label className="label-style">Issued Date</label><p className="font-bold text-sm">{selectedWorker['Issued Date'] || '-'}</p></div>
-                                <div><label className="label-style">Expiry Date</label><p className="font-bold text-sm text-rose-400">{selectedWorker['Expiry Date'] || '-'}</p></div>
+                                {/* シートのヘッダー名に合わせてここを自動判定するように修正 */}
+                                <div><label className="label-style">Issued Date</label><p className="font-bold text-sm">{formatDate(selectedWorker['Issued Date'] || selectedWorker['Passport issue date'])}</p></div>
+                                <div><label className="label-style">Expiry Date</label><p className="font-bold text-sm text-rose-400">{formatDate(selectedWorker['Expiry Date'] || selectedWorker['Passport expiry date'])}</p></div>
                             </div>
                         </div>
 
@@ -143,7 +159,6 @@
                 </div>
             );
 
-            // --- ✏️ Edit Mode ---
             if (view === 'edit') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
                     <button onClick={() => setView('detail')} className="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest">← Cancel Edit</button>
@@ -152,7 +167,6 @@
                         <h2 className="text-2xl font-black italic border-b border-white/10 pb-4 uppercase text-emerald-500">Edit Profile</h2>
                         
                         <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[60vh] pr-2">
-                            {/* 全てのキーを表示（隠しフィールド以外） */}
                             {Object.keys(selectedWorker).map(key => {
                                 if (key.startsWith('_') || key === 'batch') return null;
                                 return (
@@ -166,19 +180,6 @@
                                     </div>
                                 );
                             })}
-                            {/* 明示的な追加項目（スプレッドシート側に列がなくてもUIから送信可能にする） */}
-                            {['Cloth size', 'Issued Date', 'Expiry Date', 'AC-name', 'AC-NO'].map(key => (
-                                !selectedWorker.hasOwnProperty(key) && (
-                                    <div key={key}>
-                                        <label className="label-style text-emerald-500">{key} (New Field)</label>
-                                        <input 
-                                            className="input-edit border-emerald-500/30"
-                                            placeholder={`Input ${key}`}
-                                            onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})}
-                                        />
-                                    </div>
-                                )
-                            ))}
                         </div>
 
                         <button 
