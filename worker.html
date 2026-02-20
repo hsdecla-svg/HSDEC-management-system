@@ -27,17 +27,13 @@
 
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdAZAcryW4C9u3VE-DoBWBpBeB-lUIlxHPU3qBgq3oS2DKOr-fWuN239iNyhGTq7o0Nw/exec';
 
-        // --- 日付フォーマット関数 ---
+        // 日付整形（時刻をカットして YYYY/MM/DD にする）
         const formatDate = (dateStr) => {
             if (!dateStr) return '-';
-            // もしISO文字列(T07:00:00...)なら、最初の10文字(YYYY-MM-DD)だけ抜く
-            if (typeof dateStr === 'string' && dateStr.includes('T')) {
-                return dateStr.split('T')[0].replace(/-/g, '/');
-            }
-            // その他の形式も念のため処理
             try {
+                // ISO 8601 (T...z) 形式や日付オブジェクトを処理
                 const d = new Date(dateStr);
-                if (isNaN(d.getTime())) return dateStr; // 変換不能ならそのまま返す
+                if (isNaN(d.getTime())) return dateStr;
                 return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
             } catch (e) {
                 return dateStr;
@@ -77,12 +73,13 @@
 
             const batches = [...new Set(workers.map(w => w.batch || w._sheetName.replace("Batch","")))].sort((a,b)=>a-b);
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse uppercase tracking-widest">Loading Master DB...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse uppercase tracking-widest text-sm">Loading Database...</div>;
 
+            // --- 📂 フォルダリスト (Batch List) ---
             if (view === 'folders') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
                     <header className="flex justify-between items-center mb-8">
-                        <h1 className="text-3xl font-black italic uppercase tracking-tighter">Workers</h1>
+                        <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">Workers</h1>
                         <button onClick={() => window.location.href='index.html'} className="text-[10px] font-black bg-white/5 px-4 py-2 rounded-full border border-white/10 text-slate-400 uppercase">Exit</button>
                     </header>
                     {batches.map(num => {
@@ -110,6 +107,7 @@
                 </div>
             );
 
+            // --- 👤 詳細画面 (Detail View) ---
             if (view === 'detail') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
                     <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to Dashboard</button>
@@ -120,51 +118,52 @@
                                 <h2 className="text-3xl font-black italic uppercase text-emerald-500 leading-none">{selectedWorker['Full Name']}</h2>
                                 <p className="text-sm font-bold text-slate-500 mt-2 tracking-widest uppercase">Batch {selectedWorker.batch}</p>
                             </div>
-                            <button onClick={() => setView('edit')} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase shadow-lg shadow-emerald-500/20">Edit ✎</button>
+                            <button onClick={() => setView('edit')} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase shadow-lg shadow-emerald-500/20">Edit Profile ✎</button>
                         </div>
 
                         <div className="section-title text-emerald-500">Personal & Clothing</div>
                         <div className="grid grid-cols-2 gap-y-4">
                             <div><label className="label-style">Gender</label><p className="font-bold">{selectedWorker['Sex'] || '-'}</p></div>
                             <div><label className="label-style">Age</label><p className="font-bold">{selectedWorker['Age'] || '-'}</p></div>
-                            <div><label className="label-style">DOB</label><p className="font-bold">{formatDate(selectedWorker['Date of birth'])}</p></div>
+                            <div><label className="label-style">Birth Date</label><p className="font-bold">{formatDate(selectedWorker['Date of birth'])}</p></div>
                             <div><label className="label-style">Cloth Size</label><p className="font-bold text-emerald-400">{selectedWorker['Cloth size'] || selectedWorker['Size'] || '-'}</p></div>
                         </div>
 
-                        <div className="section-title">Passport Details</div>
+                        <div className="section-title">Passport Information</div>
                         <div className="grid grid-cols-1 gap-y-4">
                             <div><label className="label-style">Passport No.</label><p className="font-bold">{selectedWorker['Passport No.'] || '-'}</p></div>
                             <div className="grid grid-cols-2 gap-4">
-                                {/* シートのヘッダー名に合わせてここを自動判定するように修正 */}
-                                <div><label className="label-style">Issued Date</label><p className="font-bold text-sm">{formatDate(selectedWorker['Issued Date'] || selectedWorker['Passport issue date'])}</p></div>
-                                <div><label className="label-style">Expiry Date</label><p className="font-bold text-sm text-rose-400">{formatDate(selectedWorker['Expiry Date'] || selectedWorker['Passport expiry date'])}</p></div>
+                                {/* J列: Date of issue / K列: Date of Expiry に完全一致させています */}
+                                <div><label className="label-style">Date of issue</label><p className="font-bold text-sm text-white">{formatDate(selectedWorker['Date of issue'])}</p></div>
+                                <div><label className="label-style">Date of Expiry</label><p className="font-bold text-sm text-rose-400">{formatDate(selectedWorker['Date of Expiry'])}</p></div>
                             </div>
                         </div>
 
-                        <div className="section-title">Bank Account Info</div>
+                        <div className="section-title">Bank Account Details</div>
                         <div className="grid grid-cols-1 gap-y-4">
                             <div><label className="label-style">AC Name</label><p className="font-bold text-emerald-500">{selectedWorker['AC-name'] || '-'}</p></div>
                             <div><label className="label-style">AC Number</label><p className="font-black text-lg tracking-wider">{selectedWorker['AC-NO'] || '-'}</p></div>
                         </div>
 
-                        <div className="section-title">Address & Cloud</div>
+                        <div className="section-title">Contact & Cloud</div>
                         <div className="grid grid-cols-1 gap-y-4">
-                            <div><label className="label-style">Location</label><p className="font-bold text-sm">{selectedWorker['Village']}, {selectedWorker['District']}, {selectedWorker['Province']}</p></div>
+                            <div><label className="label-style">Address</label><p className="font-bold text-sm">{selectedWorker['Village']}, {selectedWorker['District']}, {selectedWorker['Province']}</p></div>
                             <div>
                                 <label className="label-style">Google Drive</label>
-                                <a href={selectedWorker['Google drive']} target="_blank" className="block text-emerald-500 font-black underline truncate text-sm mt-1 italic">View Documents ↗</a>
+                                <a href={selectedWorker['Google drive']} target="_blank" className="block text-emerald-500 font-black underline truncate text-sm mt-1 italic">Open Documents ↗</a>
                             </div>
                         </div>
                     </div>
                 </div>
             );
 
+            // --- ✏️ 編集画面 (Edit Mode) ---
             if (view === 'edit') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
                     <button onClick={() => setView('detail')} className="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest">← Cancel Edit</button>
                     
                     <div className="bg-white/5 rounded-[2.5rem] border border-white/10 shadow-2xl p-8 space-y-6">
-                        <h2 className="text-2xl font-black italic border-b border-white/10 pb-4 uppercase text-emerald-500">Edit Profile</h2>
+                        <h2 className="text-2xl font-black italic border-b border-white/10 pb-4 uppercase text-emerald-500">Master Edit</h2>
                         
                         <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[60vh] pr-2">
                             {Object.keys(selectedWorker).map(key => {
@@ -187,7 +186,7 @@
                             disabled={isSaving}
                             className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl shadow-emerald-500/20 hover:bg-emerald-400 transition-all active:scale-95"
                         >
-                            {isSaving ? 'Processing Sync...' : 'Save & Update Cloud 💾'}
+                            {isSaving ? 'Processing...' : 'Update & Sync to Cloud 💾'}
                         </button>
                     </div>
                 </div>
