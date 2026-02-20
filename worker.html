@@ -11,13 +11,16 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; }
-        .batch-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; overflow: hidden; margin-bottom: 16px; }
+        .batch-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; transition: all 0.3s; margin-bottom: 16px; }
+        .batch-card:active { transform: scale(0.98); background: rgba(255,255,255,0.1); }
         .input-edit { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; font-weight: 600; font-size: 14px; margin-top: 4px; }
         .input-edit:focus { border-color: #10b981; outline: none; background: rgba(16, 185, 129, 0.1); }
         .label-style { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
         .section-title { font-size: 12px; font-weight: 900; color: #10b981; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; margin-bottom: 16px; margin-top: 24px; }
         .search-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 12px 20px; width: 100%; color: white; font-weight: bold; outline: none; transition: all 0.3s; }
         .search-input:focus { border-color: #10b981; background: rgba(255,255,255,0.1); }
+        .worker-item { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 16px; transition: all 0.2s; cursor: pointer; }
+        .worker-item:active { transform: scale(0.97); background: rgba(16, 185, 129, 0.1); }
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -39,11 +42,11 @@
         };
 
         function App() {
-            const [view, setView] = useState('folders');
+            const [view, setView] = useState('folders'); // folders, list, detail, edit
             const [workers, setWorkers] = useState([]);
             const [loading, setLoading] = useState(true);
+            const [selectedBatch, setSelectedBatch] = useState(null);
             const [selectedWorker, setSelectedWorker] = useState(null);
-            const [expandedBatch, setExpandedBatch] = useState(null);
             const [isSaving, setIsSaving] = useState(false);
             
             // 検索・並び替え用ステート
@@ -68,108 +71,114 @@
                     await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(selectedWorker) });
                     alert("Data Sync Successful! ✅");
                     await fetchData();
-                    setView('folders');
+                    setView('list'); // 編集後はリストに戻る
                 } catch (e) { alert("Sync Error! ❌"); }
                 setIsSaving(false);
             };
 
-            // --- 🔍 フィルタリング & 並び替えロジック ---
-            const filteredWorkers = useMemo(() => {
-                let result = workers.filter(w => {
-                    const searchContent = `${w['Full Name']} ${w['Village']} ${w['Province']} ${w['Passport No.']}`.toLowerCase();
-                    return searchContent.includes(searchQuery.toLowerCase());
-                });
+            // --- 🟢 期生のユニークリスト抽出 ---
+            const batchNumbers = useMemo(() => {
+                const nums = [...new Set(workers.map(w => w.batch || w._sheetName.replace("Batch","")))].sort((a,b)=>a-b);
+                return nums;
+            }, [workers]);
 
-                if (sortBy === 'name') {
-                    result.sort((a, b) => (a['Full Name'] || '').localeCompare(b['Full Name'] || ''));
-                } else if (sortBy === 'age') {
-                    result.sort((a, b) => (parseInt(a['Age']) || 0) - (parseInt(b['Age']) || 0));
+            // --- 🔵 選択された期生内での検索 & 並び替えロジック ---
+            const batchWorkers = useMemo(() => {
+                if (!selectedBatch) return [];
+                
+                // まず期生で絞り込み
+                let list = workers.filter(w => (w.batch || w._sheetName.replace("Batch","")) == selectedBatch);
+
+                // 次に検索ワードで絞り込み
+                if (searchQuery) {
+                    list = list.filter(w => {
+                        const content = `${w['Full Name']} ${w['Village']} ${w['Passport No.']}`.toLowerCase();
+                        return content.includes(searchQuery.toLowerCase());
+                    });
                 }
-                return result;
-            }, [workers, searchQuery, sortBy]);
 
-            const batches = useMemo(() => {
-                return [...new Set(filteredWorkers.map(w => w.batch || w._sheetName.replace("Batch","")))].sort((a,b)=>a-b);
-            }, [filteredWorkers]);
+                // 最後に並び替え
+                if (sortBy === 'name') {
+                    list.sort((a, b) => (a['Full Name'] || '').localeCompare(b['Full Name'] || ''));
+                } else if (sortBy === 'age') {
+                    list.sort((a, b) => (parseInt(a['Age']) || 0) - (parseInt(b['Age']) || 0));
+                }
+                return list;
+            }, [workers, selectedBatch, searchQuery, sortBy]);
 
             if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse uppercase tracking-widest text-sm">Loading Database...</div>;
 
-            // --- 📂 フォルダリスト (Dashboard) ---
+            // --- VIEW: 期生フォルダ一覧 ---
             if (view === 'folders') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
-                    <header className="flex justify-between items-center mb-6">
+                    <header className="flex justify-between items-center mb-8">
                         <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">Workers</h1>
                         <button onClick={() => window.location.href='index.html'} className="text-[10px] font-black bg-white/5 px-4 py-2 rounded-full border border-white/10 text-slate-400 uppercase">Exit</button>
                     </header>
-
-                    {/* 検索 & ソートバー */}
-                    <div className="mb-8 space-y-4">
-                        <input 
-                            type="text" 
-                            placeholder="Search by Name, Village, Passport..." 
-                            className="search-input"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        <div className="flex gap-2">
-                            <select 
-                                value={sortBy} 
-                                onChange={(e) => setSortBy(e.target.value)}
-                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black uppercase text-emerald-500 outline-none"
-                            >
-                                <option value="default">Default Sort</option>
-                                <option value="name">Name (A-Z)</option>
-                                <option value="age">Age (Youngest)</option>
-                            </select>
-                            {searchQuery && (
-                                <button onClick={() => setSearchQuery('')} className="bg-rose-500/20 text-rose-500 px-4 py-2 rounded-xl text-[10px] font-black uppercase">Clear</button>
-                            )}
-                        </div>
-                    </div>
-
-                    {batches.length === 0 ? (
-                        <div className="text-center py-20 text-slate-500 font-bold italic">No workers found...</div>
-                    ) : (
-                        batches.map(num => {
-                            const batchList = filteredWorkers.filter(w => (w.batch || w._sheetName.replace("Batch","")) == num);
-                            return (
-                                <div key={num} className="batch-card">
-                                    <div onClick={() => setExpandedBatch(expandedBatch === num ? null : num)} 
-                                         className="p-6 flex justify-between items-center cursor-pointer hover:bg-white/5 transition-all">
-                                        <h2 className="text-2xl font-black italic uppercase">Batch {num}</h2>
-                                        <span className="text-emerald-500 font-black text-xs bg-emerald-500/10 px-3 py-1 rounded-full">{batchList.length} FOUND</span>
-                                    </div>
-                                    {(expandedBatch === num || searchQuery !== '') && (
-                                        <div className="p-4 bg-black/20 border-t border-white/5 grid grid-cols-2 gap-3 fade-in">
-                                            {batchList.map((w, i) => (
-                                                <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
-                                                     className="bg-white/5 p-4 rounded-2xl cursor-pointer hover:border-emerald-500 border border-transparent text-center transition-all active:scale-95">
-                                                    <span className="font-bold text-[11px] uppercase block truncate">{w['Full Name']}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                    <div className="space-y-4">
+                        {batchNumbers.map(num => (
+                            <div key={num} onClick={() => { setSelectedBatch(num); setView('list'); }}
+                                 className="batch-card p-6 cursor-pointer flex justify-between items-center">
+                                <div>
+                                    <h2 className="text-2xl font-black italic uppercase">Batch {num}</h2>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Management Folder</p>
                                 </div>
-                            );
-                        })
-                    )}
+                                <div className="bg-emerald-500/10 text-emerald-500 px-4 py-1 rounded-full font-black text-[10px] uppercase">
+                                    {workers.filter(w => (w.batch || w._sheetName.replace("Batch","")) == num).length} Members
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             );
 
-            // --- 👤 詳細画面 (Detail View) ---
+            // --- VIEW: 指定期生の中身リスト (検索・並び替え付) ---
+            if (view === 'list') return (
+                <div className="max-w-xl mx-auto p-6 fade-in">
+                    <button onClick={() => { setView('folders'); setSearchQuery(''); }} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to Batches</button>
+                    
+                    <div className="mb-6">
+                        <h2 className="text-3xl font-black italic uppercase mb-6 tracking-tight">Batch {selectedBatch}</h2>
+                        <div className="space-y-3">
+                            <input 
+                                type="text" placeholder="Search in this batch..." 
+                                className="search-input" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                            <select 
+                                value={sortBy} onChange={(e) => setSortBy(e.target.value)}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-emerald-500 outline-none"
+                            >
+                                <option value="default">Default Sort (No.)</option>
+                                <option value="name">Sort by Name (A-Z)</option>
+                                <option value="age">Sort by Age (Youngest)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="space-y-3">
+                        {batchWorkers.map((w, i) => (
+                            <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
+                                 className="worker-item flex justify-between items-center">
+                                <span className="font-black text-sm uppercase truncate pr-4">{w['Full Name']}</span>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase bg-white/5 px-2 py-1 rounded-md">{w['Village'] || 'N/A'}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+
+            // --- VIEW: 詳細画面 (Detail View) ---
             if (view === 'detail') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
-                    <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to List</button>
-                    
+                    <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to List</button>
                     <div className="bg-white/5 rounded-[2.5rem] border border-white/10 shadow-2xl p-8">
                         <div className="flex justify-between items-start mb-8">
                             <div>
                                 <h2 className="text-3xl font-black italic uppercase text-emerald-500 leading-none">{selectedWorker['Full Name']}</h2>
-                                <p className="text-sm font-bold text-slate-500 mt-2 tracking-widest uppercase">Batch {selectedWorker.batch}</p>
+                                <p className="text-sm font-bold text-slate-500 mt-2 tracking-widest uppercase italic">Batch {selectedWorker.batch}</p>
                             </div>
-                            <button onClick={() => setView('edit')} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase shadow-lg shadow-emerald-500/20">Edit Profile ✎</button>
+                            <button onClick={() => setView('edit')} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase">Edit Profile ✎</button>
                         </div>
-
                         <div className="section-title text-emerald-500">Personal & Clothing</div>
                         <div className="grid grid-cols-2 gap-y-4">
                             <div><label className="label-style">Gender</label><p className="font-bold">{selectedWorker['Sex'] || '-'}</p></div>
@@ -177,7 +186,6 @@
                             <div><label className="label-style">Birth Date</label><p className="font-bold">{formatDate(selectedWorker['Date of birth'])}</p></div>
                             <div><label className="label-style">Cloth Size</label><p className="font-bold text-emerald-400">{selectedWorker['Cloth size'] || selectedWorker['Size'] || '-'}</p></div>
                         </div>
-
                         <div className="section-title">Passport Information</div>
                         <div className="grid grid-cols-1 gap-y-4">
                             <div><label className="label-style">Passport No.</label><p className="font-bold">{selectedWorker['Passport No.'] || '-'}</p></div>
@@ -186,13 +194,11 @@
                                 <div><label className="label-style">Date of Expiry</label><p className="font-bold text-sm text-rose-400">{formatDate(selectedWorker['Date of Expiry'])}</p></div>
                             </div>
                         </div>
-
                         <div className="section-title">Bank Account Details</div>
                         <div className="grid grid-cols-1 gap-y-4">
                             <div><label className="label-style">AC Name</label><p className="font-bold text-emerald-500">{selectedWorker['AC-name'] || '-'}</p></div>
                             <div><label className="label-style">AC Number</label><p className="font-black text-lg tracking-wider">{selectedWorker['AC-NO'] || '-'}</p></div>
                         </div>
-
                         <div className="section-title">Contact & Cloud</div>
                         <div className="grid grid-cols-1 gap-y-4">
                             <div><label className="label-style">Address</label><p className="font-bold text-sm">{selectedWorker['Village']}, {selectedWorker['District']}, {selectedWorker['Province']}</p></div>
@@ -205,13 +211,12 @@
                 </div>
             );
 
-            // --- ✏️ 編集画面 (Edit Mode) ---
+            // --- VIEW: 編集画面 (Edit Mode) ---
             if (view === 'edit') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
                     <button onClick={() => setView('detail')} className="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest">← Cancel Edit</button>
-                    
                     <div className="bg-white/5 rounded-[2.5rem] border border-white/10 shadow-2xl p-8 space-y-6">
-                        <h2 className="text-2xl font-black italic border-b border-white/10 pb-4 uppercase text-emerald-500">Master Edit</h2>
+                        <h2 className="text-2xl font-black italic border-b border-white/10 pb-4 uppercase text-emerald-500">Edit Profile</h2>
                         <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[60vh] pr-2">
                             {Object.keys(selectedWorker).map(key => {
                                 if (key.startsWith('_') || key === 'batch') return null;
@@ -227,8 +232,8 @@
                                 );
                             })}
                         </div>
-                        <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl shadow-emerald-500/20 hover:bg-emerald-400 transition-all active:scale-95">
-                            {isSaving ? 'Processing...' : 'Update & Sync to Cloud 💾'}
+                        <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-emerald-400 transition-all active:scale-95">
+                            {isSaving ? 'Processing Sync...' : 'Update & Sync to Cloud 💾'}
                         </button>
                     </div>
                 </div>
