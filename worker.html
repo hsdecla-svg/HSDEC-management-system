@@ -16,6 +16,8 @@
         .input-edit:focus { border-color: #10b981; outline: none; background: rgba(16, 185, 129, 0.1); }
         .label-style { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
         .section-title { font-size: 12px; font-weight: 900; color: #10b981; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; margin-bottom: 16px; margin-top: 24px; }
+        .search-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 12px 20px; width: 100%; color: white; font-weight: bold; outline: none; transition: all 0.3s; }
+        .search-input:focus { border-color: #10b981; background: rgba(255,255,255,0.1); }
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -23,21 +25,17 @@
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
 
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdAZAcryW4C9u3VE-DoBWBpBeB-lUIlxHPU3qBgq3oS2DKOr-fWuN239iNyhGTq7o0Nw/exec';
 
-        // 日付整形（時刻をカットして YYYY/MM/DD にする）
         const formatDate = (dateStr) => {
             if (!dateStr) return '-';
             try {
-                // ISO 8601 (T...z) 形式や日付オブジェクトを処理
                 const d = new Date(dateStr);
                 if (isNaN(d.getTime())) return dateStr;
                 return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-            } catch (e) {
-                return dateStr;
-            }
+            } catch (e) { return dateStr; }
         };
 
         function App() {
@@ -47,6 +45,10 @@
             const [selectedWorker, setSelectedWorker] = useState(null);
             const [expandedBatch, setExpandedBatch] = useState(null);
             const [isSaving, setIsSaving] = useState(false);
+            
+            // 検索・並び替え用ステート
+            const [searchQuery, setSearchQuery] = useState('');
+            const [sortBy, setSortBy] = useState('default'); 
 
             useEffect(() => { fetchData(); }, []);
 
@@ -71,46 +73,93 @@
                 setIsSaving(false);
             };
 
-            const batches = [...new Set(workers.map(w => w.batch || w._sheetName.replace("Batch","")))].sort((a,b)=>a-b);
+            // --- 🔍 フィルタリング & 並び替えロジック ---
+            const filteredWorkers = useMemo(() => {
+                let result = workers.filter(w => {
+                    const searchContent = `${w['Full Name']} ${w['Village']} ${w['Province']} ${w['Passport No.']}`.toLowerCase();
+                    return searchContent.includes(searchQuery.toLowerCase());
+                });
+
+                if (sortBy === 'name') {
+                    result.sort((a, b) => (a['Full Name'] || '').localeCompare(b['Full Name'] || ''));
+                } else if (sortBy === 'age') {
+                    result.sort((a, b) => (parseInt(a['Age']) || 0) - (parseInt(b['Age']) || 0));
+                }
+                return result;
+            }, [workers, searchQuery, sortBy]);
+
+            const batches = useMemo(() => {
+                return [...new Set(filteredWorkers.map(w => w.batch || w._sheetName.replace("Batch","")))].sort((a,b)=>a-b);
+            }, [filteredWorkers]);
 
             if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse uppercase tracking-widest text-sm">Loading Database...</div>;
 
-            // --- 📂 フォルダリスト (Batch List) ---
+            // --- 📂 フォルダリスト (Dashboard) ---
             if (view === 'folders') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
-                    <header className="flex justify-between items-center mb-8">
+                    <header className="flex justify-between items-center mb-6">
                         <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">Workers</h1>
                         <button onClick={() => window.location.href='index.html'} className="text-[10px] font-black bg-white/5 px-4 py-2 rounded-full border border-white/10 text-slate-400 uppercase">Exit</button>
                     </header>
-                    {batches.map(num => {
-                        const batchList = workers.filter(w => (w.batch || w._sheetName.replace("Batch","")) == num);
-                        return (
-                            <div key={num} className="batch-card">
-                                <div onClick={() => setExpandedBatch(expandedBatch === num ? null : num)} 
-                                     className="p-6 flex justify-between items-center cursor-pointer hover:bg-white/5 transition-all">
-                                    <h2 className="text-2xl font-black italic uppercase">Batch {num}</h2>
-                                    <span className="text-emerald-500 font-black text-xs bg-emerald-500/10 px-3 py-1 rounded-full">{batchList.length} STAFF</span>
-                                </div>
-                                {expandedBatch === num && (
-                                    <div className="p-4 bg-black/20 border-t border-white/5 grid grid-cols-2 gap-3 fade-in">
-                                        {batchList.map((w, i) => (
-                                            <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
-                                                 className="bg-white/5 p-4 rounded-2xl cursor-pointer hover:border-emerald-500 border border-transparent text-center transition-all active:scale-95">
-                                                <span className="font-bold text-[11px] uppercase block truncate">{w['Full Name']}</span>
-                                            </div>
-                                        ))}
+
+                    {/* 検索 & ソートバー */}
+                    <div className="mb-8 space-y-4">
+                        <input 
+                            type="text" 
+                            placeholder="Search by Name, Village, Passport..." 
+                            className="search-input"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        <div className="flex gap-2">
+                            <select 
+                                value={sortBy} 
+                                onChange={(e) => setSortBy(e.target.value)}
+                                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-[10px] font-black uppercase text-emerald-500 outline-none"
+                            >
+                                <option value="default">Default Sort</option>
+                                <option value="name">Name (A-Z)</option>
+                                <option value="age">Age (Youngest)</option>
+                            </select>
+                            {searchQuery && (
+                                <button onClick={() => setSearchQuery('')} className="bg-rose-500/20 text-rose-500 px-4 py-2 rounded-xl text-[10px] font-black uppercase">Clear</button>
+                            )}
+                        </div>
+                    </div>
+
+                    {batches.length === 0 ? (
+                        <div className="text-center py-20 text-slate-500 font-bold italic">No workers found...</div>
+                    ) : (
+                        batches.map(num => {
+                            const batchList = filteredWorkers.filter(w => (w.batch || w._sheetName.replace("Batch","")) == num);
+                            return (
+                                <div key={num} className="batch-card">
+                                    <div onClick={() => setExpandedBatch(expandedBatch === num ? null : num)} 
+                                         className="p-6 flex justify-between items-center cursor-pointer hover:bg-white/5 transition-all">
+                                        <h2 className="text-2xl font-black italic uppercase">Batch {num}</h2>
+                                        <span className="text-emerald-500 font-black text-xs bg-emerald-500/10 px-3 py-1 rounded-full">{batchList.length} FOUND</span>
                                     </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                                    {(expandedBatch === num || searchQuery !== '') && (
+                                        <div className="p-4 bg-black/20 border-t border-white/5 grid grid-cols-2 gap-3 fade-in">
+                                            {batchList.map((w, i) => (
+                                                <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
+                                                     className="bg-white/5 p-4 rounded-2xl cursor-pointer hover:border-emerald-500 border border-transparent text-center transition-all active:scale-95">
+                                                    <span className="font-bold text-[11px] uppercase block truncate">{w['Full Name']}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    )}
                 </div>
             );
 
             // --- 👤 詳細画面 (Detail View) ---
             if (view === 'detail') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
-                    <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to Dashboard</button>
+                    <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to List</button>
                     
                     <div className="bg-white/5 rounded-[2.5rem] border border-white/10 shadow-2xl p-8">
                         <div className="flex justify-between items-start mb-8">
@@ -133,8 +182,7 @@
                         <div className="grid grid-cols-1 gap-y-4">
                             <div><label className="label-style">Passport No.</label><p className="font-bold">{selectedWorker['Passport No.'] || '-'}</p></div>
                             <div className="grid grid-cols-2 gap-4">
-                                {/* J列: Date of issue / K列: Date of Expiry に完全一致させています */}
-                                <div><label className="label-style">Date of issue</label><p className="font-bold text-sm text-white">{formatDate(selectedWorker['Date of issue'])}</p></div>
+                                <div><label className="label-style">Date of issue</label><p className="font-bold text-sm">{formatDate(selectedWorker['Date of issue'])}</p></div>
                                 <div><label className="label-style">Date of Expiry</label><p className="font-bold text-sm text-rose-400">{formatDate(selectedWorker['Date of Expiry'])}</p></div>
                             </div>
                         </div>
@@ -164,7 +212,6 @@
                     
                     <div className="bg-white/5 rounded-[2.5rem] border border-white/10 shadow-2xl p-8 space-y-6">
                         <h2 className="text-2xl font-black italic border-b border-white/10 pb-4 uppercase text-emerald-500">Master Edit</h2>
-                        
                         <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[60vh] pr-2">
                             {Object.keys(selectedWorker).map(key => {
                                 if (key.startsWith('_') || key === 'batch') return null;
@@ -180,12 +227,7 @@
                                 );
                             })}
                         </div>
-
-                        <button 
-                            onClick={handleUpdate}
-                            disabled={isSaving}
-                            className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl shadow-emerald-500/20 hover:bg-emerald-400 transition-all active:scale-95"
-                        >
+                        <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl shadow-emerald-500/20 hover:bg-emerald-400 transition-all active:scale-95">
                             {isSaving ? 'Processing...' : 'Update & Sync to Cloud 💾'}
                         </button>
                     </div>
