@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Management System</title>
+    <title>HSDEC Worker Management</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; }
-        .batch-card { background: white; border-radius: 24px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); overflow: hidden; margin-bottom: 16px; }
-        .input-edit { width: 100%; padding: 10px; border-radius: 10px; border: 2px solid #e2e8f0; font-weight: 600; font-size: 14px; margin-top: 4px; }
-        .input-edit:focus { border-color: #3b82f6; outline: none; background: #fff; }
-        .label-style { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; }
-        .section-title { font-size: 12px; font-weight: 900; color: #3b82f6; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 12px; margin-top: 24px; }
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; }
+        .batch-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; overflow: hidden; margin-bottom: 16px; }
+        .input-edit { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; font-weight: 600; font-size: 14px; margin-top: 4px; }
+        .input-edit:focus { border-color: #10b981; outline: none; background: rgba(16, 185, 129, 0.1); }
+        .label-style { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+        .section-title { font-size: 12px; font-weight: 900; color: #10b981; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; margin-bottom: 16px; margin-top: 24px; }
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -28,7 +28,7 @@
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdAZAcryW4C9u3VE-DoBWBpBeB-lUIlxHPU3qBgq3oS2DKOr-fWuN239iNyhGTq7o0Nw/exec';
 
         function App() {
-            const [view, setView] = useState('folders'); // folders, detail, edit
+            const [view, setView] = useState('folders');
             const [workers, setWorkers] = useState([]);
             const [loading, setLoading] = useState(true);
             const [selectedWorker, setSelectedWorker] = useState(null);
@@ -51,35 +51,38 @@
                 setIsSaving(true);
                 try {
                     await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(selectedWorker) });
-                    alert("Updated Successfully! ✅");
+                    alert("Data Sync Successful! ✅");
                     await fetchData();
                     setView('folders');
-                } catch (e) { alert("Error! ❌"); }
+                } catch (e) { alert("Sync Error! ❌"); }
                 setIsSaving(false);
             };
 
             const batches = [...new Set(workers.map(w => w.batch || w._sheetName.replace("Batch","")))].sort((a,b)=>a-b);
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-black text-slate-400 animate-pulse uppercase tracking-widest">Loading Master...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse uppercase tracking-widest">Loading Master DB...</div>;
 
-            // --- 📂 フォルダ表示 (Dashboard) ---
+            // --- 📂 Dashboard ---
             if (view === 'folders') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
-                    <h1 className="text-3xl font-black italic mb-8 text-center uppercase tracking-tighter">Master Database</h1>
+                    <header className="flex justify-between items-center mb-8">
+                        <h1 className="text-3xl font-black italic uppercase tracking-tighter">Workers</h1>
+                        <button onClick={() => window.location.href='index.html'} className="text-[10px] font-black bg-white/5 px-4 py-2 rounded-full border border-white/10 text-slate-400 uppercase">Exit</button>
+                    </header>
                     {batches.map(num => {
                         const batchList = workers.filter(w => (w.batch || w._sheetName.replace("Batch","")) == num);
                         return (
                             <div key={num} className="batch-card">
                                 <div onClick={() => setExpandedBatch(expandedBatch === num ? null : num)} 
-                                     className="p-6 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-all">
+                                     className="p-6 flex justify-between items-center cursor-pointer hover:bg-white/5 transition-all">
                                     <h2 className="text-2xl font-black italic uppercase">Batch {num}</h2>
-                                    <span className="text-blue-500 font-black text-xs bg-blue-50 px-3 py-1 rounded-full">{batchList.length} Workers</span>
+                                    <span className="text-emerald-500 font-black text-xs bg-emerald-500/10 px-3 py-1 rounded-full">{batchList.length} STAFF</span>
                                 </div>
                                 {expandedBatch === num && (
-                                    <div className="p-4 bg-slate-50 border-t grid grid-cols-2 gap-3 fade-in">
+                                    <div className="p-4 bg-black/20 border-t border-white/5 grid grid-cols-2 gap-3 fade-in">
                                         {batchList.map((w, i) => (
                                             <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
-                                                 className="bg-white p-3 rounded-xl shadow-sm cursor-pointer hover:border-blue-400 border border-transparent text-center transition-all active:scale-95">
+                                                 className="bg-white/5 p-4 rounded-2xl cursor-pointer hover:border-emerald-500 border border-transparent text-center transition-all active:scale-95">
                                                 <span className="font-bold text-[11px] uppercase block truncate">{w['Full Name']}</span>
                                             </div>
                                         ))}
@@ -91,55 +94,65 @@
                 </div>
             );
 
-            // --- 👤 詳細閲覧表示 (View Profile) ---
+            // --- 👤 Detail View ---
             if (view === 'detail') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
-                    <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-400 mb-6 uppercase flex items-center gap-1">← Back to Dashboard</button>
+                    <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to Dashboard</button>
                     
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl p-8">
-                        <div className="flex justify-between items-start mb-6">
+                    <div className="bg-white/5 rounded-[2.5rem] border border-white/10 shadow-2xl p-8">
+                        <div className="flex justify-between items-start mb-8">
                             <div>
-                                <h2 className="text-3xl font-black italic uppercase text-slate-800 leading-none">{selectedWorker['Full Name']}</h2>
-                                <p className="text-sm font-bold text-slate-400 mt-2 tracking-widest uppercase">Batch {selectedWorker.batch}</p>
+                                <h2 className="text-3xl font-black italic uppercase text-emerald-500 leading-none">{selectedWorker['Full Name']}</h2>
+                                <p className="text-sm font-bold text-slate-500 mt-2 tracking-widest uppercase">Batch {selectedWorker.batch}</p>
                             </div>
-                            <button onClick={() => setView('edit')} className="bg-slate-100 text-slate-600 px-4 py-2 rounded-full font-black text-[10px] uppercase hover:bg-blue-600 hover:text-white transition-all">Edit Info ✎</button>
+                            <button onClick={() => setView('edit')} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase shadow-lg shadow-emerald-500/20">Edit ✎</button>
                         </div>
 
-                        <div className="section-title">Personal Information</div>
+                        <div className="section-title text-emerald-500">Personal & Clothing</div>
                         <div className="grid grid-cols-2 gap-y-4">
                             <div><label className="label-style">Gender</label><p className="font-bold">{selectedWorker['Sex'] || '-'}</p></div>
                             <div><label className="label-style">Age</label><p className="font-bold">{selectedWorker['Age'] || '-'}</p></div>
-                            <div className="col-span-2"><label className="label-style">Date of Birth</label><p className="font-bold">{selectedWorker['Date of birth'] ? new Date(selectedWorker['Date of birth']).toLocaleDateString() : '-'}</p></div>
+                            <div><label className="label-style">DOB</label><p className="font-bold">{selectedWorker['Date of birth'] || '-'}</p></div>
+                            <div><label className="label-style">Cloth Size</label><p className="font-bold text-emerald-400">{selectedWorker['Cloth size'] || selectedWorker['Size'] || '-'}</p></div>
                         </div>
 
-                        <div className="section-title">Address</div>
-                        <div className="grid grid-cols-1 gap-y-4">
-                            <div><label className="label-style">Village</label><p className="font-bold">{selectedWorker['Village'] || '-'}</p></div>
-                            <div><label className="label-style">District</label><p className="font-bold">{selectedWorker['District'] || '-'}</p></div>
-                            <div><label className="label-style">Province</label><p className="font-bold">{selectedWorker['Province'] || '-'}</p></div>
-                        </div>
-
-                        <div className="section-title">Other Details</div>
+                        <div className="section-title">Passport Details</div>
                         <div className="grid grid-cols-1 gap-y-4">
                             <div><label className="label-style">Passport No.</label><p className="font-bold">{selectedWorker['Passport No.'] || '-'}</p></div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="label-style">Issued Date</label><p className="font-bold text-sm">{selectedWorker['Issued Date'] || '-'}</p></div>
+                                <div><label className="label-style">Expiry Date</label><p className="font-bold text-sm text-rose-400">{selectedWorker['Expiry Date'] || '-'}</p></div>
+                            </div>
+                        </div>
+
+                        <div className="section-title">Bank Account Info</div>
+                        <div className="grid grid-cols-1 gap-y-4">
+                            <div><label className="label-style">AC Name</label><p className="font-bold text-emerald-500">{selectedWorker['AC-name'] || '-'}</p></div>
+                            <div><label className="label-style">AC Number</label><p className="font-black text-lg tracking-wider">{selectedWorker['AC-NO'] || '-'}</p></div>
+                        </div>
+
+                        <div className="section-title">Address & Cloud</div>
+                        <div className="grid grid-cols-1 gap-y-4">
+                            <div><label className="label-style">Location</label><p className="font-bold text-sm">{selectedWorker['Village']}, {selectedWorker['District']}, {selectedWorker['Province']}</p></div>
                             <div>
                                 <label className="label-style">Google Drive</label>
-                                <a href={selectedWorker['Google drive']} target="_blank" className="block text-blue-600 font-bold underline truncate text-sm">Open Link ↗</a>
+                                <a href={selectedWorker['Google drive']} target="_blank" className="block text-emerald-500 font-black underline truncate text-sm mt-1 italic">View Documents ↗</a>
                             </div>
                         </div>
                     </div>
                 </div>
             );
 
-            // --- ✏️ 編集入力画面 (Edit Profile) ---
+            // --- ✏️ Edit Mode ---
             if (view === 'edit') return (
                 <div className="max-w-xl mx-auto p-6 fade-in">
-                    <button onClick={() => setView('detail')} className="text-[10px] font-black text-slate-400 mb-6 uppercase">← Cancel Edit</button>
+                    <button onClick={() => setView('detail')} className="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest">← Cancel Edit</button>
                     
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl p-8 space-y-6">
-                        <h2 className="text-2xl font-black italic border-b pb-4 uppercase text-blue-600">Edit Mode</h2>
+                    <div className="bg-white/5 rounded-[2.5rem] border border-white/10 shadow-2xl p-8 space-y-6">
+                        <h2 className="text-2xl font-black italic border-b border-white/10 pb-4 uppercase text-emerald-500">Edit Profile</h2>
                         
                         <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[60vh] pr-2">
+                            {/* 全てのキーを表示（隠しフィールド以外） */}
                             {Object.keys(selectedWorker).map(key => {
                                 if (key.startsWith('_') || key === 'batch') return null;
                                 return (
@@ -153,14 +166,27 @@
                                     </div>
                                 );
                             })}
+                            {/* 明示的な追加項目（スプレッドシート側に列がなくてもUIから送信可能にする） */}
+                            {['Cloth size', 'Issued Date', 'Expiry Date', 'AC-name', 'AC-NO'].map(key => (
+                                !selectedWorker.hasOwnProperty(key) && (
+                                    <div key={key}>
+                                        <label className="label-style text-emerald-500">{key} (New Field)</label>
+                                        <input 
+                                            className="input-edit border-emerald-500/30"
+                                            placeholder={`Input ${key}`}
+                                            onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})}
+                                        />
+                                    </div>
+                                )
+                            ))}
                         </div>
 
                         <button 
                             onClick={handleUpdate}
                             disabled={isSaving}
-                            className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-black transition-all"
+                            className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl shadow-emerald-500/20 hover:bg-emerald-400 transition-all active:scale-95"
                         >
-                            {isSaving ? 'Saving...' : 'Save & Update Cloud 💾'}
+                            {isSaving ? 'Processing Sync...' : 'Save & Update Cloud 💾'}
                         </button>
                     </div>
                 </div>
