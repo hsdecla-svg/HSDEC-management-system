@@ -12,45 +12,46 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; }
         .batch-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; transition: all 0.3s; margin-bottom: 16px; }
-        .batch-card:active { transform: scale(0.98); background: rgba(255,255,255,0.1); }
         .input-edit { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; font-weight: 600; font-size: 14px; margin-top: 4px; }
-        .input-edit:focus { border-color: #10b981; outline: none; background: rgba(16, 185, 129, 0.1); }
         .label-style { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
         .section-title { font-size: 12px; font-weight: 900; color: #10b981; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; margin-bottom: 16px; margin-top: 24px; }
-        .search-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 12px 20px; width: 100%; color: white; font-weight: bold; outline: none; transition: all 0.3s; }
-        .search-input:focus { border-color: #10b981; background: rgba(255,255,255,0.1); }
+        .search-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 12px 20px; width: 100%; color: white; font-weight: bold; outline: none; }
         
-        /* --- 🎨 District別のボーダースタイル --- */
+        /* District Borders */
         .worker-item { 
-            position: relative; /* 疑似要素用 */
-            overflow: hidden; /* 緑のはみ出し防止 */
-            background: rgba(255,255,255,0.05); 
-            border: 2px solid rgba(255,255,255,0.05); 
-            border-radius: 16px; 
-            padding: 16px; 
-            transition: all 0.2s; 
-            cursor: pointer; 
+            position: relative; overflow: hidden; background: rgba(255,255,255,0.05); 
+            border: 2px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 16px; 
+            transition: all 0.2s; cursor: pointer; 
         }
         .border-pakngeum { border-color: #38bdf8 !important; background: rgba(56, 189, 248, 0.05); }
         .border-khounkham { border-color: #fb7185 !important; background: rgba(251, 113, 133, 0.05); }
         
-        /* --- ♻️ Reentryの右半分緑スタイル --- */
+        /* Reentry Gradient */
         .reentry-highlight::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 50%; /* 右半分 */
-            height: 100%;
+            content: ""; position: absolute; top: 0; right: 0; width: 50%; height: 100%;
             background: linear-gradient(to right, transparent, rgba(16, 185, 129, 0.3));
-            pointer-events: none;
-            z-index: 0;
+            pointer-events: none; z-index: 0;
         }
 
-        .worker-item:active { transform: scale(0.97); background: rgba(16, 185, 129, 0.1); }
+        /* Couple Badge Style */
+        .couple-badge {
+            font-size: 9px; font-weight: 900; color: #fb7185;
+            background: rgba(251, 113, 133, 0.1); padding: 2px 8px;
+            border-radius: 4px; margin-top: 4px; display: inline-block;
+        }
+
+        /* Floating Legend */
+        .legend-box {
+            position: fixed; bottom: 20px; right: 20px;
+            background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 12px; backdrop-filter: blur(10px); z-index: 50;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 10px; font-weight: 900; text-transform: uppercase; }
+        .legend-color { width: 12px; height: 12px; border-radius: 3px; }
+
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
         .profile-img-small { width: 100%; height: 180px; object-fit: cover; border-radius: 20px; margin-bottom: 20px; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); }
     </style>
 </head>
@@ -59,15 +60,6 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdAZAcryW4C9u3VE-DoBWBpBeB-lUIlxHPU3qBgq3oS2DKOr-fWuN239iNyhGTq7o0Nw/exec';
-
-        const formatDate = (dateStr) => {
-            if (!dateStr) return '-';
-            try {
-                const d = new Date(dateStr);
-                if (isNaN(d.getTime())) return dateStr;
-                return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-            } catch (e) { return dateStr; }
-        };
 
         function App() {
             const [view, setView] = useState('folders');
@@ -102,27 +94,41 @@
                 setIsSaving(false);
             };
 
+            // --- 👫 夫婦判定ロジック ---
+            const processedWorkers = useMemo(() => {
+                return workers.map((w, index, array) => {
+                    let partnerName = null;
+                    const nextW = array[index + 1];
+                    const prevW = array[index - 1];
+
+                    // B列に「ຄູ່」があり、次行のBが空なら結合セル（上の人）
+                    if (w['B'] === 'ຄູ່' && nextW && !nextW['B']) {
+                        partnerName = nextW['Full Name'];
+                    } 
+                    // 前行に「ຄູ່」があり、自分のBが空なら結合セル（下の人）
+                    else if (!w['B'] && prevW && prevW['B'] === 'ຄູ່') {
+                        partnerName = prevW['Full Name'];
+                    }
+                    return { ...w, partnerName };
+                });
+            }, [workers]);
+
             const batchNumbers = useMemo(() => {
-                const nums = [...new Set(workers.map(w => w.batch || w._sheetName.replace("Batch","")))].sort((a,b)=>a-b);
-                return nums;
+                return [...new Set(workers.map(w => w.batch || w._sheetName.replace("Batch","")))].sort((a,b)=>a-b);
             }, [workers]);
 
             const batchWorkers = useMemo(() => {
                 if (!selectedBatch) return [];
-                let list = workers.filter(w => (w.batch || w._sheetName.replace("Batch","")) == selectedBatch);
+                let list = processedWorkers.filter(w => (w.batch || w._sheetName.replace("Batch","")) == selectedBatch);
+                
                 if (searchQuery) {
-                    list = list.filter(w => {
-                        const content = `${w['Full Name']} ${w['Village']} ${w['District']}`.toLowerCase();
-                        return content.includes(searchQuery.toLowerCase());
-                    });
+                    list = list.filter(w => `${w['Full Name']} ${w['Village']} ${w['District']}`.toLowerCase().includes(searchQuery.toLowerCase()));
                 }
-                if (sortBy === 'name') {
-                    list.sort((a, b) => (a['Full Name'] || '').localeCompare(b['Full Name'] || ''));
-                } else if (sortBy === 'age') {
-                    list.sort((a, b) => (parseInt(a['Age']) || 0) - (parseInt(b['Age']) || 0));
-                }
+                if (sortBy === 'name') list.sort((a, b) => (a['Full Name'] || '').localeCompare(b['Full Name'] || ''));
+                else if (sortBy === 'age') list.sort((a, b) => (parseInt(a['Age']) || 0) - (parseInt(b['Age']) || 0));
+                
                 return list;
-            }, [workers, selectedBatch, searchQuery, sortBy]);
+            }, [processedWorkers, selectedBatch, searchQuery, sortBy]);
 
             const getDistrictStyle = (district) => {
                 if (!district) return "";
@@ -132,11 +138,8 @@
                 return "";
             };
 
-            const getPrefix = (sex) => {
-                if (sex === 'M') return 'Mr. ';
-                if (sex === 'F') return 'Ms. ';
-                return '';
-            };
+            const getPrefix = (sex) => sex === 'M' ? 'Mr. ' : (sex === 'F' ? 'Ms. ' : '');
+            const getPartnerPrefix = (mySex) => mySex === 'M' ? 'Ms. ' : (mySex === 'F' ? 'Mr. ' : '');
 
             if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse uppercase tracking-widest text-sm">Loading Database...</div>;
 
@@ -148,12 +151,8 @@
                     </header>
                     <div className="space-y-4">
                         {batchNumbers.map(num => (
-                            <div key={num} onClick={() => { setSelectedBatch(num); setView('list'); }}
-                                 className="batch-card p-6 cursor-pointer flex justify-between items-center">
-                                <div>
-                                    <h2 className="text-2xl font-black italic uppercase">Batch {num}</h2>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Management Folder</p>
-                                </div>
+                            <div key={num} onClick={() => { setSelectedBatch(num); setView('list'); }} className="batch-card p-6 cursor-pointer flex justify-between items-center">
+                                <div><h2 className="text-2xl font-black italic uppercase">Batch {num}</h2><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Management Folder</p></div>
                                 <div className="bg-emerald-500/10 text-emerald-500 px-4 py-1 rounded-full font-black text-[10px] uppercase">
                                     {workers.filter(w => (w.batch || w._sheetName.replace("Batch","")) == num).length} Members
                                 </div>
@@ -164,7 +163,7 @@
             );
 
             if (view === 'list') return (
-                <div className="max-w-xl mx-auto p-6 fade-in">
+                <div className="max-w-xl mx-auto p-6 fade-in min-h-screen relative">
                     <button onClick={() => { setView('folders'); setSearchQuery(''); }} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to Batches</button>
                     <div className="mb-6">
                         <h2 className="text-3xl font-black italic uppercase mb-6 tracking-tight text-white">Batch {selectedBatch}</h2>
@@ -177,11 +176,10 @@
                             </select>
                         </div>
                     </div>
-                    <div className="space-y-3">
+
+                    <div className="space-y-3 pb-32">
                         {batchWorkers.map((w, i) => {
-                            // C列 (Reentry) のチェック判定
                             const isReentry = w['Reentry'] === true || w['Reentry'] === "TRUE" || w['Reentry'] === 1;
-                            
                             return (
                                 <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
                                      className={`worker-item flex justify-between items-center ${getDistrictStyle(w['District'])} ${isReentry ? 'reentry-highlight' : ''}`}>
@@ -190,6 +188,9 @@
                                             {getPrefix(w['Sex'])}{w['Full Name']}
                                         </span>
                                         <span className="text-[9px] font-black opacity-40 uppercase tracking-tighter text-white">{w['District'] || 'Unknown'}</span>
+                                        {w.partnerName && (
+                                            <div className="couple-badge">❤ Partner: {getPartnerPrefix(w['Sex'])}{w.partnerName}</div>
+                                        )}
                                     </div>
                                     <div className="flex flex-col items-end relative z-10">
                                         <span className="text-[10px] font-bold text-slate-500 uppercase bg-white/5 px-2 py-1 rounded-md mb-1">{w['Village'] || 'N/A'}</span>
@@ -199,9 +200,18 @@
                             );
                         })}
                     </div>
+
+                    {/* --- 凡例 (Legend) --- */}
+                    <div className="legend-box">
+                        <div className="legend-item"><div className="legend-color bg-[#38bdf8]"></div>Pakngeum</div>
+                        <div className="legend-item"><div className="legend-color bg-[#fb7185]"></div>Khounkham</div>
+                        <div className="legend-item"><div className="legend-color bg-emerald-500/50"></div>Reentry</div>
+                        <div className="legend-item text-rose-400"><span className="text-xs">❤</span> Couple (ຄູ່)</div>
+                    </div>
                 </div>
             );
 
+            // Detail view & Edit view (remain the same but using getPrefix)
             if (view === 'detail') return (
                 <div className="max-w-xl mx-auto p-6 fade-in text-white">
                     <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to List</button>
@@ -209,39 +219,31 @@
                         {selectedWorker['Image'] && <img src={selectedWorker['Image']} className="profile-img-small shadow-xl" alt="Worker" />}
                         <div className="flex justify-between items-start mb-8">
                             <div>
-                                <h2 className="text-3xl font-black italic uppercase text-emerald-500 leading-none">
-                                    {getPrefix(selectedWorker['Sex'])}{selectedWorker['Full Name']}
-                                </h2>
+                                <h2 className="text-3xl font-black italic uppercase text-emerald-500 leading-none">{getPrefix(selectedWorker['Sex'])}{selectedWorker['Full Name']}</h2>
                                 <p className="text-sm font-bold text-slate-500 mt-2 tracking-widest uppercase italic">Batch {selectedWorker.batch} / {selectedWorker['District']}</p>
                             </div>
-                            <button onClick={() => setView('edit')} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase">Edit Profile ✎</button>
+                            <button onClick={() => setView('edit')} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase">Edit ✎</button>
                         </div>
-                        <div className="section-title text-emerald-500">Personal & Clothing</div>
+                        <div className="section-title text-emerald-500">Personal</div>
                         <div className="grid grid-cols-2 gap-y-4">
-                            <div><label className="label-style">Reentry Status</label><p className="font-bold text-emerald-400">{selectedWorker['Reentry'] ? 'RE-ENTRY ♻️' : 'NEW'}</p></div>
                             <div><label className="label-style">Gender</label><p className="font-bold">{selectedWorker['Sex'] || '-'}</p></div>
                             <div><label className="label-style">Age</label><p className="font-bold">{selectedWorker['Age'] || '-'}</p></div>
-                            <div><label className="label-style">Cloth Size</label><p className="font-bold text-emerald-400">{selectedWorker['Cloth size'] || selectedWorker['Size'] || '-'}</p></div>
+                            {selectedWorker.partnerName && <div className="col-span-2"><label className="label-style">Spouse (Couple)</label><p className="font-bold text-rose-400">❤ {getPartnerPrefix(selectedWorker['Sex'])}{selectedWorker.partnerName}</p></div>}
                         </div>
-                        {/* 既存のPassport / Bank 等の表示は省略せず維持 */}
-                        <div className="section-title">Passport Information</div>
-                        <div className="grid grid-cols-1 gap-y-4">
-                            <div><label className="label-style">Passport No.</label><p className="font-bold">{selectedWorker['Passport No.'] || '-'}</p></div>
-                        </div>
-                        <div className="section-title">Contact & Cloud</div>
-                        <a href={selectedWorker['Google drive']} target="_blank" className="block text-emerald-500 font-black underline truncate text-sm mt-1 italic">Open Documents ↗</a>
+                        <div className="section-title">Cloud</div>
+                        <a href={selectedWorker['Google drive']} target="_blank" className="block text-emerald-500 font-black underline truncate text-sm italic">Open Documents ↗</a>
                     </div>
                 </div>
             );
 
             if (view === 'edit') return (
                 <div className="max-w-xl mx-auto p-6 fade-in text-white">
-                    <button onClick={() => setView('detail')} className="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest">← Cancel Edit</button>
-                    <div className="bg-white/5 rounded-[2.5rem] border border-white/10 shadow-2xl p-8 space-y-6">
+                    <button onClick={() => setView('detail')} className="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest">← Cancel</button>
+                    <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-8 space-y-6">
                         <h2 className="text-2xl font-black italic border-b border-white/10 pb-4 uppercase text-emerald-500">Edit Profile</h2>
                         <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[60vh] pr-2">
                             {Object.keys(selectedWorker).map(key => {
-                                if (key.startsWith('_') || key === 'batch') return null;
+                                if (key.startsWith('_') || key === 'batch' || key === 'partnerName') return null;
                                 return (
                                     <div key={key}>
                                         <label className="label-style">{key}</label>
@@ -251,7 +253,7 @@
                             })}
                         </div>
                         <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl active:scale-95 transition-all">
-                            {isSaving ? 'Processing Sync...' : 'Update & Sync to Cloud 💾'}
+                            {isSaving ? 'Processing...' : 'Sync to Cloud 💾'}
                         </button>
                     </div>
                 </div>
