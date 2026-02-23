@@ -15,8 +15,9 @@
         .input-edit { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); color: white; font-weight: 600; font-size: 14px; margin-top: 4px; }
         .label-style { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
         .section-title { font-size: 12px; font-weight: 900; color: #10b981; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; margin-bottom: 16px; margin-top: 24px; }
-        .search-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 12px 20px; width: 100%; color: white; font-weight: bold; outline: none; }
+        .search-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 12px 20px; width: 100%; color: white; font-weight: bold; outline: none; transition: all 0.3s; }
         
+        /* District Styles */
         .worker-item { 
             position: relative; overflow: hidden; background: rgba(255,255,255,0.05); 
             border: 2px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 16px; 
@@ -25,29 +26,32 @@
         .border-pakngeum { border-color: #38bdf8 !important; background: rgba(56, 189, 248, 0.05); }
         .border-khounkham { border-color: #fb7185 !important; background: rgba(251, 113, 133, 0.05); }
         
+        /* Reentry Gradient */
         .reentry-highlight::after {
             content: ""; position: absolute; top: 0; right: 0; width: 50%; height: 100%;
             background: linear-gradient(to right, transparent, rgba(16, 185, 129, 0.3));
             pointer-events: none; z-index: 0;
         }
 
+        /* Couple Badge */
         .couple-badge {
             font-size: 9px; font-weight: 900; color: #fb7185;
             background: rgba(251, 113, 133, 0.1); padding: 2px 8px;
             border-radius: 4px; margin-top: 4px; display: inline-block;
         }
 
+        /* Floating Legend */
         .legend-box {
             position: fixed; bottom: 20px; right: 20px;
-            background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 16px; padding: 12px; backdrop-filter: blur(10px); z-index: 50;
+            background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 12px; backdrop-filter: blur(10px); z-index: 100;
         }
         .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 10px; font-weight: 900; text-transform: uppercase; }
         .legend-color { width: 12px; height: 12px; border-radius: 3px; }
 
+        .profile-img-small { width: 100%; height: 180px; object-fit: cover; border-radius: 20px; margin-bottom: 20px; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); }
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .profile-img-small { width: 100%; height: 180px; object-fit: cover; border-radius: 20px; margin-bottom: 20px; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); }
     </style>
 </head>
 <body>
@@ -95,11 +99,8 @@
                     let partnerName = null;
                     const nextW = array[index + 1];
                     const prevW = array[index - 1];
-                    if (w['B'] === 'ຄູ່' && nextW && !nextW['B']) {
-                        partnerName = nextW['Full Name'];
-                    } else if (!w['B'] && prevW && prevW['B'] === 'ຄູ່') {
-                        partnerName = prevW['Full Name'];
-                    }
+                    if (w['B'] === 'ຄູ່' && nextW && !nextW['B']) partnerName = nextW['Full Name'];
+                    else if (!w['B'] && prevW && prevW['B'] === 'ຄູ່') partnerName = prevW['Full Name'];
                     return { ...w, partnerName };
                 });
             }, [workers]);
@@ -130,18 +131,18 @@
             const getPrefix = (sex) => sex === 'M' ? 'Mr. ' : (sex === 'F' ? 'Ms. ' : '');
             const getPartnerPrefix = (mySex) => mySex === 'M' ? 'Ms. ' : (mySex === 'F' ? 'Mr. ' : '');
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse uppercase tracking-widest text-sm">Loading Database...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse">Loading Database...</div>;
 
             if (view === 'folders') return (
                 <div className="max-w-xl mx-auto p-6 fade-in text-white">
                     <header className="flex justify-between items-center mb-8">
-                        <h1 className="text-3xl font-black italic uppercase tracking-tighter">Workers</h1>
-                        <button onClick={() => window.location.href='index.html'} className="text-[10px] font-black bg-white/5 px-4 py-2 rounded-full border border-white/10 text-slate-400 uppercase">Exit</button>
+                        <h1 className="text-3xl font-black italic uppercase">Workers</h1>
+                        <button onClick={() => window.location.href='index.html'} className="text-[10px] bg-white/5 px-4 py-2 rounded-full border border-white/10 text-slate-400 uppercase">Exit</button>
                     </header>
                     <div className="space-y-4">
                         {batchNumbers.map(num => (
                             <div key={num} onClick={() => { setSelectedBatch(num); setView('list'); }} className="batch-card p-6 cursor-pointer flex justify-between items-center">
-                                <div><h2 className="text-2xl font-black italic uppercase">Batch {num}</h2><p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Management Folder</p></div>
+                                <div><h2 className="text-2xl font-black italic uppercase">Batch {num}</h2><p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Management Folder</p></div>
                                 <div className="bg-emerald-500/10 text-emerald-500 px-4 py-1 rounded-full font-black text-[10px] uppercase">
                                     {workers.filter(w => (w.batch || w._sheetName.replace("Batch","")) == num).length} Members
                                 </div>
@@ -152,18 +153,16 @@
             );
 
             if (view === 'list') return (
-                <div className="max-w-xl mx-auto p-6 fade-in min-h-screen relative text-white">
-                    <button onClick={() => { setView('folders'); setSearchQuery(''); }} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to Batches</button>
-                    <div className="mb-6">
-                        <h2 className="text-3xl font-black italic uppercase mb-6 tracking-tight">Batch {selectedBatch}</h2>
-                        <div className="space-y-3">
-                            <input type="text" placeholder="Search..." className="search-input" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-emerald-500 outline-none">
-                                <option value="default">Default Sort</option>
-                                <option value="name">Sort by Name (A-Z)</option>
-                                <option value="age">Sort by Age</option>
-                            </select>
-                        </div>
+                <div className="max-w-xl mx-auto p-6 fade-in relative min-h-screen text-white">
+                    <button onClick={() => { setView('folders'); setSearchQuery(''); }} className="text-[10px] font-black text-slate-500 mb-6 uppercase">← Back</button>
+                    <div className="mb-6 space-y-3">
+                        <h2 className="text-3xl font-black italic uppercase mb-4">Batch {selectedBatch}</h2>
+                        <input type="text" placeholder="Search..." className="search-input" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-emerald-500">
+                            <option value="default">Default Sort</option>
+                            <option value="name">Sort by Name</option>
+                            <option value="age">Sort by Age</option>
+                        </select>
                     </div>
                     <div className="space-y-3 pb-32">
                         {batchWorkers.map((w, i) => {
@@ -172,30 +171,30 @@
                                 <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
                                      className={`worker-item flex justify-between items-center ${getDistrictStyle(w['District'])} ${isReentry ? 'reentry-highlight' : ''}`}>
                                     <div className="flex flex-col relative z-10">
-                                        <span className="font-black text-sm uppercase truncate pr-4 text-white">{getPrefix(w['Sex'])}{w['Full Name']}</span>
-                                        <span className="text-[9px] font-black opacity-40 uppercase tracking-tighter text-white">{w['District'] || 'Unknown'}</span>
+                                        <span className="font-black text-sm uppercase">{getPrefix(w['Sex'])}{w['Full Name']}</span>
+                                        <span className="text-[9px] opacity-40 uppercase tracking-tighter">{w['District'] || 'Unknown'}</span>
                                         {w.partnerName && <div className="couple-badge">❤ Partner: {getPartnerPrefix(w['Sex'])}{w.partnerName}</div>}
                                     </div>
                                     <div className="flex flex-col items-end relative z-10">
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase bg-white/5 px-2 py-1 rounded-md mb-1">{w['Village'] || 'N/A'}</span>
-                                        {isReentry && <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest italic">Reentry ♻️</span>}
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase bg-white/5 px-2 py-1 rounded-md">{w['Village'] || 'N/A'}</span>
+                                        {isReentry && <span className="text-[8px] font-black text-emerald-400 uppercase mt-1 italic">Reentry ♻️</span>}
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
-                    <div className="legend-box shadow-2xl">
-                        <div className="legend-item"><div className="legend-color bg-[#38bdf8]"></div><span>Pakngeum</span></div>
-                        <div className="legend-item"><div className="legend-color bg-[#fb7185]"></div><span>Khounkham</span></div>
-                        <div className="legend-item"><div className="legend-color bg-emerald-500/50"></div><span>Reentry</span></div>
-                        <div className="legend-item text-rose-400"><span className="text-xs">❤</span> Couple (ຄູ່)</div>
+                    <div className="legend-box text-white">
+                        <div className="legend-item"><div className="legend-color bg-[#38bdf8]"></div>Pakngeum</div>
+                        <div className="legend-item"><div className="legend-color bg-[#fb7185]"></div>Khounkham</div>
+                        <div className="legend-item"><div className="legend-color bg-emerald-500/50"></div>Reentry</div>
+                        <div className="legend-item text-rose-400"><span className="text-xs">❤</span> Couple</div>
                     </div>
                 </div>
             );
 
             if (view === 'detail') return (
                 <div className="max-w-xl mx-auto p-6 fade-in text-white">
-                    <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to List</button>
+                    <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase">← Back</button>
                     <div className="bg-white/5 rounded-[2.5rem] border border-white/10 shadow-2xl p-8">
                         {selectedWorker['Image'] && <img src={selectedWorker['Image']} className="profile-img-small shadow-xl" alt="Worker" />}
                         <div className="flex justify-between items-start mb-8">
@@ -203,29 +202,40 @@
                                 <h2 className="text-3xl font-black italic uppercase text-emerald-500 leading-none">{getPrefix(selectedWorker['Sex'])}{selectedWorker['Full Name']}</h2>
                                 <p className="text-sm font-bold text-slate-500 mt-2 tracking-widest uppercase italic">Batch {selectedWorker.batch} / {selectedWorker['District']}</p>
                             </div>
-                            <button onClick={() => setView('edit')} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase">Edit Profile ✎</button>
+                            <button onClick={() => setView('edit')} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase">Edit ✎</button>
                         </div>
-                        
-                        <div className="section-title text-emerald-500">Sheet Data (Full List)</div>
+
+                        {/* --- 以前の整理された表示セクション --- */}
+                        <div className="section-title text-emerald-500">Personal & Clothing</div>
+                        <div className="grid grid-cols-2 gap-y-4">
+                            <div><label className="label-style">Reentry Status</label><p className="font-bold text-emerald-400">{selectedWorker['Reentry'] ? 'RE-ENTRY ♻️' : 'NEW'}</p></div>
+                            <div><label className="label-style">Gender</label><p className="font-bold">{selectedWorker['Sex'] || '-'}</p></div>
+                            <div><label className="label-style">Age</label><p className="font-bold">{selectedWorker['Age'] || '-'}</p></div>
+                            <div><label className="label-style">Cloth Size</label><p className="font-bold text-emerald-400">{selectedWorker['Cloth size'] || selectedWorker['Size'] || '-'}</p></div>
+                            {selectedWorker.partnerName && <div className="col-span-2"><label className="label-style">Spouse (Couple)</label><p className="font-bold text-rose-400">❤ {getPartnerPrefix(selectedWorker['Sex'])}{selectedWorker.partnerName}</p></div>}
+                        </div>
+
+                        <div className="section-title">Passport & Contact</div>
                         <div className="grid grid-cols-1 gap-y-4">
+                            <div><label className="label-style">Passport No.</label><p className="font-bold">{selectedWorker['Passport No.'] || '-'}</p></div>
+                            <div><label className="label-style">Village / Address</label><p className="font-bold text-sm">{selectedWorker['Village']}, {selectedWorker['District']}</p></div>
+                            <a href={selectedWorker['Google drive']} target="_blank" className="block text-emerald-500 font-black underline truncate text-sm italic">Open Documents ↗</a>
+                        </div>
+
+                        {/* --- その他の全項目を自動表示 --- */}
+                        <div className="section-title">Other Data</div>
+                        <div className="grid grid-cols-1 gap-y-3">
                             {Object.entries(selectedWorker).map(([key, value]) => {
-                                if (key.startsWith('_') || key === 'batch' || key === 'partnerName' || key === 'Image') return null;
+                                // 既に上に表示した項目、システム用、画像は除外
+                                const skipKeys = ['Full Name', 'Sex', 'Age', 'Reentry', 'Cloth size', 'Size', 'Passport No.', 'Village', 'District', 'Google drive', 'Image', 'batch', 'partnerName', 'B'];
+                                if (key.startsWith('_') || skipKeys.includes(key)) return null;
                                 return (
-                                    <div key={key} className="border-b border-white/5 pb-2">
+                                    <div key={key} className="border-b border-white/5 pb-1">
                                         <label className="label-style">{key}</label>
-                                        <p className="font-bold text-sm">{String(value) || '-'}</p>
+                                        <p className="font-bold text-xs">{String(value) || '-'}</p>
                                     </div>
                                 );
                             })}
-                            {selectedWorker.partnerName && (
-                                <div className="border-b border-white/5 pb-2">
-                                    <label className="label-style text-rose-400">❤ Spouse (Couple)</label>
-                                    <p className="font-bold text-rose-400">{getPartnerPrefix(selectedWorker['Sex'])}{selectedWorker.partnerName}</p>
-                                </div>
-                            )}
-                        </div>
-                        <div className="mt-8">
-                            <a href={selectedWorker['Google drive']} target="_blank" className="block text-emerald-500 font-black underline truncate text-sm italic">Open Documents ↗</a>
                         </div>
                     </div>
                 </div>
@@ -248,7 +258,7 @@
                             })}
                         </div>
                         <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl active:scale-95 transition-all">
-                            {isSaving ? 'Processing...' : 'Update & Sync to Cloud 💾'}
+                            {isSaving ? 'Processing...' : 'Sync to Cloud 💾'}
                         </button>
                     </div>
                 </div>
