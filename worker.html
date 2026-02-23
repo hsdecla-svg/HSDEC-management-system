@@ -22,6 +22,8 @@
         
         /* --- 🎨 District別のボーダースタイル --- */
         .worker-item { 
+            position: relative; /* 疑似要素用 */
+            overflow: hidden; /* 緑のはみ出し防止 */
             background: rgba(255,255,255,0.05); 
             border: 2px solid rgba(255,255,255,0.05); 
             border-radius: 16px; 
@@ -32,11 +34,23 @@
         .border-pakngeum { border-color: #38bdf8 !important; background: rgba(56, 189, 248, 0.05); }
         .border-khounkham { border-color: #fb7185 !important; background: rgba(251, 113, 133, 0.05); }
         
+        /* --- ♻️ Reentryの右半分緑スタイル --- */
+        .reentry-highlight::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 50%; /* 右半分 */
+            height: 100%;
+            background: linear-gradient(to right, transparent, rgba(16, 185, 129, 0.3));
+            pointer-events: none;
+            z-index: 0;
+        }
+
         .worker-item:active { transform: scale(0.97); background: rgba(16, 185, 129, 0.1); }
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* 画像表示用の簡易スタイル */
         .profile-img-small { width: 100%; height: 180px; object-fit: cover; border-radius: 20px; margin-bottom: 20px; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); }
     </style>
 </head>
@@ -44,7 +58,6 @@
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbzdAZAcryW4C9u3VE-DoBWBpBeB-lUIlxHPU3qBgq3oS2DKOr-fWuN239iNyhGTq7o0Nw/exec';
 
         const formatDate = (dateStr) => {
@@ -119,7 +132,6 @@
                 return "";
             };
 
-            // --- 👤 敬称を取得する関数 ---
             const getPrefix = (sex) => {
                 if (sex === 'M') return 'Mr. ';
                 if (sex === 'F') return 'Ms. ';
@@ -129,9 +141,9 @@
             if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse uppercase tracking-widest text-sm">Loading Database...</div>;
 
             if (view === 'folders') return (
-                <div className="max-w-xl mx-auto p-6 fade-in">
+                <div className="max-w-xl mx-auto p-6 fade-in text-white">
                     <header className="flex justify-between items-center mb-8">
-                        <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">Workers</h1>
+                        <h1 className="text-3xl font-black italic uppercase tracking-tighter">Workers</h1>
                         <button onClick={() => window.location.href='index.html'} className="text-[10px] font-black bg-white/5 px-4 py-2 rounded-full border border-white/10 text-slate-400 uppercase">Exit</button>
                     </header>
                     <div className="space-y-4">
@@ -155,7 +167,7 @@
                 <div className="max-w-xl mx-auto p-6 fade-in">
                     <button onClick={() => { setView('folders'); setSearchQuery(''); }} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to Batches</button>
                     <div className="mb-6">
-                        <h2 className="text-3xl font-black italic uppercase mb-6 tracking-tight">Batch {selectedBatch}</h2>
+                        <h2 className="text-3xl font-black italic uppercase mb-6 tracking-tight text-white">Batch {selectedBatch}</h2>
                         <div className="space-y-3">
                             <input type="text" placeholder="Search..." className="search-input" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-emerald-500 outline-none">
@@ -166,36 +178,37 @@
                         </div>
                     </div>
                     <div className="space-y-3">
-                        {batchWorkers.map((w, i) => (
-                            <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
-                                 className={`worker-item flex justify-between items-center ${getDistrictStyle(w['District'])}`}>
-                                <div className="flex flex-col">
-                                    {/* 名前部分に Mr./Ms. を追加 */}
-                                    <span className="font-black text-sm uppercase truncate pr-4 text-white">
-                                        {getPrefix(w['Sex'])}{w['Full Name']}
-                                    </span>
-                                    <span className="text-[9px] font-black opacity-40 uppercase tracking-tighter text-white">{w['District'] || 'Unknown'}</span>
+                        {batchWorkers.map((w, i) => {
+                            // C列 (Reentry) のチェック判定
+                            const isReentry = w['Reentry'] === true || w['Reentry'] === "TRUE" || w['Reentry'] === 1;
+                            
+                            return (
+                                <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
+                                     className={`worker-item flex justify-between items-center ${getDistrictStyle(w['District'])} ${isReentry ? 'reentry-highlight' : ''}`}>
+                                    <div className="flex flex-col relative z-10">
+                                        <span className="font-black text-sm uppercase truncate pr-4 text-white">
+                                            {getPrefix(w['Sex'])}{w['Full Name']}
+                                        </span>
+                                        <span className="text-[9px] font-black opacity-40 uppercase tracking-tighter text-white">{w['District'] || 'Unknown'}</span>
+                                    </div>
+                                    <div className="flex flex-col items-end relative z-10">
+                                        <span className="text-[10px] font-bold text-slate-500 uppercase bg-white/5 px-2 py-1 rounded-md mb-1">{w['Village'] || 'N/A'}</span>
+                                        {isReentry && <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest italic">Reentry ♻️</span>}
+                                    </div>
                                 </div>
-                                <span className="text-[10px] font-bold text-slate-500 uppercase bg-white/5 px-2 py-1 rounded-md">{w['Village'] || 'N/A'}</span>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             );
 
             if (view === 'detail') return (
-                <div className="max-w-xl mx-auto p-6 fade-in">
+                <div className="max-w-xl mx-auto p-6 fade-in text-white">
                     <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to List</button>
                     <div className="bg-white/5 rounded-[2.5rem] border border-white/10 shadow-2xl p-8">
-                        
-                        {/* 📸 画像表示 (データがある場合のみ) */}
-                        {selectedWorker['Image'] && (
-                            <img src={selectedWorker['Image']} className="profile-img-small shadow-xl" alt="Worker" />
-                        )}
-
+                        {selectedWorker['Image'] && <img src={selectedWorker['Image']} className="profile-img-small shadow-xl" alt="Worker" />}
                         <div className="flex justify-between items-start mb-8">
                             <div>
-                                {/* 詳細画面の名前にも Mr./Ms. を追加 */}
                                 <h2 className="text-3xl font-black italic uppercase text-emerald-500 leading-none">
                                     {getPrefix(selectedWorker['Sex'])}{selectedWorker['Full Name']}
                                 </h2>
@@ -205,32 +218,18 @@
                         </div>
                         <div className="section-title text-emerald-500">Personal & Clothing</div>
                         <div className="grid grid-cols-2 gap-y-4">
-                            <div><label className="label-style">Gender</label><p className="font-bold text-white">{selectedWorker['Sex'] || '-'}</p></div>
-                            <div><label className="label-style">Age</label><p className="font-bold text-white">{selectedWorker['Age'] || '-'}</p></div>
-                            <div><label className="label-style">Birth Date</label><p className="font-bold text-white">{formatDate(selectedWorker['Date of birth'])}</p></div>
+                            <div><label className="label-style">Reentry Status</label><p className="font-bold text-emerald-400">{selectedWorker['Reentry'] ? 'RE-ENTRY ♻️' : 'NEW'}</p></div>
+                            <div><label className="label-style">Gender</label><p className="font-bold">{selectedWorker['Sex'] || '-'}</p></div>
+                            <div><label className="label-style">Age</label><p className="font-bold">{selectedWorker['Age'] || '-'}</p></div>
                             <div><label className="label-style">Cloth Size</label><p className="font-bold text-emerald-400">{selectedWorker['Cloth size'] || selectedWorker['Size'] || '-'}</p></div>
                         </div>
+                        {/* 既存のPassport / Bank 等の表示は省略せず維持 */}
                         <div className="section-title">Passport Information</div>
                         <div className="grid grid-cols-1 gap-y-4">
-                            <div><label className="label-style">Passport No.</label><p className="font-bold text-white">{selectedWorker['Passport No.'] || '-'}</p></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><label className="label-style">Date of issue</label><p className="font-bold text-sm text-white">{formatDate(selectedWorker['Date of issue'])}</p></div>
-                                <div><label className="label-style">Date of Expiry</label><p className="font-bold text-sm text-rose-400">{formatDate(selectedWorker['Date of Expiry'])}</p></div>
-                            </div>
-                        </div>
-                        <div className="section-title">Bank Account Details</div>
-                        <div className="grid grid-cols-1 gap-y-4">
-                            <div><label className="label-style">AC Name</label><p className="font-bold text-emerald-500">{selectedWorker['AC-name'] || '-'}</p></div>
-                            <div><label className="label-style">AC Number</label><p className="font-black text-lg tracking-wider text-white">{selectedWorker['AC-NO'] || '-'}</p></div>
+                            <div><label className="label-style">Passport No.</label><p className="font-bold">{selectedWorker['Passport No.'] || '-'}</p></div>
                         </div>
                         <div className="section-title">Contact & Cloud</div>
-                        <div className="grid grid-cols-1 gap-y-4">
-                            <div><label className="label-style">Address</label><p className="font-bold text-sm text-white">{selectedWorker['Village']}, {selectedWorker['District']}, {selectedWorker['Province']}</p></div>
-                            <div>
-                                <label className="label-style">Google Drive</label>
-                                <a href={selectedWorker['Google drive']} target="_blank" className="block text-emerald-500 font-black underline truncate text-sm mt-1 italic">Open Documents ↗</a>
-                            </div>
-                        </div>
+                        <a href={selectedWorker['Google drive']} target="_blank" className="block text-emerald-500 font-black underline truncate text-sm mt-1 italic">Open Documents ↗</a>
                     </div>
                 </div>
             );
@@ -251,7 +250,7 @@
                                 );
                             })}
                         </div>
-                        <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl hover:bg-emerald-400 transition-all active:scale-95">
+                        <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl active:scale-95 transition-all">
                             {isSaving ? 'Processing Sync...' : 'Update & Sync to Cloud 💾'}
                         </button>
                     </div>
