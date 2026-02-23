@@ -111,13 +111,19 @@
                 return list;
             }, [workers, selectedBatch, searchQuery, sortBy]);
 
-            // --- 🔵 District判定関数 ---
             const getDistrictStyle = (district) => {
                 if (!district) return "";
                 const d = district.toUpperCase();
                 if (d.includes("PAKNGEUM")) return "border-pakngeum";
                 if (d.includes("KHOUNKHAM")) return "border-khounkham";
                 return "";
+            };
+
+            // --- 👤 敬称を取得する関数 ---
+            const getPrefix = (sex) => {
+                if (sex === 'M') return 'Mr. ';
+                if (sex === 'F') return 'Ms. ';
+                return '';
             };
 
             if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse uppercase tracking-widest text-sm">Loading Database...</div>;
@@ -164,8 +170,11 @@
                             <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
                                  className={`worker-item flex justify-between items-center ${getDistrictStyle(w['District'])}`}>
                                 <div className="flex flex-col">
-                                    <span className="font-black text-sm uppercase truncate pr-4">{w['Full Name']}</span>
-                                    <span className="text-[9px] font-black opacity-40 uppercase tracking-tighter">{w['District'] || 'Unknown'}</span>
+                                    {/* 名前部分に Mr./Ms. を追加 */}
+                                    <span className="font-black text-sm uppercase truncate pr-4 text-white">
+                                        {getPrefix(w['Sex'])}{w['Full Name']}
+                                    </span>
+                                    <span className="text-[9px] font-black opacity-40 uppercase tracking-tighter text-white">{w['District'] || 'Unknown'}</span>
                                 </div>
                                 <span className="text-[10px] font-bold text-slate-500 uppercase bg-white/5 px-2 py-1 rounded-md">{w['Village'] || 'N/A'}</span>
                             </div>
@@ -186,34 +195,37 @@
 
                         <div className="flex justify-between items-start mb-8">
                             <div>
-                                <h2 className="text-3xl font-black italic uppercase text-emerald-500 leading-none">{selectedWorker['Full Name']}</h2>
+                                {/* 詳細画面の名前にも Mr./Ms. を追加 */}
+                                <h2 className="text-3xl font-black italic uppercase text-emerald-500 leading-none">
+                                    {getPrefix(selectedWorker['Sex'])}{selectedWorker['Full Name']}
+                                </h2>
                                 <p className="text-sm font-bold text-slate-500 mt-2 tracking-widest uppercase italic">Batch {selectedWorker.batch} / {selectedWorker['District']}</p>
                             </div>
                             <button onClick={() => setView('edit')} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase">Edit Profile ✎</button>
                         </div>
                         <div className="section-title text-emerald-500">Personal & Clothing</div>
                         <div className="grid grid-cols-2 gap-y-4">
-                            <div><label className="label-style">Gender</label><p className="font-bold">{selectedWorker['Sex'] || '-'}</p></div>
-                            <div><label className="label-style">Age</label><p className="font-bold">{selectedWorker['Age'] || '-'}</p></div>
-                            <div><label className="label-style">Birth Date</label><p className="font-bold">{formatDate(selectedWorker['Date of birth'])}</p></div>
+                            <div><label className="label-style">Gender</label><p className="font-bold text-white">{selectedWorker['Sex'] || '-'}</p></div>
+                            <div><label className="label-style">Age</label><p className="font-bold text-white">{selectedWorker['Age'] || '-'}</p></div>
+                            <div><label className="label-style">Birth Date</label><p className="font-bold text-white">{formatDate(selectedWorker['Date of birth'])}</p></div>
                             <div><label className="label-style">Cloth Size</label><p className="font-bold text-emerald-400">{selectedWorker['Cloth size'] || selectedWorker['Size'] || '-'}</p></div>
                         </div>
                         <div className="section-title">Passport Information</div>
                         <div className="grid grid-cols-1 gap-y-4">
-                            <div><label className="label-style">Passport No.</label><p className="font-bold">{selectedWorker['Passport No.'] || '-'}</p></div>
+                            <div><label className="label-style">Passport No.</label><p className="font-bold text-white">{selectedWorker['Passport No.'] || '-'}</p></div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div><label className="label-style">Date of issue</label><p className="font-bold text-sm">{formatDate(selectedWorker['Date of issue'])}</p></div>
+                                <div><label className="label-style">Date of issue</label><p className="font-bold text-sm text-white">{formatDate(selectedWorker['Date of issue'])}</p></div>
                                 <div><label className="label-style">Date of Expiry</label><p className="font-bold text-sm text-rose-400">{formatDate(selectedWorker['Date of Expiry'])}</p></div>
                             </div>
                         </div>
                         <div className="section-title">Bank Account Details</div>
                         <div className="grid grid-cols-1 gap-y-4">
                             <div><label className="label-style">AC Name</label><p className="font-bold text-emerald-500">{selectedWorker['AC-name'] || '-'}</p></div>
-                            <div><label className="label-style">AC Number</label><p className="font-black text-lg tracking-wider">{selectedWorker['AC-NO'] || '-'}</p></div>
+                            <div><label className="label-style">AC Number</label><p className="font-black text-lg tracking-wider text-white">{selectedWorker['AC-NO'] || '-'}</p></div>
                         </div>
                         <div className="section-title">Contact & Cloud</div>
                         <div className="grid grid-cols-1 gap-y-4">
-                            <div><label className="label-style">Address</label><p className="font-bold text-sm">{selectedWorker['Village']}, {selectedWorker['District']}, {selectedWorker['Province']}</p></div>
+                            <div><label className="label-style">Address</label><p className="font-bold text-sm text-white">{selectedWorker['Village']}, {selectedWorker['District']}, {selectedWorker['Province']}</p></div>
                             <div>
                                 <label className="label-style">Google Drive</label>
                                 <a href={selectedWorker['Google drive']} target="_blank" className="block text-emerald-500 font-black underline truncate text-sm mt-1 italic">Open Documents ↗</a>
@@ -224,7 +236,7 @@
             );
 
             if (view === 'edit') return (
-                <div className="max-w-xl mx-auto p-6 fade-in">
+                <div className="max-w-xl mx-auto p-6 fade-in text-white">
                     <button onClick={() => setView('detail')} className="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest">← Cancel Edit</button>
                     <div className="bg-white/5 rounded-[2.5rem] border border-white/10 shadow-2xl p-8 space-y-6">
                         <h2 className="text-2xl font-black italic border-b border-white/10 pb-4 uppercase text-emerald-500">Edit Profile</h2>
