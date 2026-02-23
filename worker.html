@@ -17,7 +17,6 @@
         .section-title { font-size: 12px; font-weight: 900; color: #10b981; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; margin-bottom: 16px; margin-top: 24px; }
         .search-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 12px 20px; width: 100%; color: white; font-weight: bold; outline: none; }
         
-        /* District Borders */
         .worker-item { 
             position: relative; overflow: hidden; background: rgba(255,255,255,0.05); 
             border: 2px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 16px; 
@@ -26,26 +25,22 @@
         .border-pakngeum { border-color: #38bdf8 !important; background: rgba(56, 189, 248, 0.05); }
         .border-khounkham { border-color: #fb7185 !important; background: rgba(251, 113, 133, 0.05); }
         
-        /* Reentry Gradient */
         .reentry-highlight::after {
             content: ""; position: absolute; top: 0; right: 0; width: 50%; height: 100%;
             background: linear-gradient(to right, transparent, rgba(16, 185, 129, 0.3));
             pointer-events: none; z-index: 0;
         }
 
-        /* Couple Badge Style */
         .couple-badge {
             font-size: 9px; font-weight: 900; color: #fb7185;
             background: rgba(251, 113, 133, 0.1); padding: 2px 8px;
             border-radius: 4px; margin-top: 4px; display: inline-block;
         }
 
-        /* Floating Legend */
         .legend-box {
             position: fixed; bottom: 20px; right: 20px;
             background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.1);
             border-radius: 16px; padding: 12px; backdrop-filter: blur(10px); z-index: 50;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
         .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 10px; font-weight: 900; text-transform: uppercase; }
         .legend-color { width: 12px; height: 12px; border-radius: 3px; }
@@ -94,19 +89,15 @@
                 setIsSaving(false);
             };
 
-            // --- 👫 夫婦判定ロジック ---
+            // 👫 夫婦判定ロジック
             const processedWorkers = useMemo(() => {
                 return workers.map((w, index, array) => {
                     let partnerName = null;
                     const nextW = array[index + 1];
                     const prevW = array[index - 1];
-
-                    // B列に「ຄູ່」があり、次行のBが空なら結合セル（上の人）
                     if (w['B'] === 'ຄູ່' && nextW && !nextW['B']) {
                         partnerName = nextW['Full Name'];
-                    } 
-                    // 前行に「ຄູ່」があり、自分のBが空なら結合セル（下の人）
-                    else if (!w['B'] && prevW && prevW['B'] === 'ຄູ່') {
+                    } else if (!w['B'] && prevW && prevW['B'] === 'ຄູ່') {
                         partnerName = prevW['Full Name'];
                     }
                     return { ...w, partnerName };
@@ -120,13 +111,11 @@
             const batchWorkers = useMemo(() => {
                 if (!selectedBatch) return [];
                 let list = processedWorkers.filter(w => (w.batch || w._sheetName.replace("Batch","")) == selectedBatch);
-                
                 if (searchQuery) {
                     list = list.filter(w => `${w['Full Name']} ${w['Village']} ${w['District']}`.toLowerCase().includes(searchQuery.toLowerCase()));
                 }
                 if (sortBy === 'name') list.sort((a, b) => (a['Full Name'] || '').localeCompare(b['Full Name'] || ''));
                 else if (sortBy === 'age') list.sort((a, b) => (parseInt(a['Age']) || 0) - (parseInt(b['Age']) || 0));
-                
                 return list;
             }, [processedWorkers, selectedBatch, searchQuery, sortBy]);
 
@@ -163,10 +152,10 @@
             );
 
             if (view === 'list') return (
-                <div className="max-w-xl mx-auto p-6 fade-in min-h-screen relative">
+                <div className="max-w-xl mx-auto p-6 fade-in min-h-screen relative text-white">
                     <button onClick={() => { setView('folders'); setSearchQuery(''); }} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to Batches</button>
                     <div className="mb-6">
-                        <h2 className="text-3xl font-black italic uppercase mb-6 tracking-tight text-white">Batch {selectedBatch}</h2>
+                        <h2 className="text-3xl font-black italic uppercase mb-6 tracking-tight">Batch {selectedBatch}</h2>
                         <div className="space-y-3">
                             <input type="text" placeholder="Search..." className="search-input" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                             <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-emerald-500 outline-none">
@@ -176,7 +165,6 @@
                             </select>
                         </div>
                     </div>
-
                     <div className="space-y-3 pb-32">
                         {batchWorkers.map((w, i) => {
                             const isReentry = w['Reentry'] === true || w['Reentry'] === "TRUE" || w['Reentry'] === 1;
@@ -184,13 +172,9 @@
                                 <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
                                      className={`worker-item flex justify-between items-center ${getDistrictStyle(w['District'])} ${isReentry ? 'reentry-highlight' : ''}`}>
                                     <div className="flex flex-col relative z-10">
-                                        <span className="font-black text-sm uppercase truncate pr-4 text-white">
-                                            {getPrefix(w['Sex'])}{w['Full Name']}
-                                        </span>
+                                        <span className="font-black text-sm uppercase truncate pr-4 text-white">{getPrefix(w['Sex'])}{w['Full Name']}</span>
                                         <span className="text-[9px] font-black opacity-40 uppercase tracking-tighter text-white">{w['District'] || 'Unknown'}</span>
-                                        {w.partnerName && (
-                                            <div className="couple-badge">❤ Partner: {getPartnerPrefix(w['Sex'])}{w.partnerName}</div>
-                                        )}
+                                        {w.partnerName && <div className="couple-badge">❤ Partner: {getPartnerPrefix(w['Sex'])}{w.partnerName}</div>}
                                     </div>
                                     <div className="flex flex-col items-end relative z-10">
                                         <span className="text-[10px] font-bold text-slate-500 uppercase bg-white/5 px-2 py-1 rounded-md mb-1">{w['Village'] || 'N/A'}</span>
@@ -200,18 +184,15 @@
                             );
                         })}
                     </div>
-
-                    {/* --- 凡例 (Legend) --- */}
-                    <div className="legend-box">
-                        <div className="legend-item"><div className="legend-color bg-[#38bdf8]"></div>Pakngeum</div>
-                        <div className="legend-item"><div className="legend-color bg-[#fb7185]"></div>Khounkham</div>
-                        <div className="legend-item"><div className="legend-color bg-emerald-500/50"></div>Reentry</div>
+                    <div className="legend-box shadow-2xl">
+                        <div className="legend-item"><div className="legend-color bg-[#38bdf8]"></div><span>Pakngeum</span></div>
+                        <div className="legend-item"><div className="legend-color bg-[#fb7185]"></div><span>Khounkham</span></div>
+                        <div className="legend-item"><div className="legend-color bg-emerald-500/50"></div><span>Reentry</span></div>
                         <div className="legend-item text-rose-400"><span className="text-xs">❤</span> Couple (ຄູ່)</div>
                     </div>
                 </div>
             );
 
-            // Detail view & Edit view (remain the same but using getPrefix)
             if (view === 'detail') return (
                 <div className="max-w-xl mx-auto p-6 fade-in text-white">
                     <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase flex items-center gap-1">← Back to List</button>
@@ -222,16 +203,30 @@
                                 <h2 className="text-3xl font-black italic uppercase text-emerald-500 leading-none">{getPrefix(selectedWorker['Sex'])}{selectedWorker['Full Name']}</h2>
                                 <p className="text-sm font-bold text-slate-500 mt-2 tracking-widest uppercase italic">Batch {selectedWorker.batch} / {selectedWorker['District']}</p>
                             </div>
-                            <button onClick={() => setView('edit')} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase">Edit ✎</button>
+                            <button onClick={() => setView('edit')} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase">Edit Profile ✎</button>
                         </div>
-                        <div className="section-title text-emerald-500">Personal</div>
-                        <div className="grid grid-cols-2 gap-y-4">
-                            <div><label className="label-style">Gender</label><p className="font-bold">{selectedWorker['Sex'] || '-'}</p></div>
-                            <div><label className="label-style">Age</label><p className="font-bold">{selectedWorker['Age'] || '-'}</p></div>
-                            {selectedWorker.partnerName && <div className="col-span-2"><label className="label-style">Spouse (Couple)</label><p className="font-bold text-rose-400">❤ {getPartnerPrefix(selectedWorker['Sex'])}{selectedWorker.partnerName}</p></div>}
+                        
+                        <div className="section-title text-emerald-500">Sheet Data (Full List)</div>
+                        <div className="grid grid-cols-1 gap-y-4">
+                            {Object.entries(selectedWorker).map(([key, value]) => {
+                                if (key.startsWith('_') || key === 'batch' || key === 'partnerName' || key === 'Image') return null;
+                                return (
+                                    <div key={key} className="border-b border-white/5 pb-2">
+                                        <label className="label-style">{key}</label>
+                                        <p className="font-bold text-sm">{String(value) || '-'}</p>
+                                    </div>
+                                );
+                            })}
+                            {selectedWorker.partnerName && (
+                                <div className="border-b border-white/5 pb-2">
+                                    <label className="label-style text-rose-400">❤ Spouse (Couple)</label>
+                                    <p className="font-bold text-rose-400">{getPartnerPrefix(selectedWorker['Sex'])}{selectedWorker.partnerName}</p>
+                                </div>
+                            )}
                         </div>
-                        <div className="section-title">Cloud</div>
-                        <a href={selectedWorker['Google drive']} target="_blank" className="block text-emerald-500 font-black underline truncate text-sm italic">Open Documents ↗</a>
+                        <div className="mt-8">
+                            <a href={selectedWorker['Google drive']} target="_blank" className="block text-emerald-500 font-black underline truncate text-sm italic">Open Documents ↗</a>
+                        </div>
                     </div>
                 </div>
             );
@@ -253,7 +248,7 @@
                             })}
                         </div>
                         <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl active:scale-95 transition-all">
-                            {isSaving ? 'Processing...' : 'Sync to Cloud 💾'}
+                            {isSaving ? 'Processing...' : 'Update & Sync to Cloud 💾'}
                         </button>
                     </div>
                 </div>
