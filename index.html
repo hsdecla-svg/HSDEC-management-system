@@ -29,21 +29,11 @@
         /* --- カレンダー：曜日・土日の色設定 --- */
         .fc { border: none !important; font-size: 11px; }
         .fc-theme-standard td, .fc-theme-standard th { border: 1px solid rgba(255, 255, 255, 0.1) !important; }
-        
-        /* 曜日ヘッダー */
         .fc-col-header-cell-cushion { color: #94a3b8; font-weight: 900; text-transform: uppercase; }
-        
-        /* 土曜日 (Saturday) */
-        .fc-day-sat .fc-col-header-cell-cushion,
-        .fc-day-sat .fc-daygrid-day-number { color: #60a5fa !important; } /* 青色 */
-        
-        /* 日曜日・祝日 (Sunday/Holiday) */
-        .fc-day-sun .fc-col-header-cell-cushion,
-        .fc-day-sun .fc-daygrid-day-number,
-        .fc-day-holiday .fc-daygrid-day-number { color: #f87171 !important; } /* 赤色 */
+        .fc-day-sat .fc-col-header-cell-cushion, .fc-day-sat .fc-daygrid-day-number { color: #60a5fa !important; } 
+        .fc-day-sun .fc-col-header-cell-cushion, .fc-day-sun .fc-daygrid-day-number { color: #f87171 !important; } 
 
         .fc-daygrid-day-frame { min-height: 45px !important; cursor: pointer; transition: background 0.2s; }
-        .fc-daygrid-day-frame:active { background: rgba(16, 185, 129, 0.2); }
         .fc-daygrid-event-harness { display: none !important; }
         .has-event { position: relative; }
         .has-event::after {
@@ -53,10 +43,14 @@
         .fc-toolbar-title { font-size: 16px !important; font-weight: 900 !important; color: #10b981; }
         .fc-button { background: transparent !important; border: none !important; color: #64748b !important; font-weight: 900 !important; }
 
-        #eventModal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); align-items: center; justify-content: center; }
+        #eventModal, #calendarEditSection { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); align-items: center; justify-content: center; }
+        
+        /* 編集画面用 */
+        .input-field { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; width: 100%; color: white; margin-top: 5px; font-weight: bold; }
+        .label-style { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center p-6">
+<body class="min-h-screen flex flex-col items-center p-6 text-white">
 
     <div id="auth-section" class="w-full max-w-md space-y-6">
         <div class="text-center">
@@ -95,6 +89,46 @@
         <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4"></div>
     </div>
 
+    <div id="calendarEditSection">
+        <div class="bg-slate-900 border border-emerald-500/30 rounded-[2.5rem] p-8 w-[95%] max-w-md overflow-y-auto max-h-[90vh]" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black italic uppercase text-emerald-500">Edit Calendar</h3>
+                <button onclick="closeCalendarEdit()" class="text-slate-500 font-black text-xs uppercase">Close ✕</button>
+            </div>
+            
+            <div id="edit-calendar-container" class="mb-8 bg-white/5 p-4 rounded-2xl border border-white/5">
+                <div id="calendar-for-edit"></div>
+            </div>
+
+            <div class="space-y-4 bg-white/5 p-6 rounded-[2rem] border border-white/10">
+                <h4 id="edit-mode-title" class="text-xs font-black uppercase text-slate-400">Add New Event</h4>
+                <input type="hidden" id="event-id">
+                <div>
+                    <label class="label-style">Event Title</label>
+                    <input type="text" id="event-title" class="input-field" placeholder="Meeting / Holiday...">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="label-style">Date</label>
+                        <input type="date" id="event-date" class="input-field">
+                    </div>
+                    <div>
+                        <label class="label-style">Time (Optional)</label>
+                        <input type="time" id="event-time" class="input-field">
+                    </div>
+                </div>
+                <div>
+                    <label class="label-style">Description</label>
+                    <textarea id="event-description" class="input-field h-20" placeholder="Details..."></textarea>
+                </div>
+                <div class="flex gap-2 pt-4">
+                    <button id="save-event-btn" onclick="saveEvent()" class="flex-1 bg-emerald-500 text-white py-4 rounded-xl font-black text-xs uppercase">Save Event</button>
+                    <button id="delete-event-btn" onclick="deleteEvent()" class="flex-1 bg-rose-500 text-white py-4 rounded-xl font-black text-xs uppercase hidden">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="eventModal" onclick="this.style.display='none'">
         <div class="bg-slate-900 border border-emerald-500/30 rounded-[2.5rem] p-8 w-[85%] max-w-xs text-center" onclick="event.stopPropagation()">
             <h3 id="modalTitle" class="text-xl font-black text-white mb-2 italic uppercase"></h3>
@@ -105,6 +139,10 @@
     </div>
 
     <script>
+        const GAS_CAL_URL = 'https://script.google.com/macros/s/AKfycbzdAZAcryW4C9u3VE-DoBWBpBeB-lUIlxHPU3qBgq3oS2DKOr-fWuN239iNyhGTq7o0Nw/exec'; // 既存のGAS URL
+        const CALENDAR_ID = 'hsdec.la@gmail.com';
+        const API_KEY = 'AIzaSyCzE9RsYu1ec6_b0ePHj_7FEOh9aF0fQi0';
+
         const USER_DB = {
             "Takashi": { pw: "Tks83446412", role: "admin" },
             "Chansouk": { pw: "97372185", role: "staff" },
@@ -114,18 +152,21 @@
             "Guest": { pw: "HSDEC2025", role: "guest" }
         };
 
+        let mainCalendar;
+        let editCalendar;
+
         window.onload = function() { initCalendar(); };
 
         function initCalendar() {
             const calendarEl = document.getElementById('calendar');
-            const calendar = new FullCalendar.Calendar(calendarEl, {
+            mainCalendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
-                locale: 'en', // 英語表記に固定
-                dayHeaderFormat: { weekday: 'short' }, // SUN, MON...形式
+                locale: 'en',
+                dayHeaderFormat: { weekday: 'short' },
                 headerToolbar: { left: 'prev', center: 'title', right: 'next' },
                 fixedWeekCount: false,
-                googleCalendarApiKey: 'AIzaSyCzE9RsYu1ec6_b0ePHj_7FEOh9aF0fQi0',
-                events: { googleCalendarId: 'hsdec.la@gmail.com' },
+                googleCalendarApiKey: API_KEY,
+                events: { googleCalendarId: CALENDAR_ID },
                 height: 'auto',
                 eventDidMount: (info) => {
                     const dayEl = info.el.closest('.fc-daygrid-day');
@@ -135,7 +176,7 @@
                     }
                 }
             });
-            calendar.render();
+            mainCalendar.render();
         }
 
         function showModal(event) {
@@ -162,23 +203,123 @@
             document.getElementById('welcome-msg').innerText = `Logged in as ${name} (${role.toUpperCase()})`;
             const grid = document.getElementById('menu-grid');
             grid.innerHTML = ''; 
+            
             const allMenus = [
                 { title: 'Workers', desc: '労働者・名簿管理', icon: '👤', url: 'worker.html', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
+                { title: 'Calendar Edit', desc: 'カレンダーの追加・削除', icon: '📅', action: 'openCalendarEdit', roles: ['admin', 'staff'] },
                 { title: 'Finance', desc: '支出・収支・自動計算', icon: '💰', url: 'finance.html', roles: ['admin', 'staff'] },
                 { title: 'Diary', desc: '日報作成・現場写真', icon: '📝', url: 'diary.html', roles: ['admin', 'staff', 'sv'] },
                 { title: 'Contracts', desc: '契約書類管理', icon: '📄', url: 'contracts.html', roles: ['admin', 'staff'] },
                 { title: 'Cloud Photo', desc: 'Google Drive 共有', icon: '📸', url: 'https://drive.google.com/', roles: ['admin', 'staff', 'sv', 'vv'] }
             ];
+
             allMenus.forEach(m => {
                 if (m.roles.includes(role)) {
-                    grid.innerHTML += `
-                        <a href="${m.url}" class="menu-card p-10 rounded-[2.5rem] block group">
-                            <div class="text-4xl mb-4">${m.icon}</div>
-                            <h3 class="text-2xl font-black tracking-tight uppercase italic">${m.title}</h3>
-                            <p class="text-slate-500 text-sm mt-3 font-bold leading-relaxed">${m.desc}</p>
-                        </a>`;
+                    const card = document.createElement('div');
+                    card.className = "menu-card p-10 rounded-[2.5rem] cursor-pointer group";
+                    card.onclick = m.action ? () => window[m.action]() : () => location.href = m.url;
+                    card.innerHTML = `
+                        <div class="text-4xl mb-4">${m.icon}</div>
+                        <h3 class="text-2xl font-black tracking-tight uppercase italic">${m.title}</h3>
+                        <p class="text-slate-500 text-sm mt-3 font-bold leading-relaxed">${m.desc}</p>`;
+                    grid.appendChild(card);
                 }
             });
+        }
+
+        // --- 編集モード関連の関数 ---
+
+        function openCalendarEdit() {
+            document.getElementById('calendarEditSection').style.display = 'flex';
+            const editEl = document.getElementById('calendar-for-edit');
+            
+            editCalendar = new FullCalendar.Calendar(editEl, {
+                initialView: 'dayGridMonth',
+                googleCalendarApiKey: API_KEY,
+                events: { googleCalendarId: CALENDAR_ID },
+                height: 300,
+                headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+                dateClick: function(info) {
+                    setEditForm(null, info.dateStr);
+                },
+                eventClick: function(info) {
+                    setEditForm(info.event);
+                }
+            });
+            editCalendar.render();
+        }
+
+        function closeCalendarEdit() {
+            document.getElementById('calendarEditSection').style.display = 'none';
+            mainCalendar.refetchEvents(); // ログイン画面のカレンダーを更新
+        }
+
+        function setEditForm(event, dateStr) {
+            const deleteBtn = document.getElementById('delete-event-btn');
+            const modeTitle = document.getElementById('edit-mode-title');
+            
+            if (event) {
+                modeTitle.innerText = "Edit Selected Event";
+                document.getElementById('event-id').value = event.id;
+                document.getElementById('event-title').value = event.title;
+                document.getElementById('event-date').value = event.startStr.split('T')[0];
+                document.getElementById('event-description').value = event.extendedProps.description || '';
+                deleteBtn.classList.remove('hidden');
+            } else {
+                modeTitle.innerText = "Add New Event";
+                document.getElementById('event-id').value = '';
+                document.getElementById('event-title').value = '';
+                document.getElementById('event-date').value = dateStr;
+                document.getElementById('event-description').value = '';
+                deleteBtn.classList.add('hidden');
+            }
+        }
+
+        async function saveEvent() {
+            const title = document.getElementById('event-title').value;
+            const date = document.getElementById('event-date').value;
+            const desc = document.getElementById('event-description').value;
+            const id = document.getElementById('event-id').value;
+
+            if (!title || !date) return alert("Title and Date are required!");
+
+            const payload = {
+                action: id ? "updateEvent" : "addEvent",
+                id: id,
+                title: title,
+                date: date,
+                description: desc
+            };
+
+            await sendToGas(payload);
+        }
+
+        async function deleteEvent() {
+            if (!confirm("Are you sure you want to delete this event?")) return;
+            const id = document.getElementById('event-id').value;
+            await sendToGas({ action: "deleteEvent", id: id });
+        }
+
+        async function sendToGas(payload) {
+            const btn = document.getElementById('save-event-btn');
+            btn.innerText = "Processing...";
+            btn.disabled = true;
+
+            try {
+                // GASへのリクエスト（既存のPOSTエンドポイントへ送信）
+                await fetch(GAS_CAL_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                alert("Success! Google Calendar Updated.");
+                editCalendar.refetchEvents(); // 編集用カレンダーを更新
+                setEditForm(null, new Date().toISOString().split('T')[0]);
+            } catch (e) {
+                alert("Error connecting to Google Calendar.");
+            } finally {
+                btn.innerText = "Save Event";
+                btn.disabled = false;
+            }
         }
     </script>
 </body>
