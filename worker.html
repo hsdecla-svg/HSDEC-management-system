@@ -8,6 +8,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/tesseract.js@v4.0.1/dist/tesseract.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; }
@@ -16,42 +17,19 @@
         .label-style { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
         .section-title { font-size: 12px; font-weight: 900; color: #10b981; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; margin-bottom: 16px; margin-top: 24px; }
         .search-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 12px 20px; width: 100%; color: white; font-weight: bold; outline: none; transition: all 0.3s; }
-        
-        /* District Styles */
-        .worker-item { 
-            position: relative; overflow: hidden; background: rgba(255,255,255,0.05); 
-            border: 2px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 16px; 
-            transition: all 0.2s; cursor: pointer; 
-        }
+        .worker-item { position: relative; overflow: hidden; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 16px; transition: all 0.2s; cursor: pointer; }
         .border-pakngeum { border-color: #38bdf8 !important; background: rgba(56, 189, 248, 0.05); }
         .border-khounkham { border-color: #fb7185 !important; background: rgba(251, 113, 133, 0.05); }
-        
-        /* Reentry Gradient */
-        .reentry-highlight::after {
-            content: ""; position: absolute; top: 0; right: 0; width: 50%; height: 100%;
-            background: linear-gradient(to right, transparent, rgba(16, 185, 129, 0.3));
-            pointer-events: none; z-index: 0;
-        }
-
-        /* Couple Badge */
-        .couple-badge {
-            font-size: 9px; font-weight: 900; color: #fb7185;
-            background: rgba(251, 113, 133, 0.1); padding: 2px 8px;
-            border-radius: 4px; margin-top: 4px; display: inline-block;
-        }
-
-        /* Floating Legend */
-        .legend-box {
-            position: fixed; bottom: 20px; right: 20px;
-            background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 16px; padding: 12px; backdrop-filter: blur(10px); z-index: 100;
-        }
+        .reentry-highlight::after { content: ""; position: absolute; top: 0; right: 0; width: 50%; height: 100%; background: linear-gradient(to right, transparent, rgba(16, 185, 129, 0.3)); pointer-events: none; z-index: 0; }
+        .couple-badge { font-size: 9px; font-weight: 900; color: #fb7185; background: rgba(251, 113, 133, 0.1); padding: 2px 8px; border-radius: 4px; margin-top: 4px; display: inline-block; }
+        .profile-img-small { width: 100%; height: 180px; object-fit: cover; border-radius: 20px; margin-bottom: 20px; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); }
+        .legend-box { position: fixed; bottom: 20px; right: 20px; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 12px; backdrop-filter: blur(10px); z-index: 100; }
         .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 10px; font-weight: 900; text-transform: uppercase; }
         .legend-color { width: 12px; height: 12px; border-radius: 3px; }
-
-        .profile-img-small { width: 100%; height: 180px; object-fit: cover; border-radius: 20px; margin-bottom: 20px; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); }
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Scanner Overlay */
+        .scan-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
     </style>
 </head>
 <body>
@@ -67,8 +45,9 @@
             const [selectedBatch, setSelectedBatch] = useState(null);
             const [selectedWorker, setSelectedWorker] = useState(null);
             const [isSaving, setIsSaving] = useState(false);
+            const [isScanning, setIsScanning] = useState(false);
             const [searchQuery, setSearchQuery] = useState('');
-            const [sortBy, setSortBy] = useState('default'); 
+            const [sortBy, setSortBy] = useState('default');
 
             useEffect(() => { fetchData(); }, []);
 
@@ -82,18 +61,58 @@
                 setLoading(false);
             };
 
+            // --- AI PASSPORT SCANNER LOGIC ---
+            const handlePassportScan = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setIsScanning(true);
+                try {
+                    const result = await Tesseract.recognize(file, 'eng');
+                    const text = result.data.text.toUpperCase().replace(/ /g, '');
+                    const lines = text.split('\n').filter(l => l.length >= 30);
+                    
+                    if (lines.length < 2) throw new Error("MRZ Not Found");
+
+                    const line1 = lines[lines.length - 2]; 
+                    const line2 = lines[lines.length - 1]; 
+
+                    const fullName = line1.substring(5).replace(/<+/g, ' ').trim();
+                    const passportNo = line2.substring(0, 9).replace(/</g, '');
+                    const rawBirth = line2.substring(13, 19);
+                    const birthYear = parseInt(rawBirth.substring(0, 2)) > 30 ? "19" + rawBirth.substring(0, 2) : "20" + rawBirth.substring(0, 2);
+                    const dob = `${birthYear}/${rawBirth.substring(2, 4)}/${rawBirth.substring(4, 6)}`;
+                    const rawExpiry = line2.substring(21, 27);
+                    const expiry = `20${rawExpiry.substring(0, 2)}/${rawExpiry.substring(2, 4)}/${rawExpiry.substring(4, 6)}`;
+                    
+                    setSelectedWorker(prev => ({
+                        ...prev,
+                        'Full Name': fullName,
+                        'Passport No.': passportNo,
+                        'Date of Birth': dob,
+                        'Expiry Date': expiry,
+                        'Age': new Date().getFullYear() - parseInt(birthYear)
+                    }));
+                    alert("Passport Analyzed! ✨");
+                } catch (err) {
+                    alert("Scan failed. Please take a clear photo of the bottom lines.");
+                } finally {
+                    setIsScanning(false);
+                }
+            };
+
             const handleUpdate = async () => {
                 setIsSaving(true);
                 try {
-                    await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(selectedWorker) });
-                    alert("Data Sync Successful! ✅");
+                    // 新規登録か更新かをGASに伝えるために action プロパティを付与
+                    const payload = { ...selectedWorker, action: selectedWorker._row ? "update" : "addNew" };
+                    await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
+                    alert("Cloud Sync Complete! ✅");
                     await fetchData();
                     setView('list');
                 } catch (e) { alert("Sync Error! ❌"); }
                 setIsSaving(false);
             };
 
-            // 👫 夫婦判定ロジック
             const processedWorkers = useMemo(() => {
                 return workers.map((w, index, array) => {
                     let partnerName = null;
@@ -122,27 +141,27 @@
 
             const getDistrictStyle = (district) => {
                 if (!district) return "";
-                const d = district.toUpperCase();
+                const d = district?.toUpperCase() || "";
                 if (d.includes("PAKNGEUM")) return "border-pakngeum";
                 if (d.includes("KHOUNKHAM")) return "border-khounkham";
                 return "";
             };
 
             const getPrefix = (sex) => sex === 'M' ? 'Mr. ' : (sex === 'F' ? 'Ms. ' : '');
-            const getPartnerPrefix = (mySex) => mySex === 'M' ? 'Ms. ' : (mySex === 'F' ? 'Mr. ' : '');
 
             if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse">Loading Database...</div>;
 
+            // FOLDERS VIEW
             if (view === 'folders') return (
                 <div className="max-w-xl mx-auto p-6 fade-in text-white">
                     <header className="flex justify-between items-center mb-8">
                         <h1 className="text-3xl font-black italic uppercase">Workers</h1>
-                        <button onClick={() => window.location.href='index.html'} className="text-[10px] bg-white/5 px-4 py-2 rounded-full border border-white/10 text-slate-400 uppercase">Exit</button>
+                        <button onClick={() => window.location.href='index.html'} className="text-[10px] bg-white/5 px-4 py-2 rounded-full border border-white/10 text-slate-400 uppercase tracking-widest">Exit</button>
                     </header>
                     <div className="space-y-4">
                         {batchNumbers.map(num => (
                             <div key={num} onClick={() => { setSelectedBatch(num); setView('list'); }} className="batch-card p-6 cursor-pointer flex justify-between items-center">
-                                <div><h2 className="text-2xl font-black italic uppercase">Batch {num}</h2><p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Management Folder</p></div>
+                                <div><h2 className="text-2xl font-black italic uppercase">Batch {num}</h2></div>
                                 <div className="bg-emerald-500/10 text-emerald-500 px-4 py-1 rounded-full font-black text-[10px] uppercase">
                                     {workers.filter(w => (w.batch || w._sheetName.replace("Batch","")) == num).length} Members
                                 </div>
@@ -152,113 +171,80 @@
                 </div>
             );
 
+            // LIST VIEW
             if (view === 'list') return (
                 <div className="max-w-xl mx-auto p-6 fade-in relative min-h-screen text-white">
-                    <button onClick={() => { setView('folders'); setSearchQuery(''); }} className="text-[10px] font-black text-slate-500 mb-6 uppercase">← Back</button>
+                    <div className="flex justify-between items-center mb-6">
+                        <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-500 uppercase tracking-widest">← Folders</button>
+                        <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setView('edit'); }} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase shadow-lg shadow-emerald-500/20">+ Add Worker</button>
+                    </div>
                     <div className="mb-6 space-y-3">
                         <h2 className="text-3xl font-black italic uppercase mb-4">Batch {selectedBatch}</h2>
                         <input type="text" placeholder="Search..." className="search-input" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase text-emerald-500">
-                            <option value="default">Default Sort</option>
-                            <option value="name">Sort by Name</option>
-                            <option value="age">Sort by Age</option>
-                        </select>
                     </div>
                     <div className="space-y-3 pb-32">
-                        {batchWorkers.map((w, i) => {
-                            const isReentry = w['Reentry'] === true || w['Reentry'] === "TRUE" || w['Reentry'] === 1;
-                            return (
-                                <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
-                                     className={`worker-item flex justify-between items-center ${getDistrictStyle(w['District'])} ${isReentry ? 'reentry-highlight' : ''}`}>
-                                    <div className="flex flex-col relative z-10">
-                                        <span className="font-black text-sm uppercase">{getPrefix(w['Sex'])}{w['Full Name']}</span>
-                                        <span className="text-[9px] opacity-40 uppercase tracking-tighter">{w['District'] || 'Unknown'}</span>
-                                        {w.partnerName && <div className="couple-badge">❤ Partner: {getPartnerPrefix(w['Sex'])}{w.partnerName}</div>}
-                                    </div>
-                                    <div className="flex flex-col items-end relative z-10">
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase bg-white/5 px-2 py-1 rounded-md">{w['Village'] || 'N/A'}</span>
-                                        {isReentry && <span className="text-[8px] font-black text-emerald-400 uppercase mt-1 italic">Reentry ♻️</span>}
-                                    </div>
+                        {batchWorkers.map((w, i) => (
+                            <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} className={`worker-item flex justify-between items-center ${getDistrictStyle(w['District'])}`}>
+                                <div className="flex flex-col">
+                                    <span className="font-black text-sm uppercase">{getPrefix(w['Sex'])}{w['Full Name']}</span>
+                                    <span className="text-[9px] opacity-40 uppercase tracking-tighter">{w['District'] || 'Unknown'}</span>
+                                    {w.partnerName && <div className="couple-badge">❤ Partner: {w.partnerName}</div>}
                                 </div>
-                            );
-                        })}
+                                <span className="text-[10px] font-bold text-slate-500 uppercase bg-white/5 px-2 py-1 rounded-md">{w['Village'] || 'N/A'}</span>
+                            </div>
+                        ))}
                     </div>
-                    <div className="legend-box text-white">
+                    <div className="legend-box">
                         <div className="legend-item"><div className="legend-color bg-[#38bdf8]"></div>Pakngeum</div>
                         <div className="legend-item"><div className="legend-color bg-[#fb7185]"></div>Khounkham</div>
-                        <div className="legend-item"><div className="legend-color bg-emerald-500/50"></div>Reentry</div>
-                        <div className="legend-item text-rose-400"><span className="text-xs">❤</span> Couple</div>
                     </div>
                 </div>
             );
 
+            // DETAIL VIEW
             if (view === 'detail') return (
                 <div className="max-w-xl mx-auto p-6 fade-in text-white">
-                    <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase">← Back</button>
-                    <div className="bg-white/5 rounded-[2.5rem] border border-white/10 shadow-2xl p-8">
-                        {selectedWorker['Image'] && <img src={selectedWorker['Image']} className="profile-img-small shadow-xl" alt="Worker" />}
+                    <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest">← Back</button>
+                    <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-8 shadow-2xl">
                         <div className="flex justify-between items-start mb-8">
-                            <div>
-                                <h2 className="text-3xl font-black italic uppercase text-emerald-500 leading-none">{getPrefix(selectedWorker['Sex'])}{selectedWorker['Full Name']}</h2>
-                                <p className="text-sm font-bold text-slate-500 mt-2 tracking-widest uppercase italic">Batch {selectedWorker.batch} / {selectedWorker['District']}</p>
-                            </div>
+                            <h2 className="text-3xl font-black italic uppercase text-emerald-500 leading-tight">{selectedWorker['Full Name']}</h2>
                             <button onClick={() => setView('edit')} className="bg-emerald-500 text-white px-5 py-2 rounded-full font-black text-[10px] uppercase">Edit ✎</button>
                         </div>
-
-                        {/* --- 以前の整理された表示セクション --- */}
-                        <div className="section-title text-emerald-500">Personal & Clothing</div>
-                        <div className="grid grid-cols-2 gap-y-4">
-                            <div><label className="label-style">Reentry Status</label><p className="font-bold text-emerald-400">{selectedWorker['Reentry'] ? 'RE-ENTRY ♻️' : 'NEW'}</p></div>
-                            <div><label className="label-style">Gender</label><p className="font-bold">{selectedWorker['Sex'] || '-'}</p></div>
-                            <div><label className="label-style">Age</label><p className="font-bold">{selectedWorker['Age'] || '-'}</p></div>
-                            <div><label className="label-style">Cloth Size</label><p className="font-bold text-emerald-400">{selectedWorker['Cloth size'] || selectedWorker['Size'] || '-'}</p></div>
-                            {selectedWorker.partnerName && <div className="col-span-2"><label className="label-style">Spouse (Couple)</label><p className="font-bold text-rose-400">❤ {getPartnerPrefix(selectedWorker['Sex'])}{selectedWorker.partnerName}</p></div>}
-                        </div>
-
-                        <div className="section-title">Passport & Contact</div>
                         <div className="grid grid-cols-1 gap-y-4">
-                            <div><label className="label-style">Passport No.</label><p className="font-bold">{selectedWorker['Passport No.'] || '-'}</p></div>
-                            <div><label className="label-style">Village / Address</label><p className="font-bold text-sm">{selectedWorker['Village']}, {selectedWorker['District']}</p></div>
-                            <a href={selectedWorker['Google drive']} target="_blank" className="block text-emerald-500 font-black underline truncate text-sm italic">Open Documents ↗</a>
-                        </div>
-
-                        {/* --- その他の全項目を自動表示 --- */}
-                        <div className="section-title">Other Data</div>
-                        <div className="grid grid-cols-1 gap-y-3">
-                            {Object.entries(selectedWorker).map(([key, value]) => {
-                                // 既に上に表示した項目、システム用、画像は除外
-                                const skipKeys = ['Full Name', 'Sex', 'Age', 'Reentry', 'Cloth size', 'Size', 'Passport No.', 'Village', 'District', 'Google drive', 'Image', 'batch', 'partnerName', 'B'];
-                                if (key.startsWith('_') || skipKeys.includes(key)) return null;
-                                return (
-                                    <div key={key} className="border-b border-white/5 pb-1">
-                                        <label className="label-style">{key}</label>
-                                        <p className="font-bold text-xs">{String(value) || '-'}</p>
-                                    </div>
-                                );
-                            })}
+                            {Object.entries(selectedWorker).map(([k,v]) => !k.startsWith('_') && k!=='partnerName' && k!=='batch' && (
+                                <div key={k} className="border-b border-white/5 pb-1">
+                                    <label className="label-style">{k}</label>
+                                    <p className="font-bold text-xs">{String(v) || '-'}</p>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
             );
 
+            // EDIT / ADD VIEW
             if (view === 'edit') return (
                 <div className="max-w-xl mx-auto p-6 fade-in text-white">
-                    <button onClick={() => setView('detail')} className="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest">← Cancel</button>
+                    {isScanning && <div className="scan-overlay"><div className="animate-bounce text-emerald-500 font-black text-xl">AI SCANNING...</div></div>}
+                    <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest">← Cancel</button>
                     <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-8 space-y-6">
-                        <h2 className="text-2xl font-black italic border-b border-white/10 pb-4 uppercase text-emerald-500">Edit Profile</h2>
-                        <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[60vh] pr-2">
-                            {Object.keys(selectedWorker).map(key => {
-                                if (key.startsWith('_') || key === 'batch' || key === 'partnerName') return null;
-                                return (
-                                    <div key={key}>
-                                        <label className="label-style">{key}</label>
-                                        <input className="input-edit" value={selectedWorker[key] || ''} onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})} />
-                                    </div>
-                                );
-                            })}
+                        <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                            <h2 className="text-2xl font-black italic uppercase text-emerald-500">{selectedWorker._row ? 'Edit Profile' : 'New Registration'}</h2>
+                            <label className="bg-white/10 border border-white/20 px-4 py-2 rounded-xl cursor-pointer hover:bg-emerald-500/20 transition-all active:scale-95">
+                                <span className="text-[10px] font-black uppercase tracking-widest">📷 AI Scan</span>
+                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
+                            </label>
                         </div>
-                        <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-xs uppercase shadow-xl active:scale-95 transition-all">
-                            {isSaving ? 'Processing...' : 'Sync to Cloud 💾'}
+                        <div className="grid grid-cols-1 gap-4 overflow-y-auto max-h-[55vh] pr-2">
+                            {['Full Name', 'Sex', 'Age', 'Passport No.', 'Village', 'District', 'Date of Birth', 'Expiry Date'].map(key => (
+                                <div key={key}>
+                                    <label className="label-style">{key}</label>
+                                    <input className="input-edit" value={selectedWorker[key] || ''} onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})} />
+                                </div>
+                            ))}
+                        </div>
+                        <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-sm uppercase shadow-xl active:scale-95 transition-all">
+                            {isSaving ? 'Processing...' : (selectedWorker._row ? 'Sync Update 💾' : 'Confirm Registration 🚀')}
                         </button>
                     </div>
                 </div>
