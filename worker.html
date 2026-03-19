@@ -31,7 +31,7 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbye92TW5yHOjlMX_go7XEmbh3x_EdaDSbIE3y8nXlv8pCV9J1oVrWQBt6lnUQUxAoWi2A/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzFxthmrAULrhJSwlHoJmFNzl4jse3E1yisV34dy2Wg-nSb9AxI8wExlAI1KOsCLprWhw/exec';
 
         const ALL_FIELDS = [
             'ລໍາດັບ', 'ສະຖານະ', 'Re-entry', 'ຊື່ ແລະ ນາມສະກຸນ', 'Full Name', 
@@ -254,6 +254,7 @@
                         </div>
                     </div>
 
+                    {/* AI SCANNER (省略せずに維持) */}
                     <div className="mb-8 p-8 border-2 border-dashed border-emerald-500/30 rounded-[2.5rem] text-center bg-emerald-500/5">
                         <label className="inline-block bg-emerald-500 text-white px-10 py-5 rounded-2xl cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
                             <span className="text-base font-black uppercase tracking-widest flex items-center gap-2">
@@ -272,8 +273,8 @@
                             if (key.includes('Date') || key.includes('Expiry') || key.includes('issue')) v = formatDate(v);
 
                             // --- 入力UIの出し分け ---
-                            
-                            // 1. 再入国チェック
+
+                            // 1. 再入国 (チェックボックス)
                             if (key === 'Re-entry') {
                                 return (
                                     <div key={key} className="flex items-center justify-between p-5 rounded-2xl border border-white/10 bg-black/40">
@@ -288,48 +289,77 @@
                                 );
                             }
 
-                            // 2. 結婚ステータス選択
-                            if (key === 'ສະຖານະ') {
+                            // 2. Province (県) の連動プルダウン
+                            if (key === 'Province') {
                                 return (
                                     <div key={key} className="space-y-1">
                                         <label className="text-[11px] font-black text-emerald-400 uppercase tracking-wider ml-1">{key}</label>
                                         <select 
-                                            className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl outline-none appearance-none"
+                                            className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl outline-none"
                                             value={v || ''}
-                                            onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})}
+                                            onChange={(e) => {
+                                                const newProv = e.target.value;
+                                                const districts = masterOptions.provinceMap[newProv] || [];
+                                                // 1つしかなければ自動セット、なければ空にする
+                                                const autoDistrict = districts.length === 1 ? districts[0] : '';
+                                                setSelectedWorker({
+                                                    ...selectedWorker, 
+                                                    Province: newProv, 
+                                                    District: autoDistrict 
+                                                });
+                                            }}
                                         >
-                                            <option value="">Select Status</option>
-                                            <option value="ຄູ່">ຄູ່ (Married)</option>
-                                            <option value="ດ່ຽວ">ດ່ຽວ (Single)</option>
+                                            <option value="">Select Province</option>
+                                            {(masterOptions.provinces || []).map(p => <option key={p} value={p}>{p}</option>)}
                                         </select>
                                     </div>
                                 );
                             }
 
-                            // 3. 性別選択
-                            if (key === 'Sex') {
+                            // 3. District (郡) の連動プルダウン
+                            if (key === 'District') {
+                                const availableDistricts = masterOptions.provinceMap[selectedWorker.Province] || [];
                                 return (
                                     <div key={key} className="space-y-1">
                                         <label className="text-[11px] font-black text-emerald-400 uppercase tracking-wider ml-1">{key}</label>
                                         <select 
-                                            className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl outline-none appearance-none"
+                                            className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl outline-none"
                                             value={v || ''}
-                                            onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})}
+                                            disabled={!selectedWorker.Province}
+                                            onChange={(e) => setSelectedWorker({...selectedWorker, District: e.target.value})}
                                         >
-                                            <option value="">Select Sex</option>
-                                            <option value="M">M (Male)</option>
-                                            <option value="F">F (Female)</option>
+                                            <option value="">Select District</option>
+                                            {availableDistricts.map(d => <option key={d} value={d}>{d}</option>)}
                                         </select>
                                     </div>
                                 );
                             }
 
-                            // 4. その他（通常の入力）
+                            // 4. その他のプルダウン (Sex, Status)
+                            const masterKeyMap = { "Sex": "Sex", "ສະຖານະ": "Status" };
+                            if (masterKeyMap[key]) {
+                                const list = masterOptions[masterKeyMap[key]] || [];
+                                return (
+                                    <div key={key} className="space-y-1">
+                                        <label className="text-[11px] font-black text-emerald-400 uppercase tracking-wider ml-1">{key}</label>
+                                        <select 
+                                            className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl outline-none"
+                                            value={v || ''}
+                                            onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})}
+                                        >
+                                            <option value="">Select {key}</option>
+                                            {list.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                        </select>
+                                    </div>
+                                );
+                            }
+
+                            // 5. 通常のテキスト入力 (Village, Full Name など)
                             return (
                                 <div key={key} className="space-y-1">
                                     <label className="text-[11px] font-black text-emerald-400 uppercase tracking-wider ml-1">{key}</label>
                                     <input 
-                                        className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all placeholder:text-white/10" 
+                                        className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl focus:border-emerald-500 outline-none transition-all placeholder:text-white/10" 
                                         placeholder={`${key}...`}
                                         value={v || ''} 
                                         onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})} 
