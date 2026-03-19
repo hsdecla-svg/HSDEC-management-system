@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="lo">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>HSDEC Worker Management</title>
@@ -16,10 +15,9 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; -webkit-font-smoothing: antialiased; }
         .batch-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; transition: all 0.3s; margin-bottom: 16px; }
-        .input-edit { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: white; font-weight: 600; font-size: 16px; margin-top: 4px; }
         .label-style { font-size: 10px; font-weight: 900; color: #10b981; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-top: 8px; }
         .search-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 12px 20px; width: 100%; color: white; font-weight: bold; outline: none; }
-        .worker-item { position: relative; border-left: 6px solid transparent; border-radius: 16px; padding: 16px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; }
+        .worker-item { border-left: 6px solid transparent; border-radius: 16px; padding: 16px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; }
         .scan-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
         .number-badge { font-size: 24px; font-weight: 900; font-style: italic; min-width: 50px; text-align: center; margin-right: 15px; opacity: 0.8; }
         .fade-in { animation: fadeIn 0.3s ease-out; }
@@ -41,7 +39,7 @@
         ];
 
         const formatDate = (val) => {
-            if (!val) return '-';
+            if (!val) return '';
             const s = String(val);
             return s.includes('T') ? s.split('T')[0] : s;
         };
@@ -50,7 +48,6 @@
             const d = String(district || "").toUpperCase().trim();
             if (d === 'PAKNGEUM') return { border: 'border-emerald-500', bg: 'bg-emerald-500/10', text: 'text-emerald-400' };
             if (d === 'KHOUNKHAM') return { border: 'border-blue-500', bg: 'bg-blue-500/10', text: 'text-blue-400' };
-            
             const colors = [
                 { border: 'border-rose-500', bg: 'bg-rose-500/10', text: 'text-rose-400' },
                 { border: 'border-purple-500', bg: 'bg-purple-500/10', text: 'text-purple-400' },
@@ -58,7 +55,7 @@
             ];
             let hash = 0;
             for (let i = 0; i < d.length; i++) hash = d.charCodeAt(i) + ((hash << 5) - hash);
-            return colors[Math.abs(hash) % colors.length] || { border: 'border-slate-500', bg: 'bg-white/5', text: 'text-slate-400' };
+            return colors[Math.abs(hash) % colors.length];
         };
 
         function App() {
@@ -70,29 +67,22 @@
             const [isSaving, setIsSaving] = useState(false);
             const [isScanning, setIsScanning] = useState(false);
             const [searchQuery, setSearchQuery] = useState('');
-            const [masterOptions, setMasterOptions] = React.useState({ provinces: [], provinceMap: {}, Sex: [], Status: [] });
+            const [masterOptions, setMasterOptions] = useState({ provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
 
-            useEffect(() => { fetchData(); }, []);
+            useEffect(() => { 
+                fetchData();
+            }, []);
 
             const fetchData = async () => {
-            setLoading(true);
-            try {
-                const res = await fetch(GAS_URL);
-                const json = await res.json();
-                
-                // ここが重要！
-                // json そのものではなく、json.workers をセットする
-                setWorkers(json.workers || []); 
-                
-                // Settingsから届いた選択肢（Province, Districtなど）をセットする
-                setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: [], Status: [] });
-
-            } catch (e) {
-                console.error("Fetch error:", e);
-                setWorkers([]); // エラー時は空にする
-            }
-            setLoading(false);
-        };
+                setLoading(true);
+                try {
+                    const res = await fetch(GAS_URL);
+                    const json = await res.json();
+                    setWorkers(json.workers || []); 
+                    setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
+                } catch (e) { console.error(e); }
+                setLoading(false);
+            };
 
             const handlePassportScan = async (e) => {
                 const file = e.target.files[0];
@@ -122,7 +112,7 @@
                         
                         setSelectedWorker(prev => ({
                             ...prev,
-                            'Surname': surname, 'Given Name': givenName, 'Full Name': `${surname} ${givenName}`.trim(),
+                            'Full Name': `${surname} ${givenName}`.trim(),
                             'Passport No.': passportNo, 'Date of birth': dob, 'Date of Expiry': expiry, 'Date of issue': issue,
                             'Age': new Date().getFullYear() - parseInt(birthYear)
                         }));
@@ -146,54 +136,39 @@
             const filteredWorkers = useMemo(() => {
                 if (!selectedBatch) return [];
                 return workers.filter(w => (w.batch || w._sheetName?.replace("Batch","")) == selectedBatch)
-                             .filter(w => `${w['Full Name']} ${w['ຊື່ ແລະ ນາມສະກຸນ']} ${w['District']} ${w['ລໍາດັບ']}`.toLowerCase().includes(searchQuery.toLowerCase()));
+                             .filter(w => `${w['Full Name']} ${w['ຊື່ ແລະ ນາມສະກຸນ']}`.toLowerCase().includes(searchQuery.toLowerCase()));
             }, [workers, selectedBatch, searchQuery]);
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse uppercase">Connecting...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse">CONNECTING...</div>;
 
-            // --- FOLDERS ---
             if (view === 'folders') return (
                 <div className="max-w-md mx-auto p-6 fade-in">
-                    <h1 className="text-3xl font-black italic mb-8 uppercase tracking-tighter text-white">HSDEC Database</h1>
+                    <h1 className="text-3xl font-black italic mb-8 uppercase text-white">HSDEC Database</h1>
                     {[...new Set(workers.map(w => w.batch || w._sheetName?.replace("Batch","")))].sort((a,b)=>a-b).map(num => (
-                        <div key={num} onClick={() => { setSelectedBatch(num); setView('list'); }} className="batch-card p-6 flex justify-between items-center active:scale-95 transition-transform cursor-pointer">
+                        <div key={num} onClick={() => { setSelectedBatch(num); setView('list'); }} className="batch-card p-6 flex justify-between items-center cursor-pointer active:scale-95 transition-transform">
                             <span className="text-2xl font-black italic uppercase text-white">Batch {num}</span>
-                            <span className="bg-white/10 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase">View Workers</span>
+                            <span className="bg-white/10 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase">View</span>
                         </div>
                     ))}
                 </div>
             );
 
-            // --- LIST (Modified with Large Number) ---
             if (view === 'list') return (
-                <div className="max-w-md mx-auto p-6 fade-in min-h-screen">
+                <div className="max-w-md mx-auto p-6 fade-in">
                     <div className="flex justify-between items-center mb-6">
-                        <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-500 uppercase tracking-widest">← Folders</button>
-                        <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setView('edit'); }} className="bg-emerald-500 text-white px-4 py-2 rounded-full font-black text-[10px] uppercase shadow-lg shadow-emerald-500/30">+ New</button>
+                        <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-500 uppercase">← Folders</button>
+                        <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setView('edit'); }} className="bg-emerald-500 text-white px-4 py-2 rounded-full font-black text-[10px] uppercase shadow-lg">+ New</button>
                     </div>
-                    <input type="text" placeholder="Search name, ID, or district..." className="search-input mb-6" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                    <input type="text" placeholder="Search..." className="search-input mb-6" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                     <div className="space-y-3 pb-20">
                         {filteredWorkers.map((w, i) => {
                             const styles = getDistrictStyles(w['District']);
                             return (
-                                <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
-                                     className={`worker-item ${styles.border} ${styles.bg} fade-in shadow-lg`}>
-                                    
-                                    {/* 番号を一番左に大きく表示 */}
-                                    <div className={`number-badge ${styles.text}`}>
-                                        {w['ລໍາດັບ'] || '-'}
-                                    </div>
-
+                                <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} className={`worker-item ${styles.border} ${styles.bg} shadow-lg`}>
+                                    <div className={`number-badge ${styles.text}`}>{w['ລໍາດັບ'] || '-'}</div>
                                     <div className="flex-grow">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <div className="font-black text-[10px] text-slate-400 uppercase tracking-tight">{w['Full Name'] || 'No Name'}</div>
-                                                <div className="text-sm text-white font-bold mt-1">{w['ຊື່ ແລະ ນາມສະກຸນ'] || '-'}</div>
-                                            </div>
-                                            <span className={`text-[8px] font-black px-2 py-1 rounded uppercase ${styles.text} bg-black/40`}>
-                                                {w['District'] || 'N/A'}
-                                            </span>
-                                        </div>
+                                        <div className="font-black text-[10px] text-slate-400 uppercase">{w['Full Name'] || 'No Name'}</div>
+                                        <div className="text-sm text-white font-bold">{w['ຊື່ ແລະ ນາມສະກຸນ'] || '-'}</div>
                                     </div>
                                 </div>
                             );
@@ -202,112 +177,74 @@
                 </div>
             );
 
-            // --- DETAIL ---
             if (view === 'detail') return (
                 <div className="max-w-md mx-auto p-6 fade-in">
-                    <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase tracking-widest">← Back</button>
+                    <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase">← Back</button>
                     {(() => {
                         const styles = getDistrictStyles(selectedWorker['District']);
                         return (
                             <div className={`rounded-[2.5rem] border-l-8 ${styles.border} ${styles.bg} border border-white/10 p-8 shadow-2xl relative overflow-hidden`}>
-                                {/* 詳細画面でも背景に薄く番号を配置 */}
-                                <div className="absolute top-0 right-4 text-[80px] font-black italic text-white/5 pointer-events-none">
-                                    {selectedWorker['ລໍາດັບ']}
-                                </div>
-
+                                <div className="absolute top-0 right-4 text-[80px] font-black italic text-white/5 pointer-events-none">{selectedWorker['ລໍາດັບ']}</div>
                                 <div className="mb-8 border-b border-white/20 pb-6 relative z-10">
                                     <label className="label-style">Full Name</label>
-                                    <h2 className="text-3xl font-black uppercase text-white leading-tight mb-2">{selectedWorker['Full Name']}</h2>
-                                    <label className="label-style">ຊື່ ແລະ ນາມສະກຸນ</label>
-                                    <h2 className={`text-xl font-bold ${styles.text}`}>{selectedWorker['ຊື່ ແລະ ນາມສະກຸນ'] || '-'}</h2>
+                                    <h2 className="text-3xl font-black uppercase text-white leading-tight">{selectedWorker['Full Name']}</h2>
                                 </div>
-                                
                                 <div className="grid grid-cols-2 gap-y-6 gap-x-4 relative z-10">
                                     {ALL_FIELDS.map(key => {
-                                        if (key === 'Full Name' || key === 'ຊື່ ແລະ ນາມສະກຸນ') return null;
+                                        if (key === 'Full Name') return null;
                                         let val = selectedWorker[key];
                                         if (key.includes('Date') || key.includes('Expiry') || key.includes('issue')) val = formatDate(val);
-
-                                        if (key === 'Google drive' && val) {
-                                            return (
-                                                <div key={key} className="col-span-2 mt-4">
-                                                    <label className="label-style">{key}</label>
-                                                    <a href={val} target="_blank" rel="noopener noreferrer" className="mt-2 block w-full bg-blue-600 text-white text-center py-4 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-900/40">
-                                                        Open Drive 📂
-                                                    </a>
-                                                </div>
-                                            );
-                                        }
                                         return (
                                             <div key={key}>
-                                                <label className={`label-style ${key === 'District' ? styles.text : ''}`}>{key}</label>
-                                                <p className="font-bold text-sm uppercase text-slate-200 break-words">{String(val || '-')}</p>
+                                                <label className="label-style">{key}</label>
+                                                <p className="font-bold text-sm text-slate-200">{String(val || '-')}</p>
                                             </div>
                                         );
                                     })}
                                 </div>
-                                <button onClick={() => setView('edit')} className="w-full mt-10 bg-white/10 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border border-white/5">Edit ✎</button>
+                                <button onClick={() => setView('edit')} className="w-full mt-10 bg-white/10 py-4 rounded-2xl font-black uppercase text-[10px] border border-white/5">Edit ✎</button>
                             </div>
                         );
                     })()}
                 </div>
             );
 
-            // --- EDIT & NEW WORKER 画面 ---
             if (view === 'edit') {
-                // グループ化して表示するためのヘルパー関数
                 const renderField = (key) => {
                     let v = selectedWorker[key];
                     if (key.includes('Date') || key.includes('Expiry') || key.includes('issue')) v = formatDate(v);
+                    const inputStyle = "w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl outline-none focus:border-emerald-500";
+                    
+                    if (key === 'Re-entry') return (
+                        <div key={key} className="flex items-center justify-between p-5 rounded-2xl border border-white/10 bg-black/20">
+                            <label className="text-[14px] font-black text-emerald-400 uppercase">RE-ENTRY USER?</label>
+                            <input type="checkbox" className="w-8 h-8 rounded-lg accent-emerald-500" checked={v === true || v === 'TRUE'} onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.checked})} />
+                        </div>
+                    );
 
-                    const labelStyle = "text-[11px] font-black text-white/40 uppercase tracking-wider ml-1";
-                    const inputStyle = "w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl focus:border-emerald-500 outline-none transition-all placeholder:text-white/10";
-
-                    // 1. Checkbox (Re-entry)
-                    if (key === 'Re-entry') {
-                        return (
-                            <div key={key} className="flex items-center justify-between p-5 rounded-2xl border border-white/10 bg-black/20">
-                                <label className="text-[14px] font-black text-emerald-400 uppercase tracking-wider">RE-ENTRY USER?</label>
-                                <input type="checkbox" className="w-8 h-8 rounded-lg accent-emerald-500" checked={v === true || v === 'TRUE'} onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.checked})} />
-                            </div>
-                        );
-                    }
-
-                    // 2. Select Box (Sex, Status, Size, Province, District)
                     const masterKeyMap = { "Province": "provinces", "Sex": "Sex", "ສະຖານະ": "Status", "Size": "Size" };
                     if (masterKeyMap[key] || key === 'District') {
-                        let list = [];
-                        let onChangeHandler = (e) => setSelectedWorker({...selectedWorker, [key]: e.target.value});
-
-                        if (key === 'Province') {
-                            list = masterOptions.provinces || [];
-                            onChangeHandler = (e) => {
-                                const newProv = e.target.value;
-                                const districts = masterOptions.provinceMap[newProv] || [];
-                                setSelectedWorker({...selectedWorker, Province: newProv, District: districts.length === 1 ? districts[0] : ''});
-                            };
-                        } else if (key === 'District') {
-                            list = masterOptions.provinceMap[selectedWorker.Province] || [];
-                        } else {
-                            list = masterOptions[masterKeyMap[key]] || [];
-                        }
-
+                        let list = key === 'Province' ? masterOptions.provinces : (key === 'District' ? masterOptions.provinceMap[selectedWorker.Province] || [] : masterOptions[masterKeyMap[key]] || []);
                         return (
                             <div key={key} className="space-y-1">
-                                <label className={labelStyle}>{key}</label>
-                                <select className={inputStyle} value={v || ''} onChange={onChangeHandler} disabled={key === 'District' && !selectedWorker.Province}>
+                                <label className="text-[11px] font-black text-white/40 uppercase ml-1">{key}</label>
+                                <select className={inputStyle} value={v || ''} onChange={(e) => {
+                                    const val = e.target.value;
+                                    if(key === 'Province') {
+                                        const dists = masterOptions.provinceMap[val] || [];
+                                        setSelectedWorker({...selectedWorker, Province: val, District: dists.length === 1 ? dists[0] : ''});
+                                    } else { setSelectedWorker({...selectedWorker, [key]: val}); }
+                                }} disabled={key === 'District' && !selectedWorker.Province}>
                                     <option value="">Select {key}</option>
                                     {list.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
                             </div>
                         );
                     }
-
-                    // 3. Normal Input
                     return (
                         <div key={key} className="space-y-1">
-                            <label className={labelStyle}>{key}</label>
-                            <input className={inputStyle} placeholder={`${key}...`} value={v || ''} onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})} />
+                            <label className="text-[11px] font-black text-white/40 uppercase ml-1">{key}</label>
+                            <input className={inputStyle} type={key.includes('Date') ? 'date' : 'text'} value={v || ''} onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})} />
                         </div>
                     );
                 };
@@ -315,77 +252,43 @@
                 return (
                     <div className="max-w-md mx-auto p-6 fade-in">
                         {isScanning && <div className="scan-overlay"><div className="animate-bounce text-emerald-500 font-black text-xl">SCANNING...</div></div>}
-                        
                         <div className="flex justify-between items-center mb-6">
-                            <button onClick={() => setView('list')} className="text-xs font-black text-slate-500 uppercase tracking-widest">← Cancel</button>
-                            <div className="text-xs font-black text-emerald-500 uppercase tracking-widest">{selectedWorker._row ? 'Edit Member' : 'New Registration'}</div>
+                            <button onClick={() => setView('list')} className="text-xs font-black text-slate-500 uppercase">← Cancel</button>
+                            <div className="text-xs font-black text-emerald-500 uppercase">{selectedWorker._row ? 'Edit Member' : 'New'}</div>
                         </div>
-
-                        {/* AI SCANNER */}
                         <div className="mb-8 p-8 border-2 border-dashed border-emerald-500/30 rounded-[2.5rem] text-center bg-emerald-500/5">
                             <label className="inline-block bg-emerald-500 text-white px-10 py-5 rounded-2xl cursor-pointer shadow-lg active:scale-95 transition-all">
-                                <span className="text-base font-black uppercase tracking-widest flex items-center gap-2">📷 AI SCAN PASSPORT</span>
+                                <span className="text-base font-black uppercase">📷 AI SCAN PASSPORT</span>
                                 <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
                             </label>
                         </div>
-
-                        {/* --- グループ化された入力エリア --- */}
                         <div className="space-y-8 mb-24">
-                            
-                            {/* Group 1: Personal */}
                             <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-6 shadow-xl relative overflow-hidden">
                                 <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-                                <h3 className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-6">Personal Info</h3>
+                                <h3 className="text-emerald-400 text-[10px] font-black uppercase mb-6">Personal</h3>
                                 <div className="space-y-6">
                                     {renderField('ຊື່ ແລະ ນາມສະກຸນ')}
                                     {renderField('Full Name')}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {renderField('Sex')}
-                                        {renderField('ສະຖານະ')}
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {renderField('Date of birth')}
-                                        {renderField('Age')}
-                                    </div>
-                                    {renderField('Size')}
-                                    {renderField('Re-entry')}
+                                    <div className="grid grid-cols-2 gap-4">{renderField('Sex')}{renderField('ສະຖານະ')}</div>
+                                    <div className="grid grid-cols-2 gap-4">{renderField('Date of birth')}{renderField('Age')}</div>
+                                    {renderField('Size')}{renderField('Re-entry')}
                                 </div>
                             </div>
-
-                            {/* Group 2: Passport */}
                             <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-6 shadow-xl relative overflow-hidden">
                                 <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-                                <h3 className="text-blue-400 text-[10px] font-black uppercase tracking-widest mb-6">Passport Details</h3>
-                                <div className="space-y-6">
-                                    {renderField('Passport No.')}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {renderField('Date of issue')}
-                                        {renderField('Date of Expiry')}
-                                    </div>
-                                </div>
+                                <h3 className="text-blue-400 text-[10px] font-black uppercase mb-6">Passport</h3>
+                                <div className="space-y-6">{renderField('Passport No.')}<div className="grid grid-cols-2 gap-4">{renderField('Date of issue')}{renderField('Date of Expiry')}</div></div>
                             </div>
-
-                            {/* Group 3: Address */}
                             <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-6 shadow-xl relative overflow-hidden">
                                 <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
-                                <h3 className="text-amber-400 text-[10px] font-black uppercase tracking-widest mb-6">Location</h3>
-                                <div className="space-y-6">
-                                    {renderField('Province')}
-                                    {renderField('District')}
-                                    {renderField('Village')}
-                                </div>
+                                <h3 className="text-amber-400 text-[10px] font-black uppercase mb-6">Location</h3>
+                                <div className="space-y-6">{renderField('Province')}{renderField('District')}{renderField('Village')}</div>
                             </div>
-
-                            {/* Group 4: Bank */}
                             <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-6 shadow-xl relative overflow-hidden">
                                 <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
-                                <h3 className="text-purple-400 text-[10px] font-black uppercase tracking-widest mb-6">Bank Account</h3>
-                                <div className="space-y-6">
-                                    {renderField('AC - Name')}
-                                    {renderField('AC - No')}
-                                </div>
+                                <h3 className="text-purple-400 text-[10px] font-black uppercase mb-6">Bank</h3>
+                                <div className="space-y-6">{renderField('AC - Name')}{renderField('AC - No')}</div>
                             </div>
-
                             <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-600 text-white py-6 rounded-[2rem] font-black text-lg uppercase shadow-xl active:scale-95 transition-all disabled:opacity-50">
                                 {isSaving ? 'Saving...' : 'Confirm & Register 🚀'}
                             </button>
@@ -393,137 +296,8 @@
                     </div>
                 );
             }
-
-                    {/* AI SCANNER (省略せずに維持) */}
-                    <div className="mb-8 p-8 border-2 border-dashed border-emerald-500/30 rounded-[2.5rem] text-center bg-emerald-500/5">
-                        <label className="inline-block bg-emerald-500 text-white px-10 py-5 rounded-2xl cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-                            <span className="text-base font-black uppercase tracking-widest flex items-center gap-2">
-                                📷 AI SCAN PASSPORT
-                            </span>
-                            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
-                        </label>
-                        <p className="text-[10px] text-slate-400 mt-4 uppercase font-bold">AI will auto-fill information</p>
-                    </div>
-
-                    <div className="bg-white/5 rounded-[3rem] border border-white/10 p-8 space-y-6 mb-20 shadow-2xl">
-                        {ALL_FIELDS.map(key => {
-                            if (key === 'Google drive' || key === 'ລໍາດັບ') return null;
-                            
-                            let v = selectedWorker[key];
-                            if (key.includes('Date') || key.includes('Expiry') || key.includes('issue')) v = formatDate(v);
-
-                            // --- 入力UIの出し分け ---
-
-                            // 1. 再入国 (チェックボックス)
-                            if (key === 'Re-entry') {
-                                return (
-                                    <div key={key} className="flex items-center justify-between p-5 rounded-2xl border border-white/10 bg-black/40">
-                                        <label className="text-[14px] font-black text-emerald-400 uppercase tracking-wider">RE-ENTRY USER?</label>
-                                        <input 
-                                            type="checkbox" 
-                                            className="w-8 h-8 rounded-lg accent-emerald-500"
-                                            checked={v === true || v === 'TRUE'}
-                                            onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.checked})}
-                                        />
-                                    </div>
-                                );
-                            }
-
-                            // 2. Province (県) の連動プルダウン
-                            if (key === 'Province') {
-                                return (
-                                    <div key={key} className="space-y-1">
-                                        <label className="text-[11px] font-black text-emerald-400 uppercase tracking-wider ml-1">{key}</label>
-                                        <select 
-                                            className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl outline-none"
-                                            value={v || ''}
-                                            onChange={(e) => {
-                                                const newProv = e.target.value;
-                                                const districts = masterOptions.provinceMap[newProv] || [];
-                                                // 1つしかなければ自動セット、なければ空にする
-                                                const autoDistrict = districts.length === 1 ? districts[0] : '';
-                                                setSelectedWorker({
-                                                    ...selectedWorker, 
-                                                    Province: newProv, 
-                                                    District: autoDistrict 
-                                                });
-                                            }}
-                                        >
-                                            <option value="">Select Province</option>
-                                            {(masterOptions.provinces || []).map(p => <option key={p} value={p}>{p}</option>)}
-                                        </select>
-                                    </div>
-                                );
-                            }
-
-                            // 3. District (郡) の連動プルダウン
-                            if (key === 'District') {
-                                const availableDistricts = masterOptions.provinceMap[selectedWorker.Province] || [];
-                                return (
-                                    <div key={key} className="space-y-1">
-                                        <label className="text-[11px] font-black text-emerald-400 uppercase tracking-wider ml-1">{key}</label>
-                                        <select 
-                                            className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl outline-none"
-                                            value={v || ''}
-                                            disabled={!selectedWorker.Province}
-                                            onChange={(e) => setSelectedWorker({...selectedWorker, District: e.target.value})}
-                                        >
-                                            <option value="">Select District</option>
-                                            {availableDistricts.map(d => <option key={d} value={d}>{d}</option>)}
-                                        </select>
-                                    </div>
-                                );
-                            }
-
-                            // 4. その他のプルダウン (Sex, Status, Size)
-                            // ここに "Size": "Size" を追加します！
-                            const masterKeyMap = { 
-                                "Sex": "Sex", 
-                                "ສະຖານະ": "Status", 
-                                "Size": "Size" 
-                            };
-                            
-                            if (masterKeyMap[key]) {
-                                const list = masterOptions[masterKeyMap[key]] || [];
-                                return (
-                                    <div key={key} className="space-y-1">
-                                        <label className="text-[11px] font-black text-emerald-400 uppercase tracking-wider ml-1">{key}</label>
-                                        <select 
-                                            className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl outline-none"
-                                            value={v || ''}
-                                            onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})}
-                                        >
-                                            <option value="">Select {key}</option>
-                                            {list.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                        </select>
-                                    </div>
-                                );
-                            }
-
-                            // 5. 通常のテキスト入力 (Village, Full Name など)
-                            return (
-                                <div key={key} className="space-y-1">
-                                    <label className="text-[11px] font-black text-emerald-400 uppercase tracking-wider ml-1">{key}</label>
-                                    <input 
-                                        className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl focus:border-emerald-500 outline-none transition-all placeholder:text-white/10" 
-                                        placeholder={`${key}...`}
-                                        value={v || ''} 
-                                        onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})} 
-                                    />
-                                </div>
-                            );
-                        })}
-                        
-                        <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-600 text-white py-6 rounded-[2rem] font-black text-lg uppercase shadow-xl mt-8 active:scale-95 transition-all disabled:opacity-50">
-                            {isSaving ? 'Creating Folder & Saving...' : 'Confirm & Register 🚀'}
-                        </button>
-                    </div>
-                </div>
-            );
-        } // App関数の終わり
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+        }
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
 </body>
 </html>
