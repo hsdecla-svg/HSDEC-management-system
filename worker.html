@@ -4,57 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>HSDEC Worker Management</title>
-    
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; -webkit-font-smoothing: antialiased; }
         .batch-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 24px; transition: all 0.3s; margin-bottom: 16px; }
-        .label-style { font-size: 10px; font-weight: 900; color: #10b981; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-top: 8px; }
+        .label-style { font-size: 10px; font-weight: 900; color: #10b981; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-top: 4px; opacity: 0.8; }
         .search-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 15px; padding: 12px 20px; width: 100%; color: white; font-weight: bold; outline: none; }
         .worker-item { border-left: 6px solid transparent; border-radius: 16px; padding: 16px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; }
-        .scan-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
-        .number-badge { font-size: 24px; font-weight: 900; font-style: italic; min-width: 50px; text-align: center; margin-right: 15px; opacity: 0.8; }
+        .detail-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; padding: 20px; position: relative; overflow: hidden; }
+        .card-line { position: absolute; top: 0; left: 0; width: 4px; height: 100%; }
         .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
     </style>
 </head>
 <body>
     <div id="root"></div>
-
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbw38k4Jq6JWPhUrg7d2jcfXcoHZk7-AlT6yHtMEgYQs46705YEmvi12sOcjWy3fqSjc5A/exec';
-
-        const ALL_FIELDS = [
-            'ລໍາດັບ', 'ສະຖານະ', 'Re-entry', 'ຊື່ ແລະ ນາມສະກຸນ', 'Full Name', 
-            'Sex', 'Date of birth', 'Age', 'Passport No.', 'Date of issue', 
-            'Date of Expiry', 'Village', 'District', 'Province', 'Size', 
-            'AC - Name', 'AC - No', 'Google drive'
-        ];
-
-        const formatDate = (val) => {
-            if (!val) return '';
-            const s = String(val);
-            return s.includes('T') ? s.split('T')[0] : s;
-        };
-
+        const ALL_FIELDS = ['ລໍາດັບ', 'ສະຖານະ', 'Re-entry', 'ຊື່ ແລະ ນາມສະກຸນ', 'Full Name', 'Sex', 'Date of birth', 'Age', 'Passport No.', 'Date of issue', 'Date of Expiry', 'Village', 'District', 'Province', 'Size', 'AC - Name', 'AC - No', 'Google drive'];
+        const formatDate = (val) => { if (!val) return ''; const s = String(val); return s.includes('T') ? s.split('T')[0] : s; };
         const getDistrictStyles = (district) => {
             const d = String(district || "").toUpperCase().trim();
             if (d === 'PAKNGEUM') return { border: 'border-emerald-500', bg: 'bg-emerald-500/10', text: 'text-emerald-400' };
             if (d === 'KHOUNKHAM') return { border: 'border-blue-500', bg: 'bg-blue-500/10', text: 'text-blue-400' };
-            const colors = [
-                { border: 'border-rose-500', bg: 'bg-rose-500/10', text: 'text-rose-400' },
-                { border: 'border-purple-500', bg: 'bg-purple-500/10', text: 'text-purple-400' },
-                { border: 'border-amber-500', bg: 'bg-amber-500/10', text: 'text-amber-400' }
-            ];
-            let hash = 0;
-            for (let i = 0; i < d.length; i++) hash = d.charCodeAt(i) + ((hash << 5) - hash);
+            const colors = [{ border: 'border-rose-500', bg: 'bg-rose-500/10', text: 'text-rose-400' }, { border: 'border-purple-500', bg: 'bg-purple-500/10', text: 'text-purple-400' }, { border: 'border-amber-500', bg: 'bg-amber-500/10', text: 'text-amber-400' }];
+            let hash = 0; for (let i = 0; i < d.length; i++) hash = d.charCodeAt(i) + ((hash << 5) - hash);
             return colors[Math.abs(hash) % colors.length];
         };
 
@@ -69,74 +50,37 @@
             const [searchQuery, setSearchQuery] = useState('');
             const [masterOptions, setMasterOptions] = useState({ provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
 
-            useEffect(() => { 
-                fetchData();
-            }, []);
-
+            useEffect(() => { fetchData(); }, []);
             const fetchData = async () => {
-                setLoading(true);
-                try {
-                    const res = await fetch(GAS_URL);
-                    const json = await res.json();
-                    setWorkers(json.workers || []); 
-                    setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
-                } catch (e) { console.error(e); }
-                setLoading(false);
+                setLoading(true); try { const res = await fetch(GAS_URL); const json = await res.json(); setWorkers(json.workers || []); setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] }); } catch (e) { console.error(e); } setLoading(false);
             };
 
             const handlePassportScan = async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                setIsScanning(true);
+                const file = e.target.files[0]; if (!file) return; setIsScanning(true);
                 try {
-                    const workerOCR = await Tesseract.createWorker('eng');
-                    const { data: { text } } = await workerOCR.recognize(file);
-                    await workerOCR.terminate();
-                    const cleanText = text.toUpperCase().replace(/ /g, '');
-                    const lines = cleanText.split('\n').filter(l => l.length >= 30);
+                    const workerOCR = await Tesseract.createWorker('eng'); const { data: { text } } = await workerOCR.recognize(file); await workerOCR.terminate();
+                    const cleanText = text.toUpperCase().replace(/ /g, ''); const lines = cleanText.split('\n').filter(l => l.length >= 30);
                     if (lines.length >= 2) {
-                        const line1 = lines[lines.length - 2];
-                        const line2 = lines[lines.length - 1];
-                        const namePart = line1.substring(5);
-                        const parts = namePart.split('<<');
-                        const surname = parts[0]?.replace(/<+/g, ' ').trim() || "";
-                        const givenName = parts[1]?.replace(/<+/g, ' ').trim() || "";
-                        const passportNo = line2.substring(0, 9).replace(/</g, '');
-                        const rawBirth = line2.substring(13, 19);
+                        const line1 = lines[lines.length - 2]; const line2 = lines[lines.length - 1];
+                        const namePart = line1.substring(5); const parts = namePart.split('<<');
+                        const surname = parts[0]?.replace(/<+/g, ' ').trim() || ""; const givenName = parts[1]?.replace(/<+/g, ' ').trim() || "";
+                        const passportNo = line2.substring(0, 9).replace(/</g, ''); const rawBirth = line2.substring(13, 19);
                         const birthYear = parseInt(rawBirth.substring(0, 2)) > 30 ? "19" + rawBirth.substring(0, 2) : "20" + rawBirth.substring(0, 2);
                         const dob = `${birthYear}-${rawBirth.substring(2, 4)}-${rawBirth.substring(4, 6)}`;
-                        const rawExpiry = line2.substring(21, 27);
-                        const expYear = 2000 + parseInt(rawExpiry.substring(0, 2));
+                        const rawExpiry = line2.substring(21, 27); const expYear = 2000 + parseInt(rawExpiry.substring(0, 2));
                         const expiry = `${expYear}-${rawExpiry.substring(2, 4)}-${rawExpiry.substring(4, 6)}`;
-                        const issue = `${expYear - 10}-${rawExpiry.substring(2, 4)}-${rawExpiry.substring(4, 6)}`;
-                        
-                        setSelectedWorker(prev => ({
-                            ...prev,
-                            'Full Name': `${surname} ${givenName}`.trim(),
-                            'Passport No.': passportNo, 'Date of birth': dob, 'Date of Expiry': expiry, 'Date of issue': issue,
-                            'Age': new Date().getFullYear() - parseInt(birthYear)
-                        }));
+                        setSelectedWorker(prev => ({...prev, 'Full Name': `${surname} ${givenName}`.trim(), 'Passport No.': passportNo, 'Date of birth': dob, 'Date of Expiry': expiry, 'Date of issue': `${expYear - 10}-${rawExpiry.substring(2, 4)}-${rawExpiry.substring(4, 6)}`, 'Age': new Date().getFullYear() - parseInt(birthYear)}));
                     }
-                } catch (err) { alert("Scan fail"); }
-                finally { setIsScanning(false); }
+                } catch (err) { alert("Scan fail"); } finally { setIsScanning(false); }
             };
 
             const handleUpdate = async () => {
-                setIsSaving(true);
-                try {
-                    const payload = { ...selectedWorker, action: selectedWorker._row ? "update" : "addNew" };
-                    await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-                    alert("Success! ✅");
-                    await fetchData();
-                    setView('list');
-                } catch (e) { alert("Error"); }
-                setIsSaving(false);
+                setIsSaving(true); try { const payload = { ...selectedWorker, action: selectedWorker._row ? "update" : "addNew" }; await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) }); alert("Success! ✅"); await fetchData(); setView('list'); } catch (e) { alert("Error"); } setIsSaving(false);
             };
 
             const filteredWorkers = useMemo(() => {
                 if (!selectedBatch) return [];
-                return workers.filter(w => (w.batch || w._sheetName?.replace("Batch","")) == selectedBatch)
-                             .filter(w => `${w['Full Name']} ${w['ຊື່ ແລະ ນາມສະກຸນ']}`.toLowerCase().includes(searchQuery.toLowerCase()));
+                return workers.filter(w => (w.batch || w._sheetName?.replace("Batch","")) == selectedBatch).filter(w => `${w['Full Name']} ${w['ຊື່ ແລະ ນາມສະກຸນ']}`.toLowerCase().includes(searchQuery.toLowerCase()));
             }, [workers, selectedBatch, searchQuery]);
 
             if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse">CONNECTING...</div>;
@@ -145,153 +89,84 @@
                 <div className="max-w-md mx-auto p-6 fade-in">
                     <h1 className="text-3xl font-black italic mb-8 uppercase text-white">HSDEC Database</h1>
                     {[...new Set(workers.map(w => w.batch || w._sheetName?.replace("Batch","")))].sort((a,b)=>a-b).map(num => (
-                        <div key={num} onClick={() => { setSelectedBatch(num); setView('list'); }} className="batch-card p-6 flex justify-between items-center cursor-pointer active:scale-95 transition-transform">
-                            <span className="text-2xl font-black italic uppercase text-white">Batch {num}</span>
-                            <span className="bg-white/10 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase">View</span>
-                        </div>
+                        <div key={num} onClick={() => { setSelectedBatch(num); setView('list'); }} className="batch-card p-6 flex justify-between items-center cursor-pointer active:scale-95 transition-transform"><span className="text-2xl font-black italic uppercase text-white">Batch {num}</span><span className="bg-white/10 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase">View</span></div>
                     ))}
                 </div>
             );
 
             if (view === 'list') return (
                 <div className="max-w-md mx-auto p-6 fade-in">
-                    <div className="flex justify-between items-center mb-6">
-                        <button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-500 uppercase">← Folders</button>
-                        <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setView('edit'); }} className="bg-emerald-500 text-white px-4 py-2 rounded-full font-black text-[10px] uppercase shadow-lg">+ New</button>
-                    </div>
+                    <div className="flex justify-between items-center mb-6"><button onClick={() => setView('folders')} className="text-[10px] font-black text-slate-500 uppercase">← Folders</button><button onClick={() => { setSelectedWorker({batch: selectedBatch}); setView('edit'); }} className="bg-emerald-500 text-white px-4 py-2 rounded-full font-black text-[10px] uppercase shadow-lg">+ New</button></div>
                     <input type="text" placeholder="Search..." className="search-input mb-6" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-                    <div className="space-y-3 pb-20">
-                        {filteredWorkers.map((w, i) => {
-                            const styles = getDistrictStyles(w['District']);
-                            return (
-                                <div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} className={`worker-item ${styles.border} ${styles.bg} shadow-lg`}>
-                                    <div className={`number-badge ${styles.text}`}>{w['ລໍາດັບ'] || '-'}</div>
-                                    <div className="flex-grow">
-                                        <div className="font-black text-[10px] text-slate-400 uppercase">{w['Full Name'] || 'No Name'}</div>
-                                        <div className="text-sm text-white font-bold">{w['ຊື່ ແລະ ນາມສະກຸນ'] || '-'}</div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                    <div className="space-y-3 pb-20">{filteredWorkers.map((w, i) => { const styles = getDistrictStyles(w['District']); return (<div key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} className={`worker-item ${styles.border} ${styles.bg} shadow-lg`}><div className={`text-2xl font-black italic mr-4 ${styles.text}`}>{w['ລໍາດັບ'] || '-'}</div><div className="flex-grow"><div className="font-black text-[10px] text-slate-400 uppercase">{w['Full Name'] || 'No Name'}</div><div className="text-sm text-white font-bold">{w['ຊື່ ແລະ ນາມສະກຸນ'] || '-'}</div></div></div>); })}</div>
                 </div>
             );
 
-            if (view === 'detail') return (
-                <div className="max-w-md mx-auto p-6 fade-in">
-                    <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 mb-6 uppercase">← Back</button>
-                    {(() => {
-                        const styles = getDistrictStyles(selectedWorker['District']);
-                        return (
-                            <div className={`rounded-[2.5rem] border-l-8 ${styles.border} ${styles.bg} border border-white/10 p-8 shadow-2xl relative overflow-hidden`}>
-                                <div className="absolute top-0 right-4 text-[80px] font-black italic text-white/5 pointer-events-none">{selectedWorker['ລໍາດັບ']}</div>
-                                <div className="mb-8 border-b border-white/20 pb-6 relative z-10">
-                                    <label className="label-style">Full Name</label>
-                                    <h2 className="text-3xl font-black uppercase text-white leading-tight">{selectedWorker['Full Name']}</h2>
+            if (view === 'detail') {
+                const styles = getDistrictStyles(selectedWorker['District']);
+                const InfoRow = ({ label, value }) => (
+                    <div className="mb-4 last:mb-0">
+                        <label className="label-style">{label}</label>
+                        <p className="font-bold text-lg text-white leading-tight">{String(value || '-')}</p>
+                    </div>
+                );
+                return (
+                    <div className="max-w-md mx-auto p-6 fade-in pb-20">
+                        <div className="flex justify-between items-center mb-6"><button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 uppercase">← Back</button><button onClick={() => setView('edit')} className="text-emerald-500 font-black text-[10px] uppercase">Edit Profile ✎</button></div>
+                        <div className="mb-6"><label className="label-style">Target Batch</label><h2 className="text-4xl font-black italic text-white uppercase">#{selectedWorker['ລໍາດັບ']} <span className="text-sm font-normal not-italic opacity-40">/ BATCH {selectedBatch}</span></h2></div>
+                        <div className="space-y-6">
+                            <div className="detail-card"><div className="card-line bg-emerald-500"></div><h3 className="text-emerald-400 text-[10px] font-black uppercase mb-4 tracking-tighter">Personal Profile</h3>
+                                <div className="space-y-4">
+                                    <InfoRow label="ຊື່ ແລະ ນາມສະກຸນ" value={selectedWorker['ຊື່ ແລະ ນາມສະກຸນ']} />
+                                    <InfoRow label="Full Name" value={selectedWorker['Full Name']} />
+                                    <InfoRow label="Sex" value={selectedWorker['Sex']} /><InfoRow label="Status" value={selectedWorker['ສະຖານະ']} />
+                                    <InfoRow label="Birth" value={formatDate(selectedWorker['Date of birth'])} /><InfoRow label="Age" value={selectedWorker['Age']} />
+                                    <InfoRow label="Uniform Size" value={selectedWorker['Size']} /><InfoRow label="Re-entry" value={selectedWorker['Re-entry'] ? 'YES' : 'NO'} />
                                 </div>
-                                <div className="grid grid-cols-2 gap-y-6 gap-x-4 relative z-10">
-                                    {ALL_FIELDS.map(key => {
-                                        if (key === 'Full Name') return null;
-                                        let val = selectedWorker[key];
-                                        if (key.includes('Date') || key.includes('Expiry') || key.includes('issue')) val = formatDate(val);
-                                        return (
-                                            <div key={key}>
-                                                <label className="label-style">{key}</label>
-                                                <p className="font-bold text-sm text-slate-200">{String(val || '-')}</p>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                <button onClick={() => setView('edit')} className="w-full mt-10 bg-white/10 py-4 rounded-2xl font-black uppercase text-[10px] border border-white/5">Edit ✎</button>
                             </div>
-                        );
-                    })()}
-                </div>
-            );
+                            <div className="detail-card"><div className="card-line bg-blue-500"></div><h3 className="text-blue-400 text-[10px] font-black uppercase mb-4">Passport Details</h3>
+                                <div className="space-y-4">
+                                    <InfoRow label="Passport No." value={selectedWorker['Passport No.']} />
+                                    <InfoRow label="Issue" value={formatDate(selectedWorker['Date of issue'])} /><InfoRow label="Expiry" value={formatDate(selectedWorker['Date of Expiry'])} />
+                                </div>
+                            </div>
+                            <div className="detail-card"><div className="card-line bg-amber-500"></div><h3 className="text-amber-400 text-[10px] font-black uppercase mb-4">Location</h3>
+                                <div className="space-y-4"><InfoRow label="Province" value={selectedWorker['Province']} /><InfoRow label="District" value={selectedWorker['District']} /><InfoRow label="Village" value={selectedWorker['Village']} /></div>
+                            </div>
+                            <div className="detail-card"><div className="card-line bg-purple-500"></div><h3 className="text-purple-400 text-[10px] font-black uppercase mb-4">Financial & Drive</h3>
+                                <div className="space-y-4">
+                                    <InfoRow label="Account Name" value={selectedWorker['AC - Name']} /><InfoRow label="Account Number" value={selectedWorker['AC - No']} />
+                                    {selectedWorker['Google drive'] && <a href={selectedWorker['Google drive']} target="_blank" className="block w-full text-center bg-blue-600/20 border border-blue-500/40 py-4 rounded-xl text-blue-400 font-black text-xs uppercase mt-4">Open Google Drive 📂</a>}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
 
             if (view === 'edit') {
                 const renderField = (key) => {
-                    let v = selectedWorker[key];
-                    if (key.includes('Date') || key.includes('Expiry') || key.includes('issue')) v = formatDate(v);
-                    const inputStyle = "w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl outline-none focus:border-emerald-500";
-                    
-                    if (key === 'Re-entry') return (
-                        <div key={key} className="flex items-center justify-between p-5 rounded-2xl border border-white/10 bg-black/20">
-                            <label className="text-[14px] font-black text-emerald-400 uppercase">RE-ENTRY USER?</label>
-                            <input type="checkbox" className="w-8 h-8 rounded-lg accent-emerald-500" checked={v === true || v === 'TRUE'} onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.checked})} />
-                        </div>
-                    );
-
+                    let v = selectedWorker[key]; if (key.includes('Date') || key.includes('Expiry') || key.includes('issue')) v = formatDate(v);
+                    const inputStyle = "w-full p-4 rounded-xl border border-white/10 bg-black/40 text-white font-bold text-lg outline-none focus:border-emerald-500 transition-all";
+                    if (key === 'Re-entry') return (<div key={key} className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-black/20 mt-2"><label className="text-[12px] font-black text-emerald-400 uppercase">RE-ENTRY USER?</label><input type="checkbox" className="w-8 h-8 rounded-lg accent-emerald-500" checked={v === true || v === 'TRUE'} onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.checked})} /></div>);
                     const masterKeyMap = { "Province": "provinces", "Sex": "Sex", "ສະຖານະ": "Status", "Size": "Size" };
                     if (masterKeyMap[key] || key === 'District') {
                         let list = key === 'Province' ? masterOptions.provinces : (key === 'District' ? masterOptions.provinceMap[selectedWorker.Province] || [] : masterOptions[masterKeyMap[key]] || []);
-                        return (
-                            <div key={key} className="space-y-1">
-                                <label className="text-[11px] font-black text-white/40 uppercase ml-1">{key}</label>
-                                <select className={inputStyle} value={v || ''} onChange={(e) => {
-                                    const val = e.target.value;
-                                    if(key === 'Province') {
-                                        const dists = masterOptions.provinceMap[val] || [];
-                                        setSelectedWorker({...selectedWorker, Province: val, District: dists.length === 1 ? dists[0] : ''});
-                                    } else { setSelectedWorker({...selectedWorker, [key]: val}); }
-                                }} disabled={key === 'District' && !selectedWorker.Province}>
-                                    <option value="">Select {key}</option>
-                                    {list.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                </select>
-                            </div>
-                        );
+                        return (<div key={key} className="space-y-1 mb-4"><label className="label-style">{key}</label><select className={inputStyle} value={v || ''} onChange={(e) => { const val = e.target.value; if(key === 'Province') { const dists = masterOptions.provinceMap[val] || []; setSelectedWorker({...selectedWorker, Province: val, District: dists.length === 1 ? dists[0] : ''}); } else { setSelectedWorker({...selectedWorker, [key]: val}); } }} disabled={key === 'District' && !selectedWorker.Province}><option value="">Select...</option>{list.map(opt => <option key={opt} value={opt}>{opt}</option>)}</select></div>);
                     }
-                    return (
-                        <div key={key} className="space-y-1">
-                            <label className="text-[11px] font-black text-white/40 uppercase ml-1">{key}</label>
-                            <input className={inputStyle} type={key.includes('Date') ? 'date' : 'text'} value={v || ''} onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})} />
-                        </div>
-                    );
+                    return (<div key={key} className="space-y-1 mb-4"><label className="label-style">{key}</label>{key === 'Google drive' && v && <a href={v} target="_blank" className="block text-right text-[9px] text-blue-400 font-black mb-1">LINK TEST ↗</a>}<input className={inputStyle} type={key.includes('Date') ? 'date' : 'text'} value={v || ''} onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})} /></div>);
                 };
-
                 return (
-                    <div className="max-w-md mx-auto p-6 fade-in">
-                        {isScanning && <div className="scan-overlay"><div className="animate-bounce text-emerald-500 font-black text-xl">SCANNING...</div></div>}
-                        <div className="flex justify-between items-center mb-6">
-                            <button onClick={() => setView('list')} className="text-xs font-black text-slate-500 uppercase">← Cancel</button>
-                            <div className="text-xs font-black text-emerald-500 uppercase">{selectedWorker._row ? 'Edit Member' : 'New'}</div>
-                        </div>
-                        <div className="mb-8 p-8 border-2 border-dashed border-emerald-500/30 rounded-[2.5rem] text-center bg-emerald-500/5">
-                            <label className="inline-block bg-emerald-500 text-white px-10 py-5 rounded-2xl cursor-pointer shadow-lg active:scale-95 transition-all">
-                                <span className="text-base font-black uppercase">📷 AI SCAN PASSPORT</span>
-                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
-                            </label>
-                        </div>
-                        <div className="space-y-8 mb-24">
-                            <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-6 shadow-xl relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-                                <h3 className="text-emerald-400 text-[10px] font-black uppercase mb-6">Personal</h3>
-                                <div className="space-y-6">
-                                    {renderField('ຊື່ ແລະ ນາມສະກຸນ')}
-                                    {renderField('Full Name')}
-                                    <div className="grid grid-cols-2 gap-4">{renderField('Sex')}{renderField('ສະຖານະ')}</div>
-                                    <div className="grid grid-cols-2 gap-4">{renderField('Date of birth')}{renderField('Age')}</div>
-                                    {renderField('Size')}{renderField('Re-entry')}
-                                </div>
-                            </div>
-                            <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-6 shadow-xl relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
-                                <h3 className="text-blue-400 text-[10px] font-black uppercase mb-6">Passport</h3>
-                                <div className="space-y-6">{renderField('Passport No.')}<div className="grid grid-cols-2 gap-4">{renderField('Date of issue')}{renderField('Date of Expiry')}</div></div>
-                            </div>
-                            <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-6 shadow-xl relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
-                                <h3 className="text-amber-400 text-[10px] font-black uppercase mb-6">Location</h3>
-                                <div className="space-y-6">{renderField('Province')}{renderField('District')}{renderField('Village')}</div>
-                            </div>
-                            <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-6 shadow-xl relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
-                                <h3 className="text-purple-400 text-[10px] font-black uppercase mb-6">Bank</h3>
-                                <div className="space-y-6">{renderField('AC - Name')}{renderField('AC - No')}</div>
-                            </div>
-                            <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-600 text-white py-6 rounded-[2rem] font-black text-lg uppercase shadow-xl active:scale-95 transition-all disabled:opacity-50">
-                                {isSaving ? 'Saving...' : 'Confirm & Register 🚀'}
-                            </button>
+                    <div className="max-w-md mx-auto p-6 fade-in pb-24">
+                        {isScanning && <div className="fixed inset-0 bg-black/80 z-[2000] flex items-center justify-center backdrop-blur-md"><div className="animate-bounce text-emerald-500 font-black text-xl italic uppercase">Scanning Passport...</div></div>}
+                        <div className="flex justify-between items-center mb-6"><button onClick={() => setView('list')} className="text-xs font-black text-slate-500 uppercase">← Cancel</button><div className="text-xs font-black text-emerald-500 uppercase">Editor Mode</div></div>
+                        <div className="mb-6 p-6 border-2 border-dashed border-emerald-500/20 rounded-[2rem] text-center bg-emerald-500/5"><label className="inline-block bg-emerald-500 text-white px-8 py-4 rounded-2xl cursor-pointer shadow-lg active:scale-95 transition-all"><span className="text-sm font-black uppercase tracking-tight">📷 AI Scan Passport</span><input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} /></label></div>
+                        <div className="space-y-6">
+                            <div className="detail-card"><div className="card-line bg-emerald-500"></div><h3 className="text-emerald-400 text-[10px] font-black uppercase mb-4">Personal</h3><div className="space-y-2">{renderField('ຊື່ ແລະ ນາມສະກຸນ')}{renderField('Full Name')}{renderField('Sex')}{renderField('ສະຖານະ')}{renderField('Date of birth')}{renderField('Age')}{renderField('Size')}{renderField('Re-entry')}</div></div>
+                            <div className="detail-card"><div className="card-line bg-blue-500"></div><h3 className="text-blue-400 text-[10px] font-black uppercase mb-4">Passport</h3><div className="space-y-2">{renderField('Passport No.')}{renderField('Date of issue')}{renderField('Date of Expiry')}</div></div>
+                            <div className="detail-card"><div className="card-line bg-amber-500"></div><h3 className="text-amber-400 text-[10px] font-black uppercase mb-4">Location</h3><div className="space-y-2">{renderField('Province')}{renderField('District')}{renderField('Village')}</div></div>
+                            <div className="detail-card"><div className="card-line bg-purple-500"></div><h3 className="text-purple-400 text-[10px] font-black uppercase mb-4">Other</h3><div className="space-y-2">{renderField('AC - Name')}{renderField('AC - No')}{renderField('Google drive')}</div></div>
+                            <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-lg uppercase shadow-xl active:scale-95 transition-all disabled:opacity-50 mt-8">{isSaving ? 'Processing...' : 'Save Changes 🚀'}</button>
                         </div>
                     </div>
                 );
