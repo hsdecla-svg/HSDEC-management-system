@@ -31,7 +31,7 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzFxthmrAULrhJSwlHoJmFNzl4jse3E1yisV34dy2Wg-nSb9AxI8wExlAI1KOsCLprWhw/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwAB_wH9T8wonDSFM1S96ZcuoFgM0v0u5x4wcH83UH-sA-mpDdsjmJWmGgsBovyv02KaA/exec';
 
         const ALL_FIELDS = [
             'ລໍາດັບ', 'ສະຖານະ', 'Re-entry', 'ຊື່ ແລະ ນາມສະກຸນ', 'Full Name', 
@@ -346,8 +346,14 @@
                                 );
                             }
 
-                            // 4. その他のプルダウン (Sex, Status)
-                            const masterKeyMap = { "Sex": "Sex", "ສະຖານະ": "Status" };
+                            // 4. その他のプルダウン (Sex, Status, Size)
+                            // ここに "Size": "Size" を追加します！
+                            const masterKeyMap = { 
+                                "Sex": "Sex", 
+                                "ສະຖານະ": "Status", 
+                                "Size": "Size" 
+                            };
+                            
                             if (masterKeyMap[key]) {
                                 const list = masterOptions[masterKeyMap[key]] || [];
                                 return (
