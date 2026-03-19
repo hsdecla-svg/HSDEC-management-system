@@ -243,34 +243,43 @@
             );
 
             // --- EDIT ---
-            if (view === 'edit') return (
-                <div className="max-w-md mx-auto p-6 fade-in">
-                    {isScanning && <div className="scan-overlay"><div className="animate-bounce text-emerald-500 font-black text-xl">SCANNING...</div></div>}
-                    <div className="flex justify-between items-center mb-6">
-                        <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 uppercase tracking-widest">← Cancel</button>
-                        <label className="bg-white/10 border border-white/20 px-4 py-2 rounded-xl cursor-pointer">
-                            <span className="text-[10px] font-black uppercase tracking-widest">📷 AI Scan</span>
-                            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
-                        </label>
-                    </div>
-                    <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-8 space-y-4 mb-20">
-                        {ALL_FIELDS.map(key => {
-                            let v = selectedWorker[key];
-                            if (key.includes('Date') || key.includes('Expiry') || key.includes('issue')) v = formatDate(v);
-                            return (
-                                <div key={key}>
-                                    <label className="label-style">{key}</label>
-                                    <input className="input-edit" value={v || ''} onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})} />
-                                </div>
-                            );
-                        })}
-                        <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-sm uppercase shadow-xl mt-6 active:scale-95 transition-all">
-                            {isSaving ? 'Syncing...' : 'Save & Close 💾'}
-                        </button>
-                    </div>
-                </div>
-            );
-        }
+            // 新規登録のときだけ、AIスキャンボタンを巨大化して一番上に配置する
+if (view === 'edit') return (
+  <div className="max-w-md mx-auto p-6 fade-in">
+    {/* AIスキャンをメインに据える */}
+    {!selectedWorker._row && (
+      <div className="mb-8 p-6 border-2 border-dashed border-emerald-500/50 rounded-[2rem] text-center bg-emerald-500/5">
+        <p className="text-[10px] font-black uppercase text-emerald-400 mb-4">Passport AI Scanner</p>
+        <label className="inline-block bg-emerald-500 text-white px-8 py-4 rounded-full cursor-pointer shadow-lg shadow-emerald-900/40 active:scale-95 transition-all">
+          <span className="text-sm font-black uppercase tracking-widest">📷 Take Passport Photo</span>
+          <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
+        </label>
+        <p className="text-[10px] text-slate-500 mt-4">AIが名前、番号、生年月日を自動入力します</p>
+      </div>
+    )}
+
+    {/* 入力フォーム部分 */}
+    <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-8 space-y-4 mb-20">
+      {/* 必要な項目だけを表示するようにフィルタリング */}
+      {ALL_FIELDS.map(key => {
+          // 新規の時は「Google Drive」などは入力させない等の制御
+          return (
+            <div key={key}>
+              <label className="label-style">{key}</label>
+              <input className="input-edit" 
+                     placeholder={`${key}を入力...`} 
+                     value={selectedWorker[key] || ''} 
+                     onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})} />
+            </div>
+          );
+      })}
+      
+      <button onClick={handleUpdate} className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-sm uppercase shadow-xl mt-6">
+         Submit Data 🚀
+      </button>
+    </div>
+  </div>
+);
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
