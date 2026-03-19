@@ -74,14 +74,24 @@
             useEffect(() => { fetchData(); }, []);
 
             const fetchData = async () => {
-                setLoading(true);
-                try {
-                    const res = await fetch(GAS_URL);
-                    const data = await res.json();
-                    setWorkers(data);
-                } catch (e) { console.error(e); }
-                setLoading(false);
-            };
+            setLoading(true);
+            try {
+                const res = await fetch(GAS_URL);
+                const json = await res.json();
+                
+                // ここが重要！
+                // json そのものではなく、json.workers をセットする
+                setWorkers(json.workers || []); 
+                
+                // Settingsから届いた選択肢（Province, Districtなど）をセットする
+                setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: [], Status: [] });
+
+            } catch (e) {
+                console.error("Fetch error:", e);
+                setWorkers([]); // エラー時は空にする
+            }
+            setLoading(false);
+        };
 
             const handlePassportScan = async (e) => {
                 const file = e.target.files[0];
