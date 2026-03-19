@@ -253,17 +253,146 @@
                 </div>
             );
 
-            // --- EDIT & NEW WORKER 画面 (ここからが重要！) ---
-            if (view === 'edit') return (
-                <div className="max-w-md mx-auto p-6 fade-in">
-                    {isScanning && <div className="scan-overlay"><div className="animate-bounce text-emerald-500 font-black text-xl">SCANNING...</div></div>}
-                    
-                    <div className="flex justify-between items-center mb-6">
-                        <button onClick={() => setView('list')} className="text-xs font-black text-slate-500 uppercase tracking-widest">← Cancel</button>
-                        <div className="text-xs font-black text-emerald-500 uppercase tracking-widest">
-                            {selectedWorker._row ? 'Edit Member' : 'New Registration'}
+            // --- EDIT & NEW WORKER 画面 ---
+            if (view === 'edit') {
+                // グループ化して表示するためのヘルパー関数
+                const renderField = (key) => {
+                    let v = selectedWorker[key];
+                    if (key.includes('Date') || key.includes('Expiry') || key.includes('issue')) v = formatDate(v);
+
+                    const labelStyle = "text-[11px] font-black text-white/40 uppercase tracking-wider ml-1";
+                    const inputStyle = "w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl focus:border-emerald-500 outline-none transition-all placeholder:text-white/10";
+
+                    // 1. Checkbox (Re-entry)
+                    if (key === 'Re-entry') {
+                        return (
+                            <div key={key} className="flex items-center justify-between p-5 rounded-2xl border border-white/10 bg-black/20">
+                                <label className="text-[14px] font-black text-emerald-400 uppercase tracking-wider">RE-ENTRY USER?</label>
+                                <input type="checkbox" className="w-8 h-8 rounded-lg accent-emerald-500" checked={v === true || v === 'TRUE'} onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.checked})} />
+                            </div>
+                        );
+                    }
+
+                    // 2. Select Box (Sex, Status, Size, Province, District)
+                    const masterKeyMap = { "Province": "provinces", "Sex": "Sex", "ສະຖານະ": "Status", "Size": "Size" };
+                    if (masterKeyMap[key] || key === 'District') {
+                        let list = [];
+                        let onChangeHandler = (e) => setSelectedWorker({...selectedWorker, [key]: e.target.value});
+
+                        if (key === 'Province') {
+                            list = masterOptions.provinces || [];
+                            onChangeHandler = (e) => {
+                                const newProv = e.target.value;
+                                const districts = masterOptions.provinceMap[newProv] || [];
+                                setSelectedWorker({...selectedWorker, Province: newProv, District: districts.length === 1 ? districts[0] : ''});
+                            };
+                        } else if (key === 'District') {
+                            list = masterOptions.provinceMap[selectedWorker.Province] || [];
+                        } else {
+                            list = masterOptions[masterKeyMap[key]] || [];
+                        }
+
+                        return (
+                            <div key={key} className="space-y-1">
+                                <label className={labelStyle}>{key}</label>
+                                <select className={inputStyle} value={v || ''} onChange={onChangeHandler} disabled={key === 'District' && !selectedWorker.Province}>
+                                    <option value="">Select {key}</option>
+                                    {list.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                </select>
+                            </div>
+                        );
+                    }
+
+                    // 3. Normal Input
+                    return (
+                        <div key={key} className="space-y-1">
+                            <label className={labelStyle}>{key}</label>
+                            <input className={inputStyle} placeholder={`${key}...`} value={v || ''} onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})} />
+                        </div>
+                    );
+                };
+
+                return (
+                    <div className="max-w-md mx-auto p-6 fade-in">
+                        {isScanning && <div className="scan-overlay"><div className="animate-bounce text-emerald-500 font-black text-xl">SCANNING...</div></div>}
+                        
+                        <div className="flex justify-between items-center mb-6">
+                            <button onClick={() => setView('list')} className="text-xs font-black text-slate-500 uppercase tracking-widest">← Cancel</button>
+                            <div className="text-xs font-black text-emerald-500 uppercase tracking-widest">{selectedWorker._row ? 'Edit Member' : 'New Registration'}</div>
+                        </div>
+
+                        {/* AI SCANNER */}
+                        <div className="mb-8 p-8 border-2 border-dashed border-emerald-500/30 rounded-[2.5rem] text-center bg-emerald-500/5">
+                            <label className="inline-block bg-emerald-500 text-white px-10 py-5 rounded-2xl cursor-pointer shadow-lg active:scale-95 transition-all">
+                                <span className="text-base font-black uppercase tracking-widest flex items-center gap-2">📷 AI SCAN PASSPORT</span>
+                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
+                            </label>
+                        </div>
+
+                        {/* --- グループ化された入力エリア --- */}
+                        <div className="space-y-8 mb-24">
+                            
+                            {/* Group 1: Personal */}
+                            <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-6 shadow-xl relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+                                <h3 className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-6">Personal Info</h3>
+                                <div className="space-y-6">
+                                    {renderField('ຊື່ ແລະ ນາມສະກຸນ')}
+                                    {renderField('Full Name')}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {renderField('Sex')}
+                                        {renderField('ສະຖານະ')}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {renderField('Date of birth')}
+                                        {renderField('Age')}
+                                    </div>
+                                    {renderField('Size')}
+                                    {renderField('Re-entry')}
+                                </div>
+                            </div>
+
+                            {/* Group 2: Passport */}
+                            <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-6 shadow-xl relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                                <h3 className="text-blue-400 text-[10px] font-black uppercase tracking-widest mb-6">Passport Details</h3>
+                                <div className="space-y-6">
+                                    {renderField('Passport No.')}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {renderField('Date of issue')}
+                                        {renderField('Date of Expiry')}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Group 3: Address */}
+                            <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-6 shadow-xl relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+                                <h3 className="text-amber-400 text-[10px] font-black uppercase tracking-widest mb-6">Location</h3>
+                                <div className="space-y-6">
+                                    {renderField('Province')}
+                                    {renderField('District')}
+                                    {renderField('Village')}
+                                </div>
+                            </div>
+
+                            {/* Group 4: Bank */}
+                            <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-6 shadow-xl relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
+                                <h3 className="text-purple-400 text-[10px] font-black uppercase tracking-widest mb-6">Bank Account</h3>
+                                <div className="space-y-6">
+                                    {renderField('AC - Name')}
+                                    {renderField('AC - No')}
+                                </div>
+                            </div>
+
+                            <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-600 text-white py-6 rounded-[2rem] font-black text-lg uppercase shadow-xl active:scale-95 transition-all disabled:opacity-50">
+                                {isSaving ? 'Saving...' : 'Confirm & Register 🚀'}
+                            </button>
                         </div>
                     </div>
+                );
+            }
 
                     {/* AI SCANNER (省略せずに維持) */}
                     <div className="mb-8 p-8 border-2 border-dashed border-emerald-500/30 rounded-[2.5rem] text-center bg-emerald-500/5">
