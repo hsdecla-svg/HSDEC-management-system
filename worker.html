@@ -242,51 +242,53 @@
                 </div>
             );
 
-            // --- EDIT & NEW WORKER ---
-            if (view === 'edit') return (
-                <div className="max-w-md mx-auto p-6 fade-in">
-                    {isScanning && <div className="scan-overlay"><div className="animate-bounce text-emerald-500 font-black text-xl">SCANNING...</div></div>}
-                    
-                    <div className="flex justify-between items-center mb-6">
-                        <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-500 uppercase tracking-widest">← Cancel</button>
-                        <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">
-                            {selectedWorker._row ? 'Edit Mode' : 'New Registration'}
+            // --- EDIT & NEW WORKER ---
+            if (view === 'edit') return (
+                <div className="max-w-md mx-auto p-6 fade-in">
+                    {isScanning && <div className="scan-overlay"><div className="animate-bounce text-emerald-500 font-black text-xl">SCANNING...</div></div>}
+                    
+                    <div className="flex justify-between items-center mb-6">
+                        <button onClick={() => setView('list')} className="text-xs font-black text-slate-500 uppercase tracking-widest">← Cancel</button>
+                        <div className="text-xs font-black text-emerald-500 uppercase tracking-widest">
+                            {selectedWorker._row ? 'Edit Member' : 'New Registration'}
                         </div>
-                    </div>
+                    </div>
 
-                    {/* AI SCANNER SECTION (Top Priority for New) */}
-                    <div className="mb-8 p-6 border-2 border-dashed border-emerald-500/30 rounded-[2.5rem] text-center bg-emerald-500/5">
-                        <label className="inline-block bg-emerald-500 text-white px-8 py-4 rounded-2xl cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-                            <span className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                    {/* AI SCANNER SECTION */}
+                    <div className="mb-8 p-8 border-2 border-dashed border-emerald-500/30 rounded-[2.5rem] text-center bg-emerald-500/5">
+                        <label className="inline-block bg-emerald-500 text-white px-10 py-5 rounded-2xl cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+                            <span className="text-base font-black uppercase tracking-widest flex items-center gap-2">
                                 📷 Scan Passport
                             </span>
                             <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
                         </label>
-                        <p className="text-[10px] text-slate-400 mt-4 uppercase font-bold tracking-tighter">AI will auto-fill names and numbers</p>
+                        <p className="text-[10px] text-slate-400 mt-4 uppercase font-bold">AI will auto-fill information</p>
                     </div>
 
-                    <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-8 space-y-4 mb-20 shadow-2xl">
-                        {ALL_FIELDS.map(key => {
-                            let v = selectedWorker[key];
-                            if (key.includes('Date') || key.includes('Expiry') || key.includes('issue')) v = formatDate(v);
-                            return (
-                                <div key={key}>
-                                    <label className="label-style">{key}</label>
-                                    <input 
-                                        className="input-edit focus:border-emerald-500 outline-none transition-colors" 
-                                        placeholder="..."
+                    <div className="bg-white/5 rounded-[3rem] border border-white/10 p-8 space-y-6 mb-20 shadow-2xl">
+                        {ALL_FIELDS.map(key => {
+                            if (key === 'Google drive') return null; // フォルダは自動生成するので入力不要にする
+                            let v = selectedWorker[key];
+                            if (key.includes('Date') || key.includes('Expiry') || key.includes('issue')) v = formatDate(v);
+                            return (
+                                <div key={key} className="space-y-1">
+                                    <label className="text-[11px] font-black text-emerald-400 uppercase tracking-wider ml-1">{key}</label>
+                                    <input 
+                                        className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all placeholder:text-white/10" 
+                                        placeholder={`${key}...`}
                                         value={v || ''} 
                                         onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})} 
                                     />
-                                </div>
-                            );
-                        })}
-                        <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-sm uppercase shadow-xl mt-6 active:scale-95 transition-all disabled:opacity-50">
-                            {isSaving ? 'Processing...' : 'Submit to Database 🚀'}
-                        </button>
-                    </div>
-                </div>
-            );
+                                </div>
+                            );
+                        })}
+                        
+                        <button onClick={handleUpdate} disabled={isSaving} className="w-full bg-emerald-600 text-white py-6 rounded-[2rem] font-black text-lg uppercase shadow-xl mt-8 active:scale-95 transition-all disabled:opacity-50">
+                            {isSaving ? 'Creating Folder & Saving...' : 'Confirm & Register 🚀'}
+                        </button>
+                    </div>
+                </div>
+            );
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
