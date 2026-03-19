@@ -70,6 +70,7 @@
             const [isSaving, setIsSaving] = useState(false);
             const [isScanning, setIsScanning] = useState(false);
             const [searchQuery, setSearchQuery] = useState('');
+            const [masterOptions, setMasterOptions] = React.useState({ provinces: [], provinceMap: {}, Sex: [], Status: [] });
 
             useEffect(() => { fetchData(); }, []);
 
