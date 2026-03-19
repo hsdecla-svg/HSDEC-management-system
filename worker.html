@@ -242,7 +242,7 @@
                 </div>
             );
 
-            // --- EDIT & NEW WORKER ---
+            // --- EDIT & NEW WORKER 画面 (ここからが重要！) ---
             if (view === 'edit') return (
                 <div className="max-w-md mx-auto p-6 fade-in">
                     {isScanning && <div className="scan-overlay"><div className="animate-bounce text-emerald-500 font-black text-xl">SCANNING...</div></div>}
@@ -254,11 +254,10 @@
                         </div>
                     </div>
 
-                    {/* AI SCANNER SECTION */}
                     <div className="mb-8 p-8 border-2 border-dashed border-emerald-500/30 rounded-[2.5rem] text-center bg-emerald-500/5">
                         <label className="inline-block bg-emerald-500 text-white px-10 py-5 rounded-2xl cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
                             <span className="text-base font-black uppercase tracking-widest flex items-center gap-2">
-                                📷 Scan Passport
+                                📷 AI SCAN PASSPORT
                             </span>
                             <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
                         </label>
@@ -267,9 +266,65 @@
 
                     <div className="bg-white/5 rounded-[3rem] border border-white/10 p-8 space-y-6 mb-20 shadow-2xl">
                         {ALL_FIELDS.map(key => {
-                            if (key === 'Google drive') return null; // フォルダは自動生成するので入力不要にする
+                            if (key === 'Google drive' || key === 'ລໍາດັບ') return null;
+                            
                             let v = selectedWorker[key];
                             if (key.includes('Date') || key.includes('Expiry') || key.includes('issue')) v = formatDate(v);
+
+                            // --- 入力UIの出し分け ---
+                            
+                            // 1. 再入国チェック
+                            if (key === 'Re-entry') {
+                                return (
+                                    <div key={key} className="flex items-center justify-between p-5 rounded-2xl border border-white/10 bg-black/40">
+                                        <label className="text-[14px] font-black text-emerald-400 uppercase tracking-wider">RE-ENTRY USER?</label>
+                                        <input 
+                                            type="checkbox" 
+                                            className="w-8 h-8 rounded-lg accent-emerald-500"
+                                            checked={v === true || v === 'TRUE'}
+                                            onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.checked})}
+                                        />
+                                    </div>
+                                );
+                            }
+
+                            // 2. 結婚ステータス選択
+                            if (key === 'ສະຖານະ') {
+                                return (
+                                    <div key={key} className="space-y-1">
+                                        <label className="text-[11px] font-black text-emerald-400 uppercase tracking-wider ml-1">{key}</label>
+                                        <select 
+                                            className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl outline-none appearance-none"
+                                            value={v || ''}
+                                            onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})}
+                                        >
+                                            <option value="">Select Status</option>
+                                            <option value="ຄູ່">ຄູ່ (Married)</option>
+                                            <option value="ດ່ຽວ">ດ່ຽວ (Single)</option>
+                                        </select>
+                                    </div>
+                                );
+                            }
+
+                            // 3. 性別選択
+                            if (key === 'Sex') {
+                                return (
+                                    <div key={key} className="space-y-1">
+                                        <label className="text-[11px] font-black text-emerald-400 uppercase tracking-wider ml-1">{key}</label>
+                                        <select 
+                                            className="w-full p-5 rounded-2xl border border-white/10 bg-black/40 text-white font-bold text-xl outline-none appearance-none"
+                                            value={v || ''}
+                                            onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})}
+                                        >
+                                            <option value="">Select Sex</option>
+                                            <option value="M">M (Male)</option>
+                                            <option value="F">F (Female)</option>
+                                        </select>
+                                    </div>
+                                );
+                            }
+
+                            // 4. その他（通常の入力）
                             return (
                                 <div key={key} className="space-y-1">
                                     <label className="text-[11px] font-black text-emerald-400 uppercase tracking-wider ml-1">{key}</label>
@@ -289,10 +344,10 @@
                     </div>
                 </div>
             );
-        }
+        } // App関数の終わり
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
