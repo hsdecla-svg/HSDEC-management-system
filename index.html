@@ -13,6 +13,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; overflow-x: hidden; }
         
+        /* メニューカードのホバーアニメーション */
         .menu-card {
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(15px);
@@ -26,45 +27,11 @@
             box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
 
-        /* --- Timeline Styling --- */
-        .timeline-scroll {
-            display: flex;
-            overflow-x: auto;
-            padding: 40px 20px;
-            gap: 30px;
-            scroll-behavior: smooth;
-        }
-        .event-card {
-            min-width: 280px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 2rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            flex-shrink: 0;
-            position: relative;
-        }
-        .event-image {
-            width: 100%;
-            height: 160px;
-            object-fit: cover;
-            border-radius: 1.5rem;
-            margin-bottom: 15px;
-        }
-        .dot {
-            width: 12px; height: 12px; background: #10b981; border-radius: 50%;
-            position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
-            box-shadow: 0 0 15px #10b981;
-        }
-        .event-date { font-size: 10px; font-weight: 900; color: #10b981; text-transform: uppercase; margin-bottom: 4px; }
-        .event-title { font-size: 16px; font-weight: 900; italic; line-height: 1.2; }
-
-        /* --- Calendar Overrides --- */
+        /* カレンダーの見た目調整（ログイン画面用） */
         .fc { border: none !important; font-size: 11px; }
         .fc-theme-standard td, .fc-theme-standard th { border: 1px solid rgba(255, 255, 255, 0.1) !important; }
         .fc-col-header-cell-cushion { color: #94a3b8; font-weight: 900; text-transform: uppercase; }
-        .fc-day-sat .fc-col-header-cell-cushion, .fc-day-sat .fc-daygrid-day-number { color: #60a5fa !important; } 
-        .fc-day-sun .fc-col-header-cell-cushion, .fc-day-sun .fc-daygrid-day-number { color: #f87171 !important; } 
-        .fc-daygrid-day-frame { min-height: 45px !important; cursor: pointer; }
+        .fc-daygrid-day-frame { min-height: 45px !important; }
         .fc-daygrid-event-harness { display: none !important; }
         .has-event::after {
             content: ''; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
@@ -73,9 +40,7 @@
         .fc-toolbar-title { font-size: 16px !important; font-weight: 900 !important; color: #10b981; }
         .fc-button { background: transparent !important; border: none !important; color: #64748b !important; font-weight: 900 !important; }
 
-        #eventModal, #calendarEditSection { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); align-items: center; justify-content: center; }
-        .input-field { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; width: 100%; color: white; margin-top: 5px; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        #eventModal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); align-items: center; justify-content: center; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center p-6 text-white">
@@ -85,9 +50,11 @@
             <h1 class="text-5xl font-black italic text-emerald-500 tracking-tighter">HSDEC</h1>
             <p class="text-slate-500 font-black uppercase tracking-[0.3em] text-[10px] mt-2">Central Management System</p>
         </div>
+        
         <div class="bg-white/5 rounded-[2.5rem] p-4 border border-white/10 shadow-2xl">
             <div id="calendar"></div>
         </div>
+
         <div class="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
             <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Select User</label>
             <select id="user-select" class="w-full bg-slate-800 border-none p-4 rounded-xl mb-4 text-white font-bold outline-none">
@@ -112,37 +79,8 @@
             </div>
             <button onclick="location.reload()" class="text-[10px] font-black text-slate-500 hover:text-white uppercase border border-slate-700 px-6 py-3 rounded-full transition">Logout</button>
         </div>
-        <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4"></div>
-    </div>
-
-    <div id="timeline-section" class="w-full max-w-6xl hidden flex flex-col space-y-8 py-10 px-4">
-        <div class="flex justify-between items-center">
-            <h2 class="text-4xl font-black italic tracking-tighter text-emerald-500 uppercase">History Timeline</h2>
-            <button onclick="backToMenu()" class="text-[10px] font-black text-slate-500 hover:text-white uppercase border border-slate-700 px-6 py-3 rounded-full transition">Back to Menu</button>
-        </div>
-        <div id="timeline-content" class="timeline-scroll scrollbar-hide"></div>
-    </div>
-
-    <div id="calendarEditSection">
-        <div class="bg-slate-900 border border-emerald-500/30 rounded-[2.5rem] p-8 w-[95%] max-w-md overflow-y-auto max-h-[90vh]" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-2xl font-black italic uppercase text-emerald-500">Edit Calendar</h3>
-                <button onclick="closeCalendarEdit()" class="text-slate-500 font-black text-xs uppercase">Close ✕</button>
+        <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-4">
             </div>
-            <div id="edit-calendar-container" class="mb-8 bg-white/5 p-4 rounded-2xl border border-white/5">
-                <div id="calendar-for-edit"></div>
-            </div>
-            <div class="space-y-4 bg-white/5 p-6 rounded-[2rem] border border-white/10 text-left">
-                <input type="hidden" id="event-id">
-                <input type="text" id="event-title" class="input-field" placeholder="Title">
-                <input type="date" id="event-date" class="input-field">
-                <textarea id="event-description" class="input-field h-20" placeholder="Description & Photo Link..."></textarea>
-                <div class="flex gap-2 pt-4">
-                    <button id="save-event-btn" onclick="saveEvent()" class="flex-1 bg-emerald-500 text-white py-4 rounded-xl font-black text-xs uppercase">Save</button>
-                    <button id="delete-event-btn" onclick="deleteEvent()" class="flex-1 bg-rose-500 text-white py-4 rounded-xl font-black text-xs uppercase hidden">Delete</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <div id="eventModal" onclick="this.style.display='none'">
@@ -155,7 +93,6 @@
     </div>
 
     <script>
-        const GAS_CAL_URL = 'https://script.google.com/macros/s/AKfycbzdAZAcryW4C9u3VE-DoBWBpBeB-lUIlxHPU3qBgq3oS2DKOr-fWuN239iNyhGTq7o0Nw/exec';
         const CALENDAR_ID = 'hsdec.la@gmail.com';
         const API_KEY = 'AIzaSyCzE9RsYu1ec6_b0ePHj_7FEOh9aF0fQi0';
 
@@ -168,7 +105,7 @@
             "Guest": { pw: "HSDEC2025", role: "guest" }
         };
 
-        let mainCalendar, editCalendar;
+        let mainCalendar;
 
         window.onload = function() { initCalendar(); };
 
@@ -217,9 +154,10 @@
             grid.innerHTML = ''; 
             
             const allMenus = [
-                { title: 'Timeline', desc: 'HISTORY & SCHEDULE', icon: '⏳', action: 'openTimeline', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
+                // action ではなく url を指定して別ファイルへ飛ばすように設定
+                { title: 'Timeline', desc: 'HISTORY & SCHEDULE', icon: '⏳', url: 'timeline.html', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
                 { title: 'Workers', desc: 'DATABASE MANAGEMENT', icon: '👤', url: 'worker.html', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
-                { title: 'Calendar Edit', desc: 'SCHEDULE OVERRIDE', icon: '📅', action: 'openCalendarEdit', roles: ['admin', 'staff'] },
+                { title: 'Calendar Edit', desc: 'SCHEDULE OVERRIDE', icon: '📅', url: 'calendar_edit.html', roles: ['admin', 'staff'] },
                 { title: 'Finance', desc: 'ACCOUNTING SYSTEM', icon: '💰', url: 'finance.html', roles: ['admin', 'staff'] },
                 { title: 'Diary', desc: 'DAILY FIELD REPORTS', icon: '📝', url: 'diary.html', roles: ['admin', 'staff', 'sv'] },
                 { title: 'Contracts', desc: 'DOCUMENT ARCHIVE', icon: '📄', url: 'contracts.html', roles: ['admin', 'staff'] },
@@ -230,104 +168,12 @@
                 if (m.roles.includes(role)) {
                     const card = document.createElement('div');
                     card.className = "menu-card p-10 rounded-[2.5rem] cursor-pointer group";
-                    card.onclick = m.action ? () => window[m.action]() : () => location.href = m.url;
+                    card.onclick = () => location.href = m.url; // リンク移動に統一
                     card.innerHTML = `<div class="text-4xl mb-4 group-hover:scale-110 transition-transform">${m.icon}</div><h3 class="text-2xl font-black tracking-tight uppercase italic">${m.title}</h3><p class="text-slate-500 text-[10px] mt-3 font-bold uppercase tracking-widest">${m.desc}</p>`;
                     grid.appendChild(card);
                 }
             });
         }
-
-        async function openTimeline() {
-            document.getElementById('menu-section').classList.add('hidden');
-            document.getElementById('timeline-section').classList.remove('hidden');
-            const container = document.getElementById('timeline-content');
-            container.innerHTML = '<div class="w-full text-center text-emerald-500 font-black animate-pulse uppercase">--- Syncing Timeline ---</div>';
-
-            try {
-                const url = `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${API_KEY}&singleEvents=true&orderBy=startTime&timeMin=2025-01-01T00:00:00Z`;
-                const res = await fetch(url);
-                const data = await res.json();
-                container.innerHTML = ''; 
-
-                if (!data.items || data.items.length === 0) {
-                    container.innerHTML = '<div class="w-full text-center text-slate-500 font-black uppercase">No Events Found</div>';
-                    return;
-                }
-
-                data.items.forEach(event => {
-                    const startData = event.start.dateTime || event.start.date;
-                    const date = new Date(startData).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' });
-                    const desc = event.description || '';
-                    const photoMatch = desc.match(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp)/i);
-
-                    const card = document.createElement('div');
-                    card.className = 'event-card';
-                    card.innerHTML = `
-                        <img src="${photoMatch ? photoMatch[0] : 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400'}" class="event-image">
-                        <div class="dot"></div>
-                        <div class="event-content">
-                            <div class="event-date">${date}</div>
-                            <div class="event-title">${event.summary || 'UNTITLED'}</div>
-                        </div>
-                    `;
-                    container.appendChild(card);
-                });
-            } catch (err) {
-                container.innerHTML = '<div class="text-rose-500 font-black uppercase">Connection Error</div>';
-            }
-        }
-
-        function backToMenu() {
-            document.getElementById('timeline-section').classList.add('hidden');
-            document.getElementById('menu-section').classList.remove('hidden');
-        }
-
-        function openCalendarEdit() {
-            document.getElementById('calendarEditSection').style.display = 'flex';
-            editCalendar = new FullCalendar.Calendar(document.getElementById('calendar-for-edit'), {
-                initialView: 'dayGridMonth',
-                googleCalendarApiKey: API_KEY,
-                events: { googleCalendarId: CALENDAR_ID },
-                height: 300,
-                dateClick: (info) => setEditForm(null, info.dateStr),
-                eventClick: (info) => setEditForm(info.event)
-            });
-            editCalendar.render();
-        }
-
-        function closeCalendarEdit() { document.getElementById('calendarEditSection').style.display = 'none'; mainCalendar.refetchEvents(); }
-
-        function setEditForm(event, dateStr) {
-            const deleteBtn = document.getElementById('delete-event-btn');
-            if (event) {
-                document.getElementById('event-id').value = event.id;
-                document.getElementById('event-title').value = event.title;
-                document.getElementById('event-date').value = event.startStr.split('T')[0];
-                document.getElementById('event-description').value = event.extendedProps.description || '';
-                deleteBtn.classList.remove('hidden');
-            } else {
-                document.getElementById('event-id').value = '';
-                document.getElementById('event-title').value = '';
-                document.getElementById('event-date').value = dateStr;
-                document.getElementById('event-description').value = '';
-                deleteBtn.classList.add('hidden');
-            }
-        }
-
-        async function sendToGas(payload) {
-            try {
-                await fetch(GAS_CAL_URL, { method: 'POST', body: JSON.stringify(payload) });
-                alert("Updated!");
-                editCalendar.refetchEvents();
-            } catch (e) { alert("Error!"); }
-        }
-
-        async function saveEvent() {
-            const p = { action: document.getElementById('event-id').value ? "updateEvent" : "addEvent", id: document.getElementById('event-id').value, title: document.getElementById('event-title').value, date: document.getElementById('event-date').value, description: document.getElementById('event-description').value };
-            await sendToGas(p);
-        }
-
-        async function deleteEvent() { if(confirm("Delete?")) await sendToGas({ action: "deleteEvent", id: document.getElementById('event-id').value }); }
     </script>
 </body>
 </html>
