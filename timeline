@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HSDEC Global Hub - Portal</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/google-calendar@6.1.10/index.global.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { background: #0f172a; font-family: 'Inter', sans-serif; color: white; overflow-x: hidden; }
+        
+        /* --- メニューカード --- */
+        .menu-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .menu-card:hover {
+            transform: translateY(-8px);
+            border-color: #10b981;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        /* --- 年表タイムライン（提示されたデザインを統合） --- */
+        #timeline-section { display: none; width: 100%; position: relative; }
+        
+        .timeline-container {
+            display: flex;
+            overflow-x: auto;
+            padding: 80px 20px;
+            gap: 40px;
+            position: relative;
+            scrollbar-width: none;
+        }
+        .timeline-container::-webkit-scrollbar { display: none; }
+
+        /* 青い横線 */
+        .timeline-line {
+            position: absolute;
+            top: 260px; /* カードの中央付近 */
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: #3498db;
+            z-index: 0;
+        }
+
+        .event-card {
+            min-width: 300px;
+            background: white;
+            border-radius: 12px;
+            position: relative;
+            z-index: 1;
+            transition: transform 0.3s;
+            color: #2c3e50;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .event-card:hover { transform: translateY(-10px); }
+
+        .event-image {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 12px 12px 0 0;
+            background: #1e293b;
+        }
+
+        .event-content { padding: 15px; }
+        .event-date { color: #3498db; font-weight: bold; font-size: 0.9em; margin-bottom: 5px; }
+        .event-title { font-size: 1.1em; font-weight: bold; }
+
+        /* 青いドット */
+        .dot {
+            width: 20px;
+            height: 20px;
+            background: #3498db;
+            border-radius: 50%;
+            position: absolute;
+            bottom: -35px; /* 線の上に配置 */
+            left: 50%;
+            transform: translateX(-50%);
+            border: 4px solid #0f172a; /* 背景色で縁取り */
+        }
+
+        /* カレンダー共通 */
+        .fc-toolbar-title { color: #10b981 !important; }
+        .has-event::after { content: ''; position: absolute; bottom: 4px; left: 50%; width: 5px; height: 5px; background: #10b981; border-radius: 50%; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6">
+
+    <div id="auth-section" class="w-full max-w-md space-y-6">
+        <div class="text-center py-6">
+            <h1 class="text-5xl font-black italic text-emerald-500 tracking-tighter">HSDEC</h1>
+            <p class="text-slate-500 font-black uppercase tracking-[0.3em] text-[10px]">Central Management</p>
+        </div>
+        <div class="bg-white/5 rounded-[2.5rem] p-4 border border-white/10 shadow-2xl">
+            <div id="calendar"></div>
+        </div>
+        <div class="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
+            <select id="user-select" class="w-full bg-slate-800 p-4 rounded-xl mb-4 text-white font-bold outline-none border-none">
+                <option value="Takashi">Takashi</option>
+                <option value="Chansouk">Chansouk</option>
+                <option value="Mim">Mim</option>
+                <option value="Guest">Guest</option>
+            </select>
+            <input type="password" id="pass" placeholder="Password" class="w-full bg-slate-800 p-4 rounded-xl mb-6 text-white text-center text-xl outline-none">
+            <button onclick="login()" class="w-full bg-emerald-500 py-4 rounded-xl font-black uppercase tracking-widest active:scale-95 transition">Enter System</button>
+            <p id="error" class="text-rose-500 text-[10px] mt-4 text-center hidden font-black">ACCESS DENIED</p>
+        </div>
+    </div>
+
+    <div id="menu-section" class="w-full max-w-5xl hidden flex flex-col space-y-10 py-10">
+        <div class="flex justify-between items-end px-4">
+            <h2 class="text-4xl font-black italic tracking-tighter">CONTROL HUB</h2>
+            <button onclick="location.reload()" class="text-[10px] font-black text-slate-500 uppercase border border-slate-700 px-6 py-2 rounded-full">Logout</button>
+        </div>
+        <div id="menu-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-4"></div>
+    </div>
+
+    <div id="timeline-section" class="hidden w-full max-w-7xl py-10">
+        <div class="flex justify-between items-center px-6 mb-4">
+            <h2 class="text-3xl font-black italic text-emerald-500 uppercase">History Timeline</h2>
+            <button onclick="backToMenu()" class="text-[10px] font-black text-slate-500 border border-slate-700 px-4 py-2 rounded-full uppercase">Back</button>
+        </div>
+        <div class="timeline-line"></div>
+        <div id="timeline-content" class="timeline-container">
+            </div>
+    </div>
+
+    <script>
+        const CALENDAR_ID = 'hsdec.la@gmail.com';
+        const API_KEY = 'AIzaSyCzE9RsYu1ec6_b0ePHj_7FEOh9aF0fQi0';
+
+        const USER_DB = {
+            "Takashi": { pw: "Tks83446412", role: "admin" },
+            "Chansouk": { pw: "97372185", role: "staff" },
+            "Mim": { pw: "78277996", role: "staff" },
+            "Guest": { pw: "HSDEC2025", role: "guest" }
+        };
+
+        let mainCalendar;
+
+        window.onload = function() {
+            mainCalendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+                initialView: 'dayGridMonth',
+                googleCalendarApiKey: API_KEY,
+                events: { googleCalendarId: CALENDAR_ID },
+                headerToolbar: { left: 'prev', center: 'title', right: 'next' },
+                height: 'auto'
+            });
+            mainCalendar.render();
+        };
+
+        function login() {
+            const name = document.getElementById('user-select').value;
+            const pass = document.getElementById('pass').value;
+            if (USER_DB[name] && USER_DB[name].pw === pass) {
+                showMenu(name, USER_DB[name].role);
+            } else {
+                document.getElementById('error').classList.remove('hidden');
+            }
+        }
+
+        function showMenu(name, role) {
+            document.getElementById('auth-section').classList.add('hidden');
+            document.getElementById('menu-section').classList.remove('hidden');
+            
+            const grid = document.getElementById('menu-grid');
+            grid.innerHTML = ''; 
+            
+            const menus = [
+                { title: 'Timeline', icon: '⏳', desc: '予定を年表形式で確認', action: 'openTimeline', roles: ['admin', 'staff', 'guest'] },
+                { title: 'Workers', icon: '👤', desc: '名簿管理', url: 'worker.html', roles: ['admin', 'staff', 'guest'] }
+            ];
+
+            menus.forEach(m => {
+                if (m.roles.includes(role)) {
+                    const card = document.createElement('div');
+                    card.className = "menu-card p-8 rounded-[2rem] cursor-pointer";
+                    card.onclick = m.action ? () => window[m.action]() : () => location.href = m.url;
+                    card.innerHTML = `<div class="text-3xl mb-2">${m.icon}</div><h3 class="text-xl font-black italic uppercase">${m.title}</h3><p class="text-slate-500 text-xs mt-2">${m.desc}</p>`;
+                    grid.appendChild(card);
+                }
+            });
+        }
+
+        async function openTimeline() {
+            document.getElementById('menu-section').classList.add('hidden');
+            document.getElementById('timeline-section').classList.remove('hidden');
+            const content = document.getElementById('timeline-content');
+            content.innerHTML = '<p class="text-emerald-500 font-black animate-pulse">FETCHING DATA...</p>';
+
+            try {
+                // 2025年以降のイベントを100件取得
+                const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${API_KEY}&singleEvents=true&orderBy=startTime&timeMin=2025-01-01T00:00:00Z&maxResults=100`);
+                const data = await response.json();
+                content.innerHTML = '';
+
+                data.items.forEach(item => {
+                    const desc = item.description || '';
+                    const photoMatch = desc.match(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp)/i) || desc.match(/https?:\/\/photos\.[^\s]+/);
+                    const date = new Date(item.start.dateTime || item.start.date).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' });
+
+                    const card = document.createElement('div');
+                    card.className = 'event-card';
+                    card.innerHTML = `
+                        <img src="${photoMatch ? photoMatch[0] : 'https://via.placeholder.com/300x180/1e293b/64748b?text=HSDEC'}" class="event-image">
+                        <div class="dot"></div>
+                        <div class="event-content">
+                            <div class="event-date">${date}</div>
+                            <div class="event-title">${item.summary || 'No Title'}</div>
+                        </div>
+                    `;
+                    content.appendChild(card);
+                });
+            } catch (e) {
+                content.innerHTML = 'Error loading timeline.';
+            }
+        }
+
+        function backToMenu() {
+            document.getElementById('timeline-section').classList.add('hidden');
+            document.getElementById('menu-section').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
