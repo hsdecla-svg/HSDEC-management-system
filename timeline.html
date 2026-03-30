@@ -69,7 +69,17 @@
 
         /* テキストエリア */
         .event-content { padding: 24px; }
-        .event-date { color: #3498db; font-weight: 900; font-size: 0.75rem; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.1em; }
+        .event-date { 
+            color: #3498db; 
+            font-weight: 900; /* 最も太く */
+            font-size: 0.65rem; /* 少し小さめに */
+            text-transform: uppercase; 
+            margin-bottom: 8px; 
+            letter-spacing: 0.3em; /* 文字の間隔を大幅に広げる */
+            display: inline-block;
+            border-bottom: 2px solid rgba(52, 152, 219, 0.2); /* 下に薄いラインを入れる */
+            padding-bottom: 4px;
+       }
         .event-title { font-size: 1.2rem; font-weight: 900; line-height: 1.2; color: #0f172a; font-style: italic; }
     </style>
 </head>
