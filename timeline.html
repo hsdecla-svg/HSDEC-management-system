@@ -122,65 +122,65 @@
                 }
 
                 // --- 修正版：日付の間隔を計算して余白を作るロジック ---
-                let lastDate = null; // 前のイベントの日付を保存する変数
+                let lastDate = null;
 
-                data.items.forEach((event, index) => {
-                    const start = event.start.dateTime || event.start.date;
-                    const currentDate = new Date(start);
-                    const dateStr = currentDate.toLocaleDateString('en-US', { 
-                        month: 'short', day: 'numeric', weekday: 'short' 
-                    }).toUpperCase();
+data.items.forEach((event, index) => {
+    const start = event.start.dateTime || event.start.date;
+    const currentDate = new Date(start);
+    const dateStr = currentDate.toLocaleDateString('en-US', { 
+        month: 'short', day: 'numeric', weekday: 'short' 
+    }).toUpperCase();
 
-                    // --- 日数差の計算 ---
-                    let gapDays = 0;
-                    if (lastDate && index > 0) {
-                        const diffTime = Math.abs(currentDate - lastDate);
-                        gapDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    }
-                    lastDate = currentDate; // 今回の日付を保存して次に備える
+    // --- 日数差による余白計算（テキストなし・空白のみ） ---
+    let gapDays = 0;
+    if (lastDate && index > 0) {
+        const diffTime = Math.abs(currentDate - lastDate);
+        gapDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+    lastDate = currentDate;
 
-                    const card = document.createElement('div');
-                    card.className = 'event-card group cursor-pointer';
+    const card = document.createElement('div');
+    card.className = 'event-card group cursor-pointer';
 
-                    // --- 余白の設定 ---
-                    // 1日につき 40px の余白を追加（最大 400px など制限をかけると綺麗です）
-                    const marginSize = Math.min(gapDays * 40, 400); 
-                    if (gapDays > 1) {
-                        card.style.marginLeft = `${marginSize}px`;
-        
-                        // 「3 DAYS LATER」のようなラベルを隙間に入れる（オプション）
-                        const gapLabel = document.createElement('div');
-                        gapLabel.className = 'absolute -left-[100px] top-[345px] text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] whitespace-nowrap z-0';
-                        gapLabel.innerHTML = `+ ${gapDays} DAYS`;
-                        card.appendChild(gapLabel);
-                    }
+    // 1日につき 50px のマージン（お好みで調整してください）
+    // 最大 500px に制限して、離れすぎないようにしています
+    if (gapDays > 1) {
+        const marginSize = Math.min((gapDays - 1) * 50, 500); 
+        card.style.marginLeft = `${marginSize}px`;
+    }
 
-                    // --- 以下、既存の画像取得と card.innerHTML の処理 ---
-                    let imageUrl = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800'; 
-                    const driveIdMatch = (event.description || '').match(/(?:id=|d\/|open\?id=)([a-zA-Z0-9_-]{25,})/);
-                    if (driveIdMatch) imageUrl = `https://drive.google.com/thumbnail?id=${driveIdMatch[1]}&sz=w1000`;
+    // --- 画像取得 ---
+    let imageUrl = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800'; 
+    const desc = event.description || '';
+    const driveIdMatch = desc.match(/(?:id=|d\/|open\?id=)([a-zA-Z0-9_-]{25,})/);
+    if (driveIdMatch) {
+        imageUrl = `https://drive.google.com/thumbnail?id=${driveIdMatch[1]}&sz=w1000`;
+    } else {
+        const urlMatch = desc.match(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp)/i);
+        if (urlMatch) imageUrl = urlMatch[0];
+    }
 
-                    card.innerHTML += `
-                        <div class="relative overflow-hidden rounded-t-[24px] bg-slate-100">
-                            <img src="${imageUrl}" class="event-image group-hover:scale-110 transition-transform duration-1000 ease-out" 
-                                 onerror="this.src='https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=600'">
-                            <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-                        </div>
-                        <div class="dot"></div>
-                        <div class="event-content p-7">
-                            <div class="event-date tracking-[0.3em] font-black text-[0.65rem] uppercase border-bottom-2 border-slate-200">${dateStr}</div>
-                            <div class="event-title mt-2 uppercase truncate tracking-tighter text-slate-800 font-black italic">${event.summary || 'DATA RECORD'}</div>
-                            <div class="flex items-center mt-5">
-                                <div class="h-[1px] w-8 bg-slate-200 mr-3"></div>
-                                <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none">Activity Log</p>
-                            </div>
-                            <p class="text-[10px] text-slate-500 mt-3 font-medium leading-relaxed line-clamp-2">
-                                ${(event.description || '').replace(/https?:\/\/[^\s]+/g, '').trim().substring(0, 80) || 'ARCHIVE SYSTEM NOTE'}
-                            </p>
-                        </div>
-                    `;
-                    container.appendChild(card);
-               });
+    card.innerHTML = `
+        <div class="relative overflow-hidden rounded-t-[24px] bg-slate-100">
+            <img src="${imageUrl}" class="event-image group-hover:scale-110 transition-transform duration-1000 ease-out" 
+                 onerror="this.src='https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=600'">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+        </div>
+        <div class="dot"></div>
+        <div class="event-content p-7">
+            <div class="event-date tracking-[0.3em] font-black text-[0.65rem] uppercase">${dateStr}</div>
+            <div class="event-title mt-2 uppercase truncate tracking-tighter text-slate-800 font-black italic">${event.summary || 'DATA RECORD'}</div>
+            <div class="flex items-center mt-5">
+                <div class="h-[1px] w-8 bg-slate-200 mr-3"></div>
+                <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none">Activity Log</p>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-3 font-medium leading-relaxed line-clamp-2 italic">
+                ${desc.replace(/https?:\/\/[^\s]+/g, '').trim().substring(0, 80) || 'ARCHIVE SYSTEM NOTE'}
+            </p>
+        </div>
+    `;
+    container.appendChild(card);
+});
 
                 // --- マウスドラッグで横スクロールを可能にする ---
                 enableDragScroll(container);
