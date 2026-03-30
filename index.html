@@ -236,37 +236,75 @@
             });
         }
 
-        async function openTimeline() {
-            document.getElementById('menu-section').classList.add('hidden');
-            document.getElementById('timeline-section').classList.remove('hidden');
-            const content = document.getElementById('timeline-content');
-            content.innerHTML = '<p class="text-emerald-500 font-black animate-pulse">LOADING HISTORY...</p>';
+       async function openTimeline() {
+    // 1. 画面の切り替え
+    document.getElementById('menu-section').classList.add('hidden');
+    const section = document.getElementById('timeline-section');
+    section.classList.remove('hidden');
+    
+    const container = document.getElementById('timeline-content');
+    // ローディング表示（これが消えないなら通信が止まっています）
+    container.innerHTML = '<div class="w-full text-center text-emerald-500 font-black animate-pulse">--- SYSTEM CONNECTING ---</div>';
 
-            try {
-                const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${API_KEY}&singleEvents=true&orderBy=startTime&timeMin=${new Date().toISOString()}`);
-                const data = await response.json();
-                content.innerHTML = '';
+    console.log("Starting API Fetch...");
 
-                data.items.forEach(item => {
-                    const desc = item.description || '';
-                    const photoMatch = desc.match(/https?:\/\/[^\s]+/);
-                    const date = new Date(item.start.dateTime || item.start.date).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' });
+    try {
+        // 取得範囲を2025年1月からに設定
+        const url = `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${API_KEY}&singleEvents=true&orderBy=startTime&timeMin=2025-01-01T00:00:00Z`;
+        
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        console.log("Google Data Received:", data); // ブラウザのコンソールに中身を出力
 
-                    const card = document.createElement('div');
-                    card.className = 'timeline-card';
-                    card.innerHTML = `
-                        ${photoMatch ? `<img src="${photoMatch[0]}" class="timeline-img">` : `<div class="timeline-img flex items-center justify-center text-xs text-slate-600">No Image</div>`}
-                        <span class="text-emerald-500 font-black text-[10px] tracking-widest uppercase">${date}</span>
-                        <h4 class="text-xl font-black italic mt-1">${item.summary}</h4>
-                        <p class="text-xs text-slate-500 mt-3 leading-relaxed line-clamp-3">${desc.replace(photoMatch ? photoMatch[0] : '', '')}</p>
-                    `;
-                    content.appendChild(card);
-                });
-            } catch (e) {
-                content.innerHTML = '<p class="text-rose-500">Failed to load calendar data.</p>';
-            }
+        container.innerHTML = ''; // ローディングを消す
+
+        // A: Google側からエラーが返ってきた場合
+        if (data.error) {
+            container.innerHTML = `
+                <div class="bg-rose-950/30 border border-rose-500 p-6 rounded-2xl w-full">
+                    <h3 class="text-rose-500 font-black">GOOGLE API ERROR</h3>
+                    <p class="text-xs font-mono mt-2">${data.error.message}</p>
+                    <p class="text-[10px] mt-4 text-slate-400">Reason: ${data.error.errors[0].reason}</p>
+                </div>`;
+            return;
         }
 
+        // B: データが0件だった場合
+        if (!data.items || data.items.length === 0) {
+            container.innerHTML = `
+                <div class="text-center w-full py-20">
+                    <p class="text-slate-500 font-black text-xl uppercase italic">No Events Found</p>
+                    <p class="text-[10px] text-slate-600 mt-2">Check if calendar "${CALENDAR_ID}" has public events.</p>
+                </div>`;
+            return;
+        }
+
+        // C: 正常にデータがある場合
+        data.items.forEach(event => {
+            const desc = event.description || '';
+            const photoMatch = desc.match(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp)/i);
+            const date = new Date(event.start.dateTime || event.start.date).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' });
+
+            const card = document.createElement('div');
+            card.className = 'event-card';
+            card.innerHTML = `
+                <img src="${photoMatch ? photoMatch[0] : 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400'}" class="event-image">
+                <div class="dot"></div>
+                <div class="event-content">
+                    <div class="event-date">${date}</div>
+                    <div class="event-title">${event.summary || 'UNTITLED'}</div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+    } catch (err) {
+        // D: ネットワーク自体のエラー（オフラインなど）
+        console.error("Fetch Error:", err);
+        container.innerHTML = `<div class="text-rose-500 font-black">NETWORK CRITICAL ERROR: ${err.message}</div>`;
+    }
+}
         function backToMenu() {
             document.getElementById('timeline-section').classList.add('hidden');
             document.getElementById('menu-section').classList.remove('hidden');
