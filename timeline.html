@@ -116,18 +116,19 @@
                     const start = event.start.dateTime || event.start.date;
                     const dateStr = new Date(start).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' });
 
-                    // --- 画像取得ロジック ---
-                    let imageUrl = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800'; // 予備
-                    
-                    // 1. Google Drive IDを抽出
-                    const driveIdMatch = desc.match(/(?:id=|\/d\/)([a-zA-Z0-9_-]{25,})/);
-                    if (driveIdMatch) {
-                        imageUrl = `https://drive.google.com/thumbnail?id=${driveIdMatch[1]}&sz=w1000`;
-                    } else {
-                        // 2. 直リンクがあれば抽出
-                        const urlMatch = desc.match(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp)/i);
-                        if (urlMatch) imageUrl = urlMatch[0];
-                    }
+                    // --- 画像取得ロジック（さらに強化） ---
+                    let imageUrl = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800'; 
+
+                   // 1. Google Drive IDを抽出 (より広いパターンに対応)
+                   const driveIdMatch = desc.match(/(?:id=|d\/|open\?id=)([a-zA-Z0-9_-]{25,})/);
+                   if (driveIdMatch) {
+                       // プレビュー用のURLに強制変換
+                       imageUrl = `https://drive.google.com/thumbnail?id=${driveIdMatch[1]}&sz=w1000`;
+                   } else {
+                       // 2. 普通の画像URLを探す
+                       const urlMatch = desc.match(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp|\.gif)/i);
+                       if (urlMatch) imageUrl = urlMatch[0];
+                   }
 
                     const card = document.createElement('div');
                     card.className = 'event-card group cursor-pointer';
