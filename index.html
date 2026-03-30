@@ -26,34 +26,39 @@
             box-shadow: 0 20px 40px rgba(0,0,0,0.4);
         }
 
-        /* --- 年表タイムラインのスタイル --- */
-        #timeline-section { display: none; width: 100%; }
+        /* --- Timeline Styling --- */
         .timeline-scroll {
             display: flex;
             overflow-x: auto;
             padding: 40px 20px;
             gap: 30px;
             scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
         }
-        .timeline-card {
-            min-width: 300px;
+        .event-card {
+            min-width: 280px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 2rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 20px;
+            padding: 15px;
             flex-shrink: 0;
+            position: relative;
         }
-        .timeline-img {
+        .event-image {
             width: 100%;
-            height: 180px;
+            height: 160px;
             object-fit: cover;
             border-radius: 1.5rem;
             margin-bottom: 15px;
-            background: #1e293b;
         }
+        .dot {
+            width: 12px; height: 12px; background: #10b981; border-radius: 50%;
+            position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
+            box-shadow: 0 0 15px #10b981;
+        }
+        .event-date { font-size: 10px; font-weight: 900; color: #10b981; text-transform: uppercase; margin-bottom: 4px; }
+        .event-title { font-size: 16px; font-weight: 900; italic; line-height: 1.2; }
 
-        /* --- カレンダー設定 --- */
+        /* --- Calendar Overrides --- */
         .fc { border: none !important; font-size: 11px; }
         .fc-theme-standard td, .fc-theme-standard th { border: 1px solid rgba(255, 255, 255, 0.1) !important; }
         .fc-col-header-cell-cushion { color: #94a3b8; font-weight: 900; text-transform: uppercase; }
@@ -70,7 +75,6 @@
 
         #eventModal, #calendarEditSection { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); align-items: center; justify-content: center; }
         .input-field { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 12px; border-radius: 12px; width: 100%; color: white; margin-top: 5px; }
-        .label-style { font-size: 10px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.1em; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
     </style>
 </head>
@@ -103,7 +107,7 @@
     <div id="menu-section" class="w-full max-w-5xl hidden flex flex-col space-y-12 py-10">
         <div class="flex justify-between items-end px-4">
             <div>
-                <h2 class="text-5xl font-black italic tracking-tighter text-white">CONTROL HUB</h2>
+                <h2 class="text-5xl font-black italic tracking-tighter text-white uppercase">Control Hub</h2>
                 <p id="welcome-msg" class="text-emerald-500 font-black uppercase text-[10px] tracking-widest mt-2">Logged in</p>
             </div>
             <button onclick="location.reload()" class="text-[10px] font-black text-slate-500 hover:text-white uppercase border border-slate-700 px-6 py-3 rounded-full transition">Logout</button>
@@ -129,7 +133,6 @@
                 <div id="calendar-for-edit"></div>
             </div>
             <div class="space-y-4 bg-white/5 p-6 rounded-[2rem] border border-white/10 text-left">
-                <h4 id="edit-mode-title" class="text-xs font-black uppercase text-slate-400">Add New Event</h4>
                 <input type="hidden" id="event-id">
                 <input type="text" id="event-title" class="input-field" placeholder="Title">
                 <input type="date" id="event-date" class="input-field">
@@ -147,7 +150,7 @@
             <h3 id="modalTitle" class="text-xl font-black text-white mb-2 italic uppercase"></h3>
             <p id="modalDate" class="text-[10px] font-bold text-emerald-500 mb-6 tracking-widest"></p>
             <div id="modalDesc" class="text-xs text-slate-400 mb-8 text-left border-t border-white/10 pt-4 max-h-[200px] overflow-y-auto"></div>
-            <button class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-[12px] uppercase">Close</button>
+            <button onclick="document.getElementById('eventModal').style.display='none'" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-black text-[12px] uppercase">Close</button>
         </div>
     </div>
 
@@ -170,8 +173,7 @@
         window.onload = function() { initCalendar(); };
 
         function initCalendar() {
-            const calendarEl = document.getElementById('calendar');
-            mainCalendar = new FullCalendar.Calendar(calendarEl, {
+            mainCalendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
                 initialView: 'dayGridMonth',
                 googleCalendarApiKey: API_KEY,
                 events: { googleCalendarId: CALENDAR_ID },
@@ -209,20 +211,19 @@
         function showMenu(name, role) {
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('menu-section').classList.remove('hidden');
-            document.getElementById('timeline-section').classList.add('hidden');
-            document.getElementById('welcome-msg').innerText = `Logged in as ${name} (${role.toUpperCase()})`;
+            document.getElementById('welcome-msg').innerText = `IDENTIFIED AS: ${name} / ROLE: ${role.toUpperCase()}`;
             
             const grid = document.getElementById('menu-grid');
             grid.innerHTML = ''; 
             
             const allMenus = [
-                { title: 'Timeline', desc: '歴史年表形式で予定を確認', icon: '⏳', action: 'openTimeline', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
-                { title: 'Workers', desc: '労働者・名簿管理', icon: '👤', url: 'worker.html', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
-                { title: 'Calendar Edit', desc: 'カレンダーの追加・削除', icon: '📅', action: 'openCalendarEdit', roles: ['admin', 'staff'] },
-                { title: 'Finance', desc: '支出・収支・自動計算', icon: '💰', url: 'finance.html', roles: ['admin', 'staff'] },
-                { title: 'Diary', desc: '日報作成・現場写真', icon: '📝', url: 'diary.html', roles: ['admin', 'staff', 'sv'] },
-                { title: 'Contracts', desc: '契約書類管理', icon: '📄', url: 'contracts.html', roles: ['admin', 'staff'] },
-                { title: 'Cloud Photo', desc: 'Google Drive 共有', icon: '📸', url: 'https://drive.google.com/', roles: ['admin', 'staff', 'sv', 'vv'] }
+                { title: 'Timeline', desc: 'HISTORY & SCHEDULE', icon: '⏳', action: 'openTimeline', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
+                { title: 'Workers', desc: 'DATABASE MANAGEMENT', icon: '👤', url: 'worker.html', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
+                { title: 'Calendar Edit', desc: 'SCHEDULE OVERRIDE', icon: '📅', action: 'openCalendarEdit', roles: ['admin', 'staff'] },
+                { title: 'Finance', desc: 'ACCOUNTING SYSTEM', icon: '💰', url: 'finance.html', roles: ['admin', 'staff'] },
+                { title: 'Diary', desc: 'DAILY FIELD REPORTS', icon: '📝', url: 'diary.html', roles: ['admin', 'staff', 'sv'] },
+                { title: 'Contracts', desc: 'DOCUMENT ARCHIVE', icon: '📄', url: 'contracts.html', roles: ['admin', 'staff'] },
+                { title: 'Cloud', desc: 'GOOGLE DRIVE LINK', icon: '📸', url: 'https://drive.google.com/', roles: ['admin', 'staff', 'sv', 'vv'] }
             ];
 
             allMenus.forEach(m => {
@@ -230,81 +231,52 @@
                     const card = document.createElement('div');
                     card.className = "menu-card p-10 rounded-[2.5rem] cursor-pointer group";
                     card.onclick = m.action ? () => window[m.action]() : () => location.href = m.url;
-                    card.innerHTML = `<div class="text-4xl mb-4">${m.icon}</div><h3 class="text-2xl font-black tracking-tight uppercase italic">${m.title}</h3><p class="text-slate-500 text-sm mt-3 font-bold">${m.desc}</p>`;
+                    card.innerHTML = `<div class="text-4xl mb-4 group-hover:scale-110 transition-transform">${m.icon}</div><h3 class="text-2xl font-black tracking-tight uppercase italic">${m.title}</h3><p class="text-slate-500 text-[10px] mt-3 font-bold uppercase tracking-widest">${m.desc}</p>`;
                     grid.appendChild(card);
                 }
             });
         }
 
-       async function openTimeline() {
-    // 1. 画面の切り替え
-    document.getElementById('menu-section').classList.add('hidden');
-    const section = document.getElementById('timeline-section');
-    section.classList.remove('hidden');
-    
-    const container = document.getElementById('timeline-content');
-    // ローディング表示（これが消えないなら通信が止まっています）
-    container.innerHTML = '<div class="w-full text-center text-emerald-500 font-black animate-pulse">--- SYSTEM CONNECTING ---</div>';
+        async function openTimeline() {
+            document.getElementById('menu-section').classList.add('hidden');
+            document.getElementById('timeline-section').classList.remove('hidden');
+            const container = document.getElementById('timeline-content');
+            container.innerHTML = '<div class="w-full text-center text-emerald-500 font-black animate-pulse uppercase">--- Syncing Timeline ---</div>';
 
-    console.log("Starting API Fetch...");
+            try {
+                const url = `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${API_KEY}&singleEvents=true&orderBy=startTime&timeMin=2025-01-01T00:00:00Z`;
+                const res = await fetch(url);
+                const data = await res.json();
+                container.innerHTML = ''; 
 
-    try {
-        // 取得範囲を2025年1月からに設定
-        const url = `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${API_KEY}&singleEvents=true&orderBy=startTime&timeMin=2025-01-01T00:00:00Z`;
-        
-        const res = await fetch(url);
-        const data = await res.json();
-        
-        console.log("Google Data Received:", data); // ブラウザのコンソールに中身を出力
+                if (!data.items || data.items.length === 0) {
+                    container.innerHTML = '<div class="w-full text-center text-slate-500 font-black uppercase">No Events Found</div>';
+                    return;
+                }
 
-        container.innerHTML = ''; // ローディングを消す
+                data.items.forEach(event => {
+                    const startData = event.start.dateTime || event.start.date;
+                    const date = new Date(startData).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' });
+                    const desc = event.description || '';
+                    const photoMatch = desc.match(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp)/i);
 
-        // A: Google側からエラーが返ってきた場合
-        if (data.error) {
-            container.innerHTML = `
-                <div class="bg-rose-950/30 border border-rose-500 p-6 rounded-2xl w-full">
-                    <h3 class="text-rose-500 font-black">GOOGLE API ERROR</h3>
-                    <p class="text-xs font-mono mt-2">${data.error.message}</p>
-                    <p class="text-[10px] mt-4 text-slate-400">Reason: ${data.error.errors[0].reason}</p>
-                </div>`;
-            return;
+                    const card = document.createElement('div');
+                    card.className = 'event-card';
+                    card.innerHTML = `
+                        <img src="${photoMatch ? photoMatch[0] : 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400'}" class="event-image">
+                        <div class="dot"></div>
+                        <div class="event-content">
+                            <div class="event-date">${date}</div>
+                            <div class="event-title">${event.summary || 'UNTITLED'}</div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            } catch (err) {
+                container.innerHTML = '<div class="text-rose-500 font-black uppercase">Connection Error</div>';
+            }
         }
 
-        // B: データが0件だった場合
-        if (!data.items || data.items.length === 0) {
-            container.innerHTML = `
-                <div class="text-center w-full py-20">
-                    <p class="text-slate-500 font-black text-xl uppercase italic">No Events Found</p>
-                    <p class="text-[10px] text-slate-600 mt-2">Check if calendar "${CALENDAR_ID}" has public events.</p>
-                </div>`;
-            return;
-        }
-
-        // C: 正常にデータがある場合
-        data.items.forEach(event => {
-            const desc = event.description || '';
-            const photoMatch = desc.match(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp)/i);
-            const date = new Date(event.start.dateTime || event.start.date).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' });
-
-            const card = document.createElement('div');
-            card.className = 'event-card';
-            card.innerHTML = `
-                <img src="${photoMatch ? photoMatch[0] : 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400'}" class="event-image">
-                <div class="dot"></div>
-                <div class="event-content">
-                    <div class="event-date">${date}</div>
-                    <div class="event-title">${event.summary || 'UNTITLED'}</div>
-                </div>
-            `;
-            container.appendChild(card);
-        });
-
-    } catch (err) {
-        // D: ネットワーク自体のエラー（オフラインなど）
-        console.error("Fetch Error:", err);
-        container.innerHTML = `<div class="text-rose-500 font-black">NETWORK CRITICAL ERROR: ${err.message}</div>`;
-    }
-}
         function backToMenu() {
             document.getElementById('timeline-section').classList.add('hidden');
             document.getElementById('menu-section').classList.remove('hidden');
