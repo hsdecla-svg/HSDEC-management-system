@@ -114,7 +114,11 @@
                 data.items.forEach(event => {
                     const desc = event.description || '';
                     const start = event.start.dateTime || event.start.date;
-                    const dateStr = new Date(start).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' });
+                    const dateStr = new Date(start).toLocaleDateString('en-US', { 
+    　　　　　　　　　　　month: 'short', 
+    　　　　　　　　　　　day: 'numeric', 
+   　　　　　　　　　　　 weekday: 'short' 
+　　　　　　　　　　　}).toUpperCase();
 
                     // --- 画像取得ロジック（さらに強化） ---
                     let imageUrl = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800'; 
