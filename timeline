@@ -181,48 +181,74 @@
         }
 
         async function openTimeline() {
-            document.getElementById('menu-section').classList.add('hidden');
-            document.getElementById('timeline-section').classList.remove('hidden');
+        document.getElementById('menu-section').classList.add('hidden');
+        document.getElementById('timeline-section').classList.remove('hidden');
+        
+        const container = document.getElementById('timeline-content');
+        container.innerHTML = '<div class="w-full text-center text-emerald-500 font-black animate-pulse uppercase tracking-widest">--- System Syncing ---</div>';
+
+        try {
+            const url = `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${API_KEY}&singleEvents=true&orderBy=startTime&timeMin=2025-01-01T00:00:00Z`;
+            const res = await fetch(url);
+            const data = await res.json();
             
-            const container = document.getElementById('timeline-content');
-            container.innerHTML = '<div class="w-full text-center text-emerald-500 font-black animate-pulse">SYNCHRONIZING CALENDAR...</div>';
+            container.innerHTML = ''; 
 
-            try {
-                // 過去の分も含めて表示するため timeMin を 2025年に設定
-                const url = `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events?key=${API_KEY}&singleEvents=true&orderBy=startTime&timeMin=2025-01-01T00:00:00Z`;
-                const res = await fetch(url);
-                const data = await res.json();
-                
-                container.innerHTML = ''; 
+            if (!data.items || data.items.length === 0) {
+                container.innerHTML = '<div class="text-slate-500 font-black">NO EVENTS FOUND</div>';
+                return;
+            }
 
-                if (!data.items || data.items.length === 0) {
-                    container.innerHTML = '<div class="text-slate-500 font-black">NO EVENTS FOUND</div>';
-                    return;
+            data.items.forEach(event => {
+                const desc = event.description || '';
+                const date = new Date(event.start.dateTime || event.start.date).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' });
+
+                // --- 画像抽出ロジック ---
+                let imageUrl = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=400';
+                let isGDrive = false;
+
+                // 1. Google Driveリンクの抽出と変換
+                const driveMatch = desc.match(/https:\/\/drive\.google\.com\/(?:file\/d\/|open\?id=)([a-zA-Z0-6_-]+)/);
+                if (driveMatch) {
+                    // サムネイル用URLに変換 (sz=w1000 で高画質化)
+                    imageUrl = `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w1000`;
+                    isGDrive = true;
+                } 
+                // 2. 直リンク画像 (jpg, png等) の抽出
+                else {
+                    const photoMatch = desc.match(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp)/i);
+                    if (photoMatch) imageUrl = photoMatch[0];
                 }
 
-                data.items.forEach(event => {
-                    const desc = event.description || '';
-                    const photoMatch = desc.match(/https?:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp)/i) || desc.match(/https?:\/\/photos\.[^\s]+/);
-                    const date = new Date(event.start.dateTime || event.start.date).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric', weekday: 'short' });
-
-                    const card = document.createElement('div');
-                    card.className = 'event-card';
-                    card.innerHTML = `
-                        <img src="${photoMatch ? photoMatch[0] : 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=400'}" class="event-image">
-                        <div class="dot"></div>
-                        <div class="event-content">
-                            <div class="event-date">${date}</div>
-                            <div class="event-title">${event.summary || 'UNTITLED EVENT'}</div>
-                            <p class="text-[10px] text-slate-500 mt-4 leading-relaxed line-clamp-2">${desc.replace(photoMatch ? photoMatch[0] : '', '').trim()}</p>
+                const card = document.createElement('div');
+                card.className = 'event-card';
+                card.innerHTML = `
+                    <div class="relative overflow-hidden rounded-t-2xl">
+                        <img src="${imageUrl}" class="event-image" onerror="this.src='https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=400'">
+                        ${isGDrive ? `
+                            <div class="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/20">
+                                <span class="text-[10px] font-black text-white uppercase tracking-tighter">Google Drive</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="dot"></div>
+                    <div class="event-content">
+                        <div class="event-date">${date}</div>
+                        <div class="event-title italic uppercase tracking-tighter">${event.summary || 'UNTITLED'}</div>
+                        <div class="mt-4 pt-4 border-t border-slate-100">
+                            <p class="text-[10px] text-slate-400 font-bold leading-relaxed line-clamp-3 uppercase">
+                                ${desc.replace(/https?:\/\/[^\s]+/g, '').trim() || 'No additional records found in system archive.'}
+                            </p>
                         </div>
-                    `;
-                    container.appendChild(card);
-                });
+                    </div>
+                `;
+                container.appendChild(card);
+            });
 
-            } catch (err) {
-                container.innerHTML = '<div class="text-rose-500 font-black">CONNECTION ERROR</div>';
-            }
+        } catch (err) {
+            container.innerHTML = '<div class="text-rose-500 font-black">CONNECTION ERROR</div>';
         }
+    }
 
         function backToMenu() {
             document.getElementById('timeline-section').classList.add('hidden');
