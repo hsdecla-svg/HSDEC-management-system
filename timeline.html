@@ -154,17 +154,25 @@
                     };
 
                     card.innerHTML = `
-                        <div class="relative overflow-hidden rounded-t-[24px]">
-                            <img src="${imageUrl}" class="event-image group-hover:scale-110 transition-transform duration-700" 
+                        <div class="relative overflow-hidden rounded-t-[24px] bg-slate-100">
+                            <img src="${imageUrl}" class="event-image group-hover:scale-110 transition-transform duration-1000 ease-out" 
                                  onerror="this.src='https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=600'">
-                            <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-500"></div>
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
                         </div>
                         <div class="dot"></div>
-                        <div class="event-content">
+                        <div class="event-content p-7">
                             <div class="event-date">${dateStr}</div>
-                            <div class="event-title uppercase truncate">${event.summary || 'DATA RECORD'}</div>
-                            <p class="text-[10px] text-slate-400 mt-4 font-bold uppercase leading-relaxed line-clamp-2 italic">
-                                ${desc.replace(/https?:\/\/[^\s]+/g, '').trim().substring(0, 80) || 'Archive System Information'}
+                            <div class="event-title mt-2 uppercase truncate tracking-tighter text-slate-800">${event.summary || 'DATA RECORD'}</div>
+        
+                            <div class="flex items-center mt-5">
+                                <div class="h-[1px] w-8 bg-slate-200 mr-3"></div>
+                                <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest leading-none">
+                                    Detailed Log
+                                </p>
+                            </div>
+        
+                            <p class="text-[10px] text-slate-500 mt-3 font-medium leading-relaxed line-clamp-2">
+                                ${desc.replace(/https?:\/\/[^\s]+/g, '').trim().substring(0, 80) || 'NO ADDITIONAL ARCHIVE DATA AVAILABLE.'}
                             </p>
                         </div>
                     `;
