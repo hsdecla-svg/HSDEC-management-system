@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>HSDEC Worker Management</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; background: #0f172a; color: white; -webkit-font-smoothing: antialiased; }
@@ -25,9 +28,24 @@
 </head>
 <body>
     <div id="root"></div>
+
+    <script>
+        window.loadTesseract = function() {
+            if (window.Tesseract) return Promise.resolve();
+            return new Promise((resolve) => {
+                const s = document.createElement('script');
+                s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+                s.onload = resolve;
+                document.head.appendChild(s);
+            });
+        };
+    </script>
+
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxqFW8-GkEPJTDiXx0X4EprWfCZqih40CDWXQCY1gEozWyFov4zKtmXzUUyTL_U26zJXw/exec';
+        
+        // 全フィールド等の定数はそのまま維持
         const ALL_FIELDS = ['ລໍາດັບ', 'ສະຖານະ', 'Re-entry', 'ຊື່ ແລະ ນາມສະກຸນ', 'Full Name', 'Sex', 'Date of birth', 'Age', 'Passport No.', 'Date of issue', 'Date of Expiry', 'Village', 'District', 'Province', 'Size', 'AC - Name', 'AC - No', 'Google drive'];
         const formatDate = (val) => { if (!val) return ''; const s = String(val); return s.includes('T') ? s.split('T')[0] : s; };
         const getDistrictStyles = (district) => {
@@ -51,23 +69,43 @@
             const [masterOptions, setMasterOptions] = useState({ provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
 
             useEffect(() => { fetchData(); }, []);
+
             const fetchData = async () => {
-                setLoading(true); try { const res = await fetch(GAS_URL); const json = await res.json(); setWorkers(json.workers || []); setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] }); } catch (e) { console.error(e); } setLoading(false);
+                setLoading(true);
+                try {
+                    const res = await fetch(GAS_URL);
+                    const json = await res.json();
+                    setWorkers(json.workers || []);
+                    setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
+                } catch (e) { console.error(e); }
+                setLoading(false);
             };
 
             const handlePassportScan = async (e) => {
-                const file = e.target.files[0]; if (!file) return; setIsScanning(true);
+                const file = e.target.files[0];
+                if (!file) return;
+                setIsScanning(true);
                 try {
-                    const workerOCR = await Tesseract.createWorker('eng'); const { data: { text } } = await workerOCR.recognize(file); await workerOCR.terminate();
-                    const cleanText = text.toUpperCase().replace(/ /g, ''); const lines = cleanText.split('\n').filter(l => l.length >= 30);
+                    // スキャン開始時に初めてTesseractを読み込む（起動時の重さを解消）
+                    await window.loadTesseract();
+                    const workerOCR = await Tesseract.createWorker('eng');
+                    const { data: { text } } = await workerOCR.recognize(file);
+                    await workerOCR.terminate();
+                    const cleanText = text.toUpperCase().replace(/ /g, '');
+                    const lines = cleanText.split('\n').filter(l => l.length >= 30);
                     if (lines.length >= 2) {
-                        const line1 = lines[lines.length - 2]; const line2 = lines[lines.length - 1];
-                        const namePart = line1.substring(5); const parts = namePart.split('<<');
-                        const surname = parts[0]?.replace(/<+/g, ' ').trim() || ""; const givenName = parts[1]?.replace(/<+/g, ' ').trim() || "";
-                        const passportNo = line2.substring(0, 9).replace(/</g, ''); const rawBirth = line2.substring(13, 19);
+                        const line1 = lines[lines.length - 2];
+                        const line2 = lines[lines.length - 1];
+                        const namePart = line1.substring(5);
+                        const parts = namePart.split('<<');
+                        const surname = parts[0]?.replace(/<+/g, ' ').trim() || "";
+                        const givenName = parts[1]?.replace(/<+/g, ' ').trim() || "";
+                        const passportNo = line2.substring(0, 9).replace(/</g, '');
+                        const rawBirth = line2.substring(13, 19);
                         const birthYear = parseInt(rawBirth.substring(0, 2)) > 30 ? "19" + rawBirth.substring(0, 2) : "20" + rawBirth.substring(0, 2);
                         const dob = `${birthYear}-${rawBirth.substring(2, 4)}-${rawBirth.substring(4, 6)}`;
-                        const rawExpiry = line2.substring(21, 27); const expYear = 2000 + parseInt(rawExpiry.substring(0, 2));
+                        const rawExpiry = line2.substring(21, 27);
+                        const expYear = 2000 + parseInt(rawExpiry.substring(0, 2));
                         const expiry = `${expYear}-${rawExpiry.substring(2, 4)}-${rawExpiry.substring(4, 6)}`;
                         setSelectedWorker(prev => ({...prev, 'Full Name': `${surname} ${givenName}`.trim(), 'Passport No.': passportNo, 'Date of birth': dob, 'Date of Expiry': expiry, 'Date of issue': `${expYear - 10}-${rawExpiry.substring(2, 4)}-${rawExpiry.substring(4, 6)}`, 'Age': new Date().getFullYear() - parseInt(birthYear)}));
                     }
@@ -75,7 +113,15 @@
             };
 
             const handleUpdate = async () => {
-                setIsSaving(true); try { const payload = { ...selectedWorker, action: selectedWorker._row ? "update" : "addNew" }; await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) }); alert("Success! ✅"); await fetchData(); setView('list'); } catch (e) { alert("Error"); } setIsSaving(false);
+                setIsSaving(true);
+                try {
+                    const payload = { ...selectedWorker, action: selectedWorker._row ? "update" : "addNew" };
+                    await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
+                    alert("Success! ✅");
+                    await fetchData();
+                    setView('list');
+                } catch (e) { alert("Error"); }
+                setIsSaving(false);
             };
 
             const filteredWorkers = useMemo(() => {
@@ -83,6 +129,7 @@
                 return workers.filter(w => (w.batch || w._sheetName?.replace("Batch","")) == selectedBatch).filter(w => `${w['Full Name']} ${w['ຊື່ ແລະ ນາມສະກຸນ']}`.toLowerCase().includes(searchQuery.toLowerCase()));
             }, [workers, selectedBatch, searchQuery]);
 
+            // --- UI 描画（機能はそのまま維持） ---
             if (loading) return <div className="h-screen flex items-center justify-center font-black text-emerald-500 animate-pulse">CONNECTING...</div>;
 
             if (view === 'folders') return (
@@ -172,7 +219,8 @@
                 );
             }
         }
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
