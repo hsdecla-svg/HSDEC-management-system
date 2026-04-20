@@ -19,7 +19,6 @@
         .input-field:focus { border-color: #10b981; background: white; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); }
         
         .label-text { font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: block; }
-        
         .status-badge { padding: 4px 10px; border-radius: 99px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
         
         .fade-in { animation: fadeIn 0.3s ease-out; }
@@ -50,14 +49,18 @@
         
         const ALL_FIELDS = ['ລໍາດັບ', 'ສະຖານະ', 'Re-entry', 'ຊື່ ແລະ ນາມສະກຸນ', 'Full Name', 'Sex', 'Date of birth', 'Age', 'Passport No.', 'Date of issue', 'Date of Expiry', 'Village', 'District', 'Province', 'Size', 'AC - Name', 'AC - No', 'Google drive'];
         
-        // 日付を DD/MM/YYYY に変換する関数
         const formatDateInternational = (val) => {
             if (!val) return '-';
             const s = String(val);
+            // GASからの日付文字列やISO形式に対応
             const datePart = s.includes('T') ? s.split('T')[0] : s;
-            const parts = datePart.split('-');
+            const parts = datePart.split(/[-/]/); // ハイフンかスラッシュで分割
+            
             if (parts.length === 3) {
-                return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                // YYYY-MM-DD の場合
+                if (parts[0].length === 4) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                // すでに DD/MM/YYYY の場合などはそのまま
+                return datePart;
             }
             return datePart;
         };
@@ -159,7 +162,6 @@
 
             if (loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-900 animate-pulse">HSDEC CONNECTING...</div>;
 
-            // --- FOLDER VIEW ---
             if (view === 'folders') return (
                 <div className="fade-in max-w-4xl mx-auto p-6">
                     <header className="mb-10">
@@ -178,63 +180,54 @@
                 </div>
             );
 
-            // --- LIST VIEW ---
             if (view === 'list') return (
                 <div className="fade-in max-w-6xl mx-auto p-4 md:p-8 pb-20">
                     <div className="flex justify-between items-center mb-6">
                         <button onClick={() => setView('folders')} className="text-sm font-bold text-slate-400">← BATCHES</button>
                         <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setView('edit'); }} className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold text-xs uppercase shadow-md">+ New Worker</button>
                     </div>
-
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                         <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Batch {selectedBatch} Workers</h2>
                         <input type="text" placeholder="Search name, province, or district..." className="glass-panel p-3 w-full md:w-80 outline-none text-sm font-semibold" 
                                value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                     </div>
-
                     <div className="glass-panel overflow-hidden">
                         <table className="w-full text-left">
                             <thead className="bg-slate-50 border-b border-slate-100">
                                 <tr>
                                     <th className="p-4 label-text">No.</th>
                                     <th className="p-4 label-text">Worker Identity</th>
-                                    <th className="p-4 label-text">Location (Province / District)</th>
-                                    <th className="p-4 label-text hidden md:table-cell">Passport</th>
+                                    <th className="p-4 label-text">Location</th>
                                     <th className="p-4 label-text">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredWorkers.map((w, i) => {
-                                    const locColor = getProvinceColor(w['Province']);
-                                    return (
-                                        <tr key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
-                                            className="border-b border-slate-50 cursor-pointer hover:bg-slate-50 transition-colors">
-                                            <td className="p-4 font-bold text-slate-300">#{w['ລໍາດับ'] || '-'}</td>
-                                            <td className="p-4">
-                                                <div className="font-extrabold text-slate-900">{w['Full Name']}</div>
-                                                <div className="text-[11px] text-slate-400">{w['ຊື່ ແລະ ນາມສະກຸນ']}</div>
-                                            </td>
-                                            <td className="p-4">
-                                                <div className={`inline-block px-3 py-1 rounded-lg border text-[11px] font-extrabold uppercase ${locColor}`}>
-                                                    {w['Province'] || '-'} / {w['District'] || '-'}
-                                                </div>
-                                            </td>
-                                            <td className="p-4 text-sm font-mono text-slate-500 hidden md:table-cell">{w['Passport No.']}</td>
-                                            <td className="p-4">
-                                                <span className={`status-badge ${w['ສະຖານະ'] === 'Ready' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                                                    {w['ສະຖານະ'] || 'Wait'}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                {filteredWorkers.map((w, i) => (
+                                    <tr key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
+                                        className="border-b border-slate-50 cursor-pointer hover:bg-slate-50 transition-colors">
+                                        <td className="p-4 font-bold text-slate-300">#{w['ລໍາດັບ'] || '-'}</td>
+                                        <td className="p-4">
+                                            <div className="font-extrabold text-slate-900">{w['Full Name']}</div>
+                                            <div className="text-[11px] text-slate-400">{w['ຊື່ ແລະ ນາມສະກຸນ']}</div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className={`inline-block px-3 py-1 rounded-lg border text-[11px] font-extrabold uppercase ${getProvinceColor(w['Province'])}`}>
+                                                {w['Province'] || '-'}
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className={`status-badge ${w['ສະຖານະ'] === 'Ready' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                {w['ສະຖານະ'] || 'Wait'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
                 </div>
             );
 
-            // --- DETAIL VIEW ---
             if (view === 'detail') {
                 const Item = ({ label, value, isDate = false }) => (
                     <div className="py-3 border-b border-slate-100 last:border-0 flex justify-between items-center gap-4">
@@ -258,10 +251,11 @@
                         </div>
 
                         <div className="space-y-6">
+                            {/* Profile Section */}
                             <div className="glass-panel p-6">
                                 <h3 className="text-emerald-500 text-[10px] font-black uppercase mb-4 border-b pb-1">Personal & Profile</h3>
-                                <Item label="ລໍາດັບ (No.)" value={selectedWorker['ລໍາດັບ']} />
-                                <Item label="ສະຖານະ (Status)" value={selectedWorker['ສະຖານະ']} />
+                                <Item label="No (ລໍາດັບ)" value={selectedWorker['ລໍາດັບ']} />
+                                <Item label="Status (ສະຖານະ)" value={selectedWorker['ສະຖານະ']} />
                                 <Item label="Sex" value={selectedWorker['Sex']} />
                                 <Item label="Date of Birth" value={selectedWorker['Date of birth']} isDate={true} />
                                 <Item label="Age" value={selectedWorker['Age']} />
@@ -269,6 +263,7 @@
                                 <Item label="Re-entry" value={selectedWorker['Re-entry'] ? 'YES' : 'NO'} />
                             </div>
 
+                            {/* Passport Section */}
                             <div className="glass-panel p-6 bg-slate-900 text-white">
                                 <h3 className="text-emerald-400 text-[10px] font-black uppercase mb-4 border-b border-white/10 pb-1">Passport Details</h3>
                                 <Item label="Passport No." value={selectedWorker['Passport No.']} />
@@ -276,20 +271,22 @@
                                 <Item label="Date of Expiry" value={selectedWorker['Date of Expiry']} isDate={true} />
                             </div>
 
+                            {/* Location Section */}
                             <div className="glass-panel p-6">
-                                <h3 className="text-blue-500 text-[10px] font-black uppercase mb-4 border-b pb-1">Location</h3>
-                                <Item label="Province" value={selectedWorker['Province']} />
-                                <Item label="District" value={selectedWorker['District']} />
+                                <h3 className="text-blue-500 text-[10px] font-black uppercase mb-4 border-b pb-1">Current Address</h3>
                                 <Item label="Village" value={selectedWorker['Village']} />
+                                <Item label="District" value={selectedWorker['District']} />
+                                <Item label="Province" value={selectedWorker['Province']} />
                             </div>
 
+                            {/* Bank Section */}
                             <div className="glass-panel p-6">
-                                <h3 className="text-purple-500 text-[10px] font-black uppercase mb-4 border-b pb-1">Bank Account & Link</h3>
-                                <Item label="Account Name" value={selectedWorker['AC - Name']} />
-                                <Item label="Account No." value={selectedWorker['AC - No']} />
-                                <Item label="Drive Link" value={selectedWorker['Google drive'] ? 'LINK ATTACHED' : '-'} />
+                                <h3 className="text-purple-500 text-[10px] font-black uppercase mb-4 border-b pb-1">Bank Account & System</h3>
+                                <Item label="A/C Name" value={selectedWorker['AC - Name']} />
+                                <Item label="A/C No." value={selectedWorker['AC - No']} />
+                                <Item label="Google Drive" value={selectedWorker['Google drive'] ? 'LINK ATTACHED' : 'NO LINK'} />
                                 {selectedWorker['Google drive'] && (
-                                    <a href={selectedWorker['Google drive']} target="_blank" className="mt-4 block w-full bg-slate-100 py-4 rounded-xl text-center font-bold text-xs text-slate-600 hover:bg-slate-200 transition-all">OPEN GOOGLE DRIVE 📂</a>
+                                    <a href={selectedWorker['Google drive']} target="_blank" className="mt-4 block w-full bg-slate-100 py-4 rounded-xl text-center font-bold text-xs text-slate-600 hover:bg-slate-200 transition-all">OPEN DOCUMENT FOLDER 📂</a>
                                 )}
                             </div>
                         </div>
@@ -297,7 +294,6 @@
                 );
             }
 
-            // --- EDIT VIEW ---
             if (view === 'edit') {
                 const renderField = (key) => {
                     let v = selectedWorker[key];
@@ -351,18 +347,15 @@
                             <button onClick={() => setView('list')} className="text-sm font-bold text-slate-400">CANCEL</button>
                             <h3 className="text-sm font-black text-slate-900">EDITOR</h3>
                         </div>
-
                         <div className="glass-panel p-8 mb-6 text-center bg-slate-900">
                             <label className="inline-block bg-emerald-500 text-white px-8 py-3 rounded-xl cursor-pointer shadow-lg font-bold text-sm">
                                 📷 AI SCAN PASSPORT
                                 <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
                             </label>
                         </div>
-
                         <div className="space-y-4">
                             {ALL_FIELDS.map(renderField)}
                         </div>
-
                         <div className="fixed bottom-0 left-0 w-full p-4 bg-white/80 backdrop-blur-md border-t z-40">
                             <button onClick={handleUpdate} disabled={isSaving} className="max-w-2xl mx-auto block w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg uppercase shadow-xl disabled:opacity-50 transition-all">
                                 {isSaving ? 'Saving...' : 'Save Worker Profile'}
