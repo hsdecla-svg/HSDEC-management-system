@@ -39,8 +39,6 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-        
-        // 新しいGAS URLを反映
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbwg3DlUBk5wdsFk57WnE8sd9j5yZdFC_uNeKOi1H0WT5O4G61-l4IRXK0jP9Jg6nQiK0w/exec';
         
         const ALL_FIELDS = [
@@ -54,7 +52,6 @@
             const s = String(val);
             const datePart = s.includes('T') ? s.split('T')[0] : s;
             const parts = datePart.split(/[-/.]/);
-            
             if (parts.length === 3) {
                 if (parts[0].length === 4) return `${parts[2]}/${parts[1]}/${parts[0]}`;
                 if (parts[2].length === 4) return `${parts[0]}/${parts[1]}/${parts[2]}`;
@@ -86,14 +83,21 @@
                 setLoading(false);
             };
 
-            // 項目名を柔軟に解決する関数 (Passport No. と Passport No の違いなどを吸収)
+            // 【重要：ここを強化】どんなヘッダー名でも柔軟に取得するロジック
             const getVal = (worker, key) => {
-                if (!worker) return '-';
-                if (worker[key] !== undefined && worker[key] !== '') return worker[key];
-                const cleanKey = key.toLowerCase().replace(/[\s.]/g, '');
-                const foundKey = Object.keys(worker).find(k => k.toLowerCase().replace(/[\s.]/g, '') === cleanKey);
-                const val = (foundKey && worker[foundKey] !== '') ? worker[foundKey] : '-';
-                return val;
+                if (!worker || !key) return '-';
+                // 1. そのままのキーで探す
+                if (worker[key] !== undefined && worker[key] !== null && worker[key] !== '') return worker[key];
+                
+                // 2. スペース、ドット、大文字小文字を無視して探す
+                const normalize = (s) => String(s).toLowerCase().replace(/[\s.]/g, '');
+                const targetKey = normalize(key);
+                const foundKey = Object.keys(worker).find(k => normalize(k) === targetKey);
+                
+                if (foundKey && worker[foundKey] !== undefined && worker[foundKey] !== null && worker[foundKey] !== '') {
+                    return worker[foundKey];
+                }
+                return '-';
             };
 
             const handlePassportScan = async (e) => {
@@ -120,7 +124,7 @@
                         const rawExpiry = line2.substring(21, 27);
                         const expYear = 2000 + parseInt(rawExpiry.substring(0, 2));
 
-                        // スキャン結果を反映
+                        // スキャンデータを全フィールドにマッピング
                         const updated = { ...selectedWorker };
                         updated['Full Name'] = `${surname} ${givenName}`.trim();
                         updated['Passport No.'] = passportNo;
@@ -149,7 +153,7 @@
                 if (!selectedBatch) return [];
                 return workers
                     .filter(w => (w.batch || w._sheetName?.replace("Batch","")) == selectedBatch)
-                    .filter(w => `${w['Full Name']} ${w['ຊື່ ແລະ ນາມສະກຸນ']} ${w['Province']} ${w['District']}`.toLowerCase().includes(searchQuery.toLowerCase()));
+                    .filter(w => `${getVal(w, 'Full Name')} ${getVal(w, 'ຊື່ ແລະ ນາມສະກຸນ')} ${getVal(w, 'Province')} ${getVal(w, 'District')}`.toLowerCase().includes(searchQuery.toLowerCase()));
             }, [workers, selectedBatch, searchQuery]);
 
             if (loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-900 animate-pulse">HSDEC CONNECTING...</div>;
@@ -158,14 +162,14 @@
                 <div className="fade-in max-w-4xl mx-auto p-6">
                     <header className="mb-10 text-center">
                         <h1 className="text-3xl font-extrabold text-slate-900 tracking-tighter">HSDEC Database</h1>
-                        <p className="text-slate-500 font-bold">Select Worker Batch</p>
+                        <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Worker Management System</p>
                     </header>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {[...new Set(workers.map(w => w.batch || w._sheetName?.replace("Batch","")))].sort((a,b)=>a-b).map(num => (
                             <div key={num} onClick={() => { setSelectedBatch(num); setView('list'); }} 
                                  className="glass-panel p-6 flex justify-between items-center cursor-pointer hover:bg-slate-50 transition-all active:scale-95 group">
                                 <span className="text-xl font-bold text-slate-800">Batch {num}</span>
-                                <span className="bg-slate-100 text-slate-500 px-4 py-2 rounded-full text-xs font-bold uppercase group-hover:bg-emerald-500 group-hover:text-white transition-colors">Open</span>
+                                <span className="bg-slate-100 text-slate-400 px-4 py-2 rounded-full text-[10px] font-black uppercase group-hover:bg-emerald-500 group-hover:text-white transition-colors">Enter</span>
                             </div>
                         ))}
                     </div>
@@ -175,12 +179,12 @@
             if (view === 'list') return (
                 <div className="fade-in max-w-6xl mx-auto p-4 md:p-8 pb-20">
                     <div className="flex justify-between items-center mb-6">
-                        <button onClick={() => setView('folders')} className="text-sm font-bold text-slate-400">← BATCHES</button>
-                        <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setView('edit'); }} className="bg-slate-900 text-white px-6 py-2 rounded-xl font-bold text-xs uppercase shadow-md">+ New Worker</button>
+                        <button onClick={() => setView('folders')} className="text-xs font-black text-slate-400 uppercase tracking-widest">← Back to Batches</button>
+                        <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setView('edit'); }} className="bg-slate-900 text-white px-6 py-2 rounded-xl font-black text-[10px] uppercase shadow-lg">+ Add Worker</button>
                     </div>
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                        <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight italic text-center md:text-left">Batch {selectedBatch}</h2>
-                        <input type="text" placeholder="Search name or location..." className="glass-panel p-3 w-full md:w-80 outline-none text-sm font-semibold" 
+                        <h2 className="text-2xl font-black text-slate-900 tracking-tight italic">Batch {selectedBatch}</h2>
+                        <input type="text" placeholder="Search workers..." className="glass-panel p-3 w-full md:w-80 outline-none text-sm font-semibold" 
                                value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                     </div>
                     <div className="glass-panel overflow-hidden">
@@ -188,7 +192,7 @@
                             <thead className="bg-slate-50 border-b border-slate-100">
                                 <tr>
                                     <th className="p-4 label-text">No.</th>
-                                    <th className="p-4 label-text">Worker Name</th>
+                                    <th className="p-4 label-text">Full Name</th>
                                     <th className="p-4 label-text">Status</th>
                                 </tr>
                             </thead>
@@ -196,10 +200,10 @@
                                 {filteredWorkers.map((w, i) => (
                                     <tr key={i} onClick={() => { setSelectedWorker({...w}); setView('detail'); }} 
                                         className="border-b border-slate-50 cursor-pointer hover:bg-slate-50 transition-colors">
-                                        <td className="p-4 font-bold text-slate-300">#{w['ລໍາດັບ'] || i+1}</td>
+                                        <td className="p-4 font-bold text-slate-300">#{getVal(w, 'ລໍາດັບ') || i+1}</td>
                                         <td className="p-4">
                                             <div className="font-extrabold text-slate-900 leading-none mb-1">{getVal(w, 'Full Name')}</div>
-                                            <div className="text-[11px] text-slate-400 font-bold">{getVal(w, 'ຊື່ ແລະ ນາມສະກຸນ')}</div>
+                                            <div className="text-[10px] text-slate-400 font-bold uppercase">{getVal(w, 'ຊື່ ແລະ ນາມສະກຸນ')}</div>
                                         </td>
                                         <td className="p-4">
                                             <span className={`status-badge ${getVal(w, 'ສະຖານະ') === 'Ready' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
@@ -227,31 +231,30 @@
                 return (
                     <div className="fade-in max-w-2xl mx-auto p-4 md:p-8 pb-20">
                         <div className="flex justify-between items-center mb-8">
-                            <button onClick={() => setView('list')} className="text-sm font-bold text-slate-400">← BACK</button>
-                            <button onClick={() => setView('edit')} className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl font-extrabold text-xs">EDIT PROFILE ✎</button>
+                            <button onClick={() => setView('list')} className="text-[10px] font-black text-slate-400 uppercase tracking-widest">← Back</button>
+                            <button onClick={() => setView('edit')} className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase">Edit ✎</button>
                         </div>
 
                         <div className="mb-8 px-2">
-                            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tighter leading-none mb-1">{getVal(selectedWorker, 'Full Name')}</h2>
+                            <h2 className="text-3xl font-black text-slate-900 tracking-tighter leading-none mb-1">{getVal(selectedWorker, 'Full Name')}</h2>
                             <p className="text-lg font-bold text-emerald-500 italic tracking-tight">{getVal(selectedWorker, 'ຊື່ ແລະ ນາມສະກຸນ')}</p>
                         </div>
 
                         <div className="space-y-6">
-                            {/* Passport Card (K, I, J Columns) */}
-                            <div className="glass-panel p-8 bg-slate-900 text-white shadow-xl shadow-slate-200">
-                                <h3 className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-6 border-b border-white/10 pb-2">Passport Document</h3>
+                            <div className="glass-panel p-8 bg-slate-900 text-white shadow-2xl">
+                                <h3 className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-6 border-b border-white/10 pb-2">Passport Information</h3>
                                 <div className="space-y-6">
                                     <div>
-                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-tighter">Passport Number</label>
+                                        <label className="text-[10px] font-black text-white/30 uppercase tracking-tighter">Passport No.</label>
                                         <div className="text-2xl font-black tracking-widest text-emerald-50">{getVal(selectedWorker, 'Passport No.')}</div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="text-[10px] font-black text-white/30 uppercase tracking-tighter">Issue Date</label>
+                                            <label className="text-[10px] font-black text-white/30 uppercase tracking-tighter">Issued</label>
                                             <div className="font-bold">{formatDateInternational(getVal(selectedWorker, 'Date of issue'))}</div>
                                         </div>
                                         <div>
-                                            <label className="text-[10px] font-black text-white/30 uppercase tracking-tighter">Expiry Date</label>
+                                            <label className="text-[10px] font-black text-white/30 uppercase tracking-tighter">Expiry</label>
                                             <div className="font-bold text-rose-400">{formatDateInternational(getVal(selectedWorker, 'Date of Expiry'))}</div>
                                         </div>
                                     </div>
@@ -259,25 +262,22 @@
                             </div>
 
                             <div className="glass-panel p-6">
-                                <h3 className="text-slate-900 text-[10px] font-black uppercase mb-4 border-b pb-1">Basic Profile</h3>
-                                <Item label="No." keyName="ລໍາດັບ" />
+                                <h3 className="text-slate-900 text-[10px] font-black uppercase mb-4 border-b pb-1">Profile</h3>
                                 <Item label="Status" keyName="ສະຖານະ" />
-                                <Item label="Sex" keyName="Sex" />
-                                <Item label="Date of Birth" keyName="Date of birth" isDate={true} />
+                                <Item label="Gender" keyName="Sex" />
+                                <Item label="Birthday" keyName="Date of birth" isDate={true} />
                                 <Item label="Age" keyName="Age" />
                                 <Item label="Size" keyName="Size" />
                             </div>
 
                             <div className="glass-panel p-6">
-                                <h3 className="text-slate-900 text-[10px] font-black uppercase mb-4 border-b pb-1">Address & Contact</h3>
+                                <h3 className="text-slate-900 text-[10px] font-black uppercase mb-4 border-b pb-1">Location</h3>
                                 <Item label="Village" keyName="Village" />
                                 <Item label="District" keyName="District" />
                                 <Item label="Province" keyName="Province" />
-                                <Item label="Bank Account" keyName="AC - Name" />
-                                <Item label="Account No" keyName="AC - No" />
                                 <div className="py-3 flex justify-between items-center border-t border-slate-50 mt-2">
                                     <span className="label-text">Google Drive</span>
-                                    <a href={getVal(selectedWorker, 'Google drive')} target="_blank" className="text-blue-500 font-bold text-xs truncate max-w-[150px]">Open Folder ↗</a>
+                                    <a href={getVal(selectedWorker, 'Google drive')} target="_blank" className="text-blue-500 font-bold text-xs">Open ↗</a>
                                 </div>
                             </div>
                         </div>
@@ -287,7 +287,7 @@
 
             if (view === 'edit') {
                 const renderField = (key) => {
-                    let v = selectedWorker[key];
+                    let v = getVal(selectedWorker, key);
                     const inputStyle = "input-field";
                     
                     if (key === 'Re-entry') return (
@@ -300,11 +300,11 @@
 
                     const masterKeyMap = { "Province": "provinces", "Sex": "Sex", "ສະຖານະ": "Status", "Size": "Size" };
                     if (masterKeyMap[key] || key === 'District') {
-                        let list = key === 'Province' ? masterOptions.provinces : (key === 'District' ? masterOptions.provinceMap[selectedWorker.Province] || [] : masterOptions[masterKeyMap[key]] || []);
+                        let list = key === 'Province' ? masterOptions.provinces : (key === 'District' ? masterOptions.provinceMap[getVal(selectedWorker, 'Province')] || [] : masterOptions[masterKeyMap[key]] || []);
                         return (
                             <div key={key} className="mb-4">
                                 <label className="label-text">{key}</label>
-                                <select className={inputStyle} value={v || ''} 
+                                <select className={inputStyle} value={v === '-' ? '' : v} 
                                     onChange={(e) => {
                                         const val = e.target.value;
                                         if(key === 'Province') {
@@ -313,7 +313,7 @@
                                         } else {
                                             setSelectedWorker({...selectedWorker, [key]: val});
                                         }
-                                    }} disabled={key === 'District' && !selectedWorker.Province}>
+                                    }}>
                                     <option value="">Select...</option>
                                     {list.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                 </select>
@@ -326,7 +326,7 @@
                             <label className="label-text">{key}</label>
                             <input className={inputStyle} 
                                    type={key.toLowerCase().includes('date') || key.toLowerCase().includes('expiry') || key.toLowerCase().includes('issue') ? 'date' : 'text'} 
-                                   value={v ? (key.toLowerCase().includes('date') || key.toLowerCase().includes('expiry') || key.toLowerCase().includes('issue') ? String(v).split('T')[0] : v) : ''} 
+                                   value={v === '-' ? '' : (key.toLowerCase().includes('date') || key.toLowerCase().includes('expiry') || key.toLowerCase().includes('issue') ? String(v).split('T')[0] : v)} 
                                    onChange={(e) => setSelectedWorker({...selectedWorker, [key]: e.target.value})} />
                         </div>
                     );
@@ -334,24 +334,23 @@
 
                 return (
                     <div className="fade-in max-w-2xl mx-auto p-4 md:p-8 pb-32">
-                        {isScanning && <div className="fixed inset-0 bg-white/90 z-50 flex items-center justify-center font-black animate-pulse text-emerald-600">AI ANALYZING PASSPORT...</div>}
+                        {isScanning && <div className="fixed inset-0 bg-white/90 z-50 flex items-center justify-center font-black animate-pulse text-emerald-600">AI SCANNING...</div>}
                         <div className="flex justify-between items-center mb-6">
-                            <button onClick={() => setView('list')} className="text-sm font-bold text-slate-400">CANCEL</button>
-                            <h3 className="text-sm font-black text-slate-900">EDIT MODE</h3>
+                            <button onClick={() => setView('list')} className="text-xs font-black text-slate-400 uppercase tracking-widest">Cancel</button>
+                            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Edit Worker</h3>
                         </div>
-                        <div className="glass-panel p-8 mb-6 text-center bg-slate-900 shadow-xl">
-                            <label className="inline-block bg-emerald-500 text-white px-8 py-3 rounded-xl cursor-pointer shadow-lg font-bold text-sm hover:scale-105 transition-transform active:scale-95">
+                        <div className="glass-panel p-8 mb-6 text-center bg-slate-900">
+                            <label className="inline-block bg-emerald-500 text-white px-8 py-3 rounded-xl cursor-pointer shadow-lg font-bold text-sm">
                                 📷 AI SCAN PASSPORT
                                 <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
                             </label>
-                            <p className="text-white/40 text-[10px] mt-3 font-bold uppercase tracking-widest">Auto-fill name & passport data</p>
                         </div>
                         <div className="space-y-4">
                             {ALL_FIELDS.map(renderField)}
                         </div>
                         <div className="fixed bottom-0 left-0 w-full p-4 bg-white/80 backdrop-blur-md border-t z-40">
-                            <button onClick={handleUpdate} disabled={isSaving} className="max-w-2xl mx-auto block w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg uppercase shadow-xl disabled:opacity-50 transition-all active:scale-[0.98]">
-                                {isSaving ? 'Processing...' : 'Save Worker Profile'}
+                            <button onClick={handleUpdate} disabled={isSaving} className="max-w-2xl mx-auto block w-full bg-emerald-600 text-white py-4 rounded-xl font-bold text-lg uppercase shadow-xl disabled:opacity-50 transition-all">
+                                {isSaving ? 'Saving...' : 'Save Changes'}
                             </button>
                         </div>
                     </div>
