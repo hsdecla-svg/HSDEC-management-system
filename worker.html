@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Management - High Density</title>
+    <title>HSDEC Management - Dual Passport Logic</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -86,34 +86,74 @@
                 setIsScanning(true);
                 try {
                     await window.loadTesseract();
-                    const workerOCR = await Tesseract.createWorker('eng');
-                    const { data: { text } } = await workerOCR.recognize(file);
+                    // ラオス語と英語の両方を認識
+                    const workerOCR = await Tesseract.createWorker(['lao', 'eng']);
+                    const { data: { text, lines } } = await workerOCR.recognize(file);
                     await workerOCR.terminate();
-                    const cleanText = text.toUpperCase().replace(/ /g, '');
-                    const lines = cleanText.split('\n').filter(l => l.length >= 30);
-                    if (lines.length >= 2) {
-                        const line1 = lines[lines.length - 2];
-                        const line2 = lines[lines.length - 1];
-                        const namePart = line1.substring(5);
-                        const parts = namePart.split('<<');
-                        const surname = parts[0]?.replace(/<+/g, ' ').trim() || "";
-                        const givenName = parts[1]?.replace(/<+/g, ' ').trim() || "";
-                        const passportNo = line2.substring(0, 9).replace(/</g, '');
-                        const rawBirth = line2.substring(13, 19);
-                        const birthYear = parseInt(rawBirth.substring(0, 2)) > 30 ? "19" + rawBirth.substring(0, 2) : "20" + rawBirth.substring(0, 2);
-                        const rawExpiry = line2.substring(21, 27);
-                        const expYear = 2000 + parseInt(rawExpiry.substring(0, 2));
+                    
+                    const rawLines = lines.map(l => l.text.trim()).filter(t => t.length > 2);
+                    let extracted = { ...selectedWorker };
 
-                        const updated = { ...selectedWorker };
-                        updated['Full Name'] = `${surname} ${givenName}`.trim();
-                        updated['Passport No.'] = passportNo;
-                        updated['Date of birth'] = `${birthYear}-${rawBirth.substring(2, 4)}-${rawBirth.substring(4, 6)}`;
-                        updated['Date of Expiry'] = `${expYear}-${rawExpiry.substring(2, 4)}-${rawExpiry.substring(4, 6)}`;
-                        updated['Date of issue'] = `${expYear - 10}-${rawExpiry.substring(2, 4)}-${rawExpiry.substring(4, 6)}`;
-                        updated['Age'] = new Date().getFullYear() - parseInt(birthYear);
-                        setSelectedWorker(updated);
+                    // 下部のMRZ (共通) を探す
+                    const mrzLines = rawLines.filter(l => l.includes('<<'));
+                    let passportNo = "";
+                    if (mrzLines.length >= 2) {
+                        const l2 = mrzLines[mrzLines.length - 1].replace(/ /g, '');
+                        passportNo = l2.substring(0, 9).replace(/</g, '');
+                        extracted['Passport No.'] = passportNo;
                     }
-                } catch (err) { alert("Scan fail"); } finally { setIsScanning(false); }
+
+                    if (passportNo.startsWith('P') && !passportNo.startsWith('PA')) {
+                        // --- 新様式 (P番号) のロジック ---
+                        // 1. ラオス語名 (ページ上部)
+                        extracted['ຊື່ ແລະ ນາມສະກຸນ'] = rawLines[0]; 
+                        
+                        // 2. 住所 (中央左 3行)
+                        // Province (2行目), Village, District (3行目)
+                        rawLines.forEach((line, idx) => {
+                            if (line.toUpperCase().includes('PROVINCE')) {
+                                extracted['Province'] = line.replace(/PROVINCE/i, '').trim();
+                                const addressLine = rawLines[idx + 1] || "";
+                                if (addressLine.includes(',')) {
+                                    const parts = addressLine.split(',');
+                                    extracted['Village'] = parts[0].trim();
+                                    extracted['District'] = parts[1].trim();
+                                }
+                            }
+                        });
+                    } else if (passportNo.startsWith('PA')) {
+                        // --- 従来様式 (PA番号) のロジック ---
+                        // 顔写真横 7行を解析
+                        // [Surname, Given Name, Lao Name, LAO, Birth Place, Issue, Expiry]
+                        const photoSideLines = rawLines.filter(l => !l.includes('<<') && l.length > 5);
+                        if (photoSideLines.length >= 7) {
+                            extracted['Full Name'] = `${photoSideLines[0]} ${photoSideLines[1]}`.trim();
+                            extracted['ຊື່ ແລະ ນາມສະກຸນ'] = photoSideLines[2];
+                            extracted['Date of issue'] = photoSideLines[5].replace(/[^0-9/-]/g, '');
+                            extracted['Date of Expiry'] = photoSideLines[6].replace(/[^0-9/-]/g, '');
+                        }
+                        // 右側から生年月日(Date of Birth)を探す
+                        rawLines.forEach(line => {
+                            if (line.match(/\d{2}[/.-]\d{2}[/.-]\d{4}/)) {
+                                extracted['Date of birth'] = line.match(/\d{2}[/.-]\d{2}[/.-]\d{4}/)[0];
+                            }
+                        });
+                    }
+
+                    // 発行日の計算ルールを適用 (Pなら+1日, PAならそのまま)
+                    if (extracted['Date of Expiry']) {
+                        const expDate = new Date(extracted['Date of Expiry']);
+                        if (!isNaN(expDate)) {
+                            let issue = new Date(expDate.getFullYear() - 10, expDate.getMonth(), expDate.getDate());
+                            if (passportNo.startsWith('P') && !passportNo.startsWith('PA')) {
+                                issue.setDate(issue.getDate() + 1);
+                            }
+                            extracted['Date of issue'] = issue.toISOString().split('T')[0];
+                        }
+                    }
+
+                    setSelectedWorker(extracted);
+                } catch (err) { alert("Scan fail: " + err.message); } finally { setIsScanning(false); }
             };
 
             const handleSave = async () => {
@@ -171,11 +211,10 @@
                 );
             };
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-emerald-600">LOADING HSDEC SYSTEM...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-emerald-600">LOADING HSDEC...</div>;
 
             return (
                 <div className="flex h-screen w-screen overflow-hidden">
-                    {/* LEFT: SUPER SLIM LIST (240px) */}
                     <div className="w-64 bg-white border-r flex flex-col shadow-sm z-10">
                         <div className="p-2 border-b bg-slate-50 space-y-2">
                             <div className="flex gap-1">
@@ -186,7 +225,7 @@
                                 </select>
                                 <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setIsEditing(true); }} className="bg-slate-800 text-white px-2 py-1 rounded text-[10px] font-bold">+ NEW</button>
                             </div>
-                            <input type="text" placeholder="Quick search..." className="w-full p-1 text-xs rounded border" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                            <input type="text" placeholder="Search..." className="w-full p-1 text-xs rounded border" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                         </div>
                         <div className="flex-grow overflow-y-auto custom-scrollbar">
                             {filteredWorkers.map((w, i) => (
@@ -202,58 +241,52 @@
                         </div>
                     </div>
 
-                    {/* RIGHT: COMPACT WORK AREA */}
                     <div className="flex-grow flex flex-col bg-slate-50 overflow-hidden relative">
-                        {isScanning && <div className="absolute inset-0 bg-white/90 z-50 flex items-center justify-center font-bold text-emerald-600">AI SCANNING...</div>}
+                        {isScanning && <div className="absolute inset-0 bg-white/90 z-50 flex flex-col items-center justify-center font-bold text-emerald-600">
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mb-2"></div>
+                            SCANNING PASSPORT (LAO/ENG)...
+                        </div>}
                         
                         {selectedWorker ? (
                             <>
-                                {/* HEADER BAR */}
                                 <div className="bg-white border-b px-4 py-2 flex justify-between items-center shadow-sm">
                                     <div className="flex items-center gap-4">
-                                        <span className="text-lg font-black tracking-tighter">{selectedWorker['Full Name'] || 'NEW WORKER'}</span>
+                                        <span className="text-lg font-black tracking-tighter">{selectedWorker['Full Name'] || 'NEW'}</span>
                                         <span className="text-emerald-600 font-bold">{selectedWorker['ຊື່ ແລະ ນາມສະກຸນ']}</span>
                                     </div>
                                     <div className="flex gap-2">
                                         {isEditing ? (
                                             <>
-                                                <label className="bg-slate-100 px-3 py-1.5 rounded-lg font-bold text-[11px] cursor-pointer hover:bg-slate-200">
+                                                <label className="bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold text-[11px] cursor-pointer hover:bg-slate-700">
                                                     📷 SCAN PASSPORT
                                                     <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
                                                 </label>
                                                 <button onClick={() => setIsEditing(false)} className="px-3 py-1.5 text-[11px] font-bold text-slate-500">CANCEL</button>
-                                                <button onClick={handleSave} disabled={isSaving} className="bg-emerald-600 text-white px-4 py-1.5 rounded-lg font-bold text-[11px] shadow-md shadow-emerald-100">
-                                                    {isSaving ? 'SAVING...' : 'SAVE CHANGES'}
-                                                </button>
+                                                <button onClick={handleSave} disabled={isSaving} className="bg-emerald-600 text-white px-4 py-1.5 rounded-lg font-bold text-[11px]">SAVE</button>
                                             </>
                                         ) : (
-                                            <button onClick={() => setIsEditing(true)} className="bg-white border border-slate-300 px-4 py-1.5 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50">EDIT INFO</button>
+                                            <button onClick={() => setIsEditing(true)} className="bg-white border px-4 py-1.5 rounded-lg font-bold text-[11px] shadow-sm">EDIT</button>
                                         )}
                                     </div>
                                 </div>
 
-                                {/* FORM AREA (Single Screen, No Scroll if possible) */}
                                 <div className="p-4 grid grid-cols-3 gap-4 h-full content-start overflow-y-auto custom-scrollbar">
-                                    <div className="bg-white p-3 rounded-xl border shadow-sm h-fit">
-                                        <h4 className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest border-b pb-1">Basic Profile</h4>
+                                    <div className="bg-white p-3 rounded-xl border shadow-sm">
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest border-b pb-1">Profile</h4>
                                         {FIELD_GROUPS.basic.map(f => renderField(f))}
                                     </div>
-
-                                    <div className="bg-white p-3 rounded-xl border shadow-sm h-fit">
-                                        <h4 className="text-[10px] font-black text-emerald-500 uppercase mb-3 tracking-widest border-b pb-1">Passport Details</h4>
+                                    <div className="bg-white p-3 rounded-xl border shadow-sm">
+                                        <h4 className="text-[10px] font-black text-emerald-500 uppercase mb-3 tracking-widest border-b pb-1">Passport</h4>
                                         {FIELD_GROUPS.passport.map(f => renderField(f))}
                                     </div>
-
-                                    <div className="bg-white p-3 rounded-xl border shadow-sm h-fit">
-                                        <h4 className="text-[10px] font-black text-blue-500 uppercase mb-3 tracking-widest border-b pb-1">Address & Links</h4>
+                                    <div className="bg-white p-3 rounded-xl border shadow-sm">
+                                        <h4 className="text-[10px] font-black text-blue-500 uppercase mb-3 tracking-widest border-b pb-1">Location</h4>
                                         {FIELD_GROUPS.address.map(f => renderField(f))}
                                     </div>
                                 </div>
                             </>
                         ) : (
-                            <div className="h-full flex items-center justify-center text-slate-300 font-bold uppercase tracking-widest text-xs">
-                                Select a worker to view details
-                            </div>
+                            <div className="h-full flex items-center justify-center text-slate-300 font-bold uppercase tracking-widest text-xs">Select Worker</div>
                         )}
                     </div>
                 </div>
