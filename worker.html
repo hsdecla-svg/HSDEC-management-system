@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Management Pro</title>
+    <title>HSDEC Management - High Density</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -11,14 +11,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; height: 100vh; overflow: hidden; }
-        .sidebar-item.active { background: #e2e8f0; border-left: 4px solid #10b981; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; height: 100vh; overflow: hidden; font-size: 13px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .glass-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; }
-        .input-focus:focus { border-color: #10b981; ring: 2px solid rgba(16, 185, 129, 0.1); outline: none; }
+        input, select { border: 1px solid #e2e8f0 !important; }
+        .list-item-active { background-color: #f0fdf4; border-right: 3px solid #10b981; }
     </style>
 </head>
 <body>
@@ -40,11 +39,11 @@
         const { useState, useEffect, useMemo } = React;
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbzvHbVjc_1XaVT54dkLTfWlIccAoUWsiERzPbOSnPSvLMazkitGOTzkim7hcHzxrRP9gQ/exec';
         
-        const ALL_FIELDS = [
-            'ລໍາດັບ', 'ສະຖານະ', 'Re-entry', 'ຊື່ ແລະ ນາມສະກຸນ', 'Full Name', 'Sex', 'Date of birth', 'Age', 
-            'Passport No.', 'Date of issue', 'Date of Expiry', 
-            'Village', 'District', 'Province', 'Size', 'Google drive'
-        ];
+        const FIELD_GROUPS = {
+            basic: ['ລໍາດັບ', 'ສະຖານະ', 'Re-entry', 'Full Name', 'ຊື່ ແລະ ນາມສະກຸນ', 'Sex', 'Date of birth', 'Age', 'Size'],
+            passport: ['Passport No.', 'Date of issue', 'Date of Expiry'],
+            address: ['Village', 'District', 'Province', 'Google drive']
+        };
 
         function App() {
             const [workers, setWorkers] = useState([]);
@@ -66,9 +65,8 @@
                     const json = await res.json();
                     setWorkers(json.workers || []);
                     setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
-                    // 初回ロード時に最初のバッチを選択
                     const batches = [...new Set((json.workers || []).map(w => w.batch || w._sheetName?.replace("Batch","")))].sort((a,b)=>a-b);
-                    if (batches.length > 0) setSelectedBatch(batches[0]);
+                    if (batches.length > 0 && !selectedBatch) setSelectedBatch(batches[0]);
                 } catch (e) { console.error(e); }
                 setLoading(false);
             };
@@ -79,7 +77,7 @@
                     .filter(w => {
                         const searchStr = `${w['Full Name']} ${w['ຊື່ ແລະ ນາມສະກຸນ']} ${w['Passport No.']}`.toLowerCase();
                         return searchStr.includes(searchQuery.toLowerCase());
-                    });
+                    }).sort((a,b) => (a['ລໍາດັບ'] || 0) - (b['ລໍາດັບ'] || 0));
             }, [workers, selectedBatch, searchQuery]);
 
             const handlePassportScan = async (e) => {
@@ -123,187 +121,138 @@
                 try {
                     const payload = { ...selectedWorker, action: selectedWorker._row ? "update" : "addNew", batch: selectedBatch };
                     await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-                    alert("Saved Successfully! ✅");
                     await fetchData();
                     setIsEditing(false);
                 } catch (e) { alert("Save Error"); }
                 setIsSaving(false);
             };
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-emerald-600 animate-pulse">SYSTEM LOADING...</div>;
+            const renderField = (field) => {
+                const isDate = field.includes('Date') || field.includes('Expiry');
+                const value = selectedWorker[field];
+                
+                if (!isEditing) {
+                    return (
+                        <div key={field} className="border-b border-slate-100 py-1 flex justify-between items-center">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase">{field}</span>
+                            <span className="font-semibold text-slate-700">
+                                {field === 'Google drive' ? <a href={value} target="_blank" className="text-blue-500">Open ↗</a> : 
+                                 isDate ? (value ? new Date(value).toLocaleDateString() : '-') : String(value || '-')}
+                            </span>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div key={field} className="flex flex-col mb-2">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">{field}</label>
+                        {field === 'Sex' || field === 'ສະຖານະ' || field === 'Size' || field === 'Province' || field === 'District' ? (
+                            <select className="p-1 text-xs rounded bg-white w-full" value={value || ''}
+                                onChange={e => {
+                                    const v = e.target.value;
+                                    if(field === 'Province') {
+                                        const dists = masterOptions.provinceMap[v] || [];
+                                        setSelectedWorker({...selectedWorker, Province: v, District: dists.length === 1 ? dists[0] : ''});
+                                    } else {
+                                        setSelectedWorker({...selectedWorker, [field]: v});
+                                    }
+                                }}>
+                                <option value="">-</option>
+                                {(field === 'Province' ? masterOptions.provinces : field === 'District' ? masterOptions.provinceMap[selectedWorker['Province']] || [] : masterOptions[field === 'Sex' ? 'Sex' : field === 'ສະຖານະ' ? 'Status' : 'Size'] || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                        ) : field === 'Re-entry' ? (
+                            <input type="checkbox" className="w-4 h-4" checked={value === true || value === 'TRUE'} onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.checked})} />
+                        ) : (
+                            <input className="p-1 text-xs rounded w-full" type={field === 'Age' || field === 'ລໍາດັບ' ? 'number' : isDate ? 'date' : 'text'}
+                                value={isDate ? (value ? String(value).split('T')[0] : '') : (value || '')}
+                                onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.value})} />
+                        )}
+                    </div>
+                );
+            };
+
+            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-emerald-600">LOADING HSDEC SYSTEM...</div>;
 
             return (
-                <div className="flex h-screen overflow-hidden text-slate-800">
-                    {/* LEFT: BATCH NAVIGATION */}
-                    <div className="w-20 lg:w-64 bg-slate-900 flex flex-col text-white">
-                        <div className="p-6 font-extrabold text-xl tracking-tighter border-b border-slate-800 hidden lg:block italic">HSDEC PRO</div>
-                        <div className="flex-grow overflow-y-auto custom-scrollbar p-2">
-                            <p className="text-[10px] text-slate-500 font-black uppercase px-4 py-4 hidden lg:block">Batches</p>
-                            {[...new Set(workers.map(w => w.batch || w._sheetName?.replace("Batch","")))].sort((a,b)=>a-b).map(num => (
-                                <button key={num} onClick={() => { setSelectedBatch(num); setSelectedWorker(null); }}
-                                    className={`w-full text-left p-4 lg:px-6 rounded-xl mb-1 transition-all flex items-center gap-3 ${selectedBatch === num ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20' : 'text-slate-400 hover:bg-slate-800'}`}>
-                                    <span className="font-bold">B{num}</span>
-                                    <span className="text-sm font-semibold hidden lg:block tracking-tight">Batch {num}</span>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* MIDDLE: WORKER LIST */}
-                    <div className="w-80 lg:w-96 bg-white border-r flex flex-col shadow-inner">
-                        <div className="p-4 border-b space-y-4">
-                            <div className="flex justify-between items-center">
-                                <h2 className="font-black text-xl italic tracking-tight">Batch {selectedBatch}</h2>
-                                <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setIsEditing(true); }}
-                                    className="bg-slate-900 text-white text-[10px] font-black uppercase px-3 py-2 rounded-lg hover:bg-emerald-600 transition-colors">+ New</button>
+                <div className="flex h-screen w-screen overflow-hidden">
+                    {/* LEFT: SUPER SLIM LIST (240px) */}
+                    <div className="w-64 bg-white border-r flex flex-col shadow-sm z-10">
+                        <div className="p-2 border-b bg-slate-50 space-y-2">
+                            <div className="flex gap-1">
+                                <select className="flex-grow p-1 text-xs font-bold rounded border" value={selectedBatch || ''} onChange={e => {setSelectedBatch(e.target.value); setSelectedWorker(null);}}>
+                                    {[...new Set(workers.map(w => w.batch || w._sheetName?.replace("Batch","")))].sort((a,b)=>a-b).map(num => (
+                                        <option key={num} value={num}>BATCH {num}</option>
+                                    ))}
+                                </select>
+                                <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setIsEditing(true); }} className="bg-slate-800 text-white px-2 py-1 rounded text-[10px] font-bold">+ NEW</button>
                             </div>
-                            <input type="text" placeholder="Search name/passport..." 
-                                className="w-full bg-slate-100 border-none rounded-xl px-4 py-3 text-sm font-semibold outline-none focus:ring-2 ring-emerald-500/20"
-                                value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                            <input type="text" placeholder="Quick search..." className="w-full p-1 text-xs rounded border" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                         </div>
                         <div className="flex-grow overflow-y-auto custom-scrollbar">
                             {filteredWorkers.map((w, i) => (
                                 <div key={i} onClick={() => { setSelectedWorker(w); setIsEditing(false); }}
-                                    className={`p-4 border-b cursor-pointer transition-all border-l-4 ${selectedWorker?._row === w._row ? 'bg-emerald-50 border-emerald-500' : 'border-transparent hover:bg-slate-50'}`}>
-                                    <div className="font-bold text-slate-900">{w['Full Name'] || 'No Name'}</div>
-                                    <div className="text-xs text-slate-400 font-medium">{w['Passport No.']}</div>
-                                    <div className="mt-2 flex justify-between items-center text-[10px] font-black uppercase">
-                                        <span className={w['ສະຖານະ'] === 'Ready' ? 'text-emerald-600' : 'text-slate-400'}>{w['ສະຖານະ']}</span>
-                                        <span className="text-slate-300">#{w['ລໍາດັບ']}</span>
+                                    className={`p-2 border-b cursor-pointer text-[11px] transition-all hover:bg-slate-50 ${selectedWorker?._row === w._row ? 'list-item-active' : ''}`}>
+                                    <div className="flex justify-between font-bold">
+                                        <span className="text-slate-400">#{w['ລໍາດັບ']}</span>
+                                        <span className="text-emerald-600">{w['Full Name']}</span>
                                     </div>
+                                    <div className="text-slate-500 truncate">{w['ຊື່ ແລະ ນາມສະກຸນ']}</div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* RIGHT: DETAIL & EDIT VIEW */}
-                    <div className="flex-grow bg-[#f8fafc] overflow-y-auto custom-scrollbar relative">
-                        {isScanning && <div className="absolute inset-0 bg-white/80 z-50 flex flex-col items-center justify-center font-black text-emerald-600 animate-pulse text-xl">AI SCANNING PASSPORT...</div>}
+                    {/* RIGHT: COMPACT WORK AREA */}
+                    <div className="flex-grow flex flex-col bg-slate-50 overflow-hidden relative">
+                        {isScanning && <div className="absolute inset-0 bg-white/90 z-50 flex items-center justify-center font-bold text-emerald-600">AI SCANNING...</div>}
                         
                         {selectedWorker ? (
-                            <div className="p-8 max-w-4xl mx-auto pb-32">
-                                <div className="flex justify-between items-start mb-8">
-                                    <div>
-                                        <h1 className="text-4xl font-black tracking-tighter text-slate-900 mb-1">{selectedWorker['Full Name']}</h1>
-                                        <p className="text-emerald-600 font-bold text-xl italic">{selectedWorker['ຊື່ ແລະ ນາມສະກຸນ']}</p>
+                            <>
+                                {/* HEADER BAR */}
+                                <div className="bg-white border-b px-4 py-2 flex justify-between items-center shadow-sm">
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-lg font-black tracking-tighter">{selectedWorker['Full Name'] || 'NEW WORKER'}</span>
+                                        <span className="text-emerald-600 font-bold">{selectedWorker['ຊື່ ແລະ ນາມສະກຸນ']}</span>
                                     </div>
                                     <div className="flex gap-2">
-                                        {!isEditing ? (
-                                            <button onClick={() => setIsEditing(true)} className="bg-white border border-slate-200 px-6 py-2 rounded-xl font-bold text-sm shadow-sm hover:bg-slate-50">Edit Information</button>
+                                        {isEditing ? (
+                                            <>
+                                                <label className="bg-slate-100 px-3 py-1.5 rounded-lg font-bold text-[11px] cursor-pointer hover:bg-slate-200">
+                                                    📷 SCAN PASSPORT
+                                                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
+                                                </label>
+                                                <button onClick={() => setIsEditing(false)} className="px-3 py-1.5 text-[11px] font-bold text-slate-500">CANCEL</button>
+                                                <button onClick={handleSave} disabled={isSaving} className="bg-emerald-600 text-white px-4 py-1.5 rounded-lg font-bold text-[11px] shadow-md shadow-emerald-100">
+                                                    {isSaving ? 'SAVING...' : 'SAVE CHANGES'}
+                                                </button>
+                                            </>
                                         ) : (
-                                            <button onClick={() => setIsEditing(false)} className="bg-slate-200 px-6 py-2 rounded-xl font-bold text-sm hover:bg-slate-300">Cancel</button>
-                                        )}
-                                        {isEditing && (
-                                            <button onClick={handleSave} disabled={isSaving} className="bg-emerald-600 text-white px-8 py-2 rounded-xl font-bold text-sm shadow-lg shadow-emerald-200 disabled:opacity-50 hover:bg-emerald-700 transition-all">
-                                                {isSaving ? 'Saving...' : 'Save All Changes'}
-                                            </button>
+                                            <button onClick={() => setIsEditing(true)} className="bg-white border border-slate-300 px-4 py-1.5 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50">EDIT INFO</button>
                                         )}
                                     </div>
                                 </div>
 
-                                {isEditing && (
-                                    <div className="bg-slate-900 p-6 rounded-2xl mb-8 flex items-center justify-between shadow-xl">
-                                        <div className="text-white">
-                                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">OCR Intelligence</p>
-                                            <p className="text-sm font-medium text-slate-400">Scan passport to auto-fill name, passport number, and dates.</p>
-                                        </div>
-                                        <label className="bg-white text-slate-900 px-6 py-3 rounded-xl font-black text-xs uppercase cursor-pointer hover:bg-emerald-400 hover:text-white transition-all shadow-lg active:scale-95">
-                                            📷 Capture Passport
-                                            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
-                                        </label>
-                                    </div>
-                                )}
-
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    {/* CORE DATA */}
-                                    <div className="glass-card p-6 space-y-4">
-                                        <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest border-b pb-2 mb-4">Basic Profile</h3>
-                                        {ALL_FIELDS.slice(0, 8).map(field => (
-                                            <div key={field} className="flex flex-col">
-                                                <label className="text-[10px] font-extrabold text-slate-400 uppercase mb-1">{field}</label>
-                                                {isEditing ? (
-                                                    field === 'Sex' || field === 'ສະຖານະ' ? (
-                                                        <select className="bg-slate-50 border rounded-lg p-2 font-bold text-sm focus:ring-2 ring-emerald-500/20"
-                                                            value={selectedWorker[field] || ''} onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.value})}>
-                                                            <option value="">-</option>
-                                                            {(masterOptions[field === 'Sex' ? 'Sex' : 'Status'] || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                                        </select>
-                                                    ) : field === 'Re-entry' ? (
-                                                        <input type="checkbox" className="w-6 h-6 accent-emerald-500" checked={selectedWorker[field] === true || selectedWorker[field] === 'TRUE'} 
-                                                            onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.checked})} />
-                                                    ) : (
-                                                        <input className="bg-slate-50 border rounded-lg p-2 font-bold text-sm focus:ring-2 ring-emerald-500/20"
-                                                            type={field === 'Age' ? 'number' : field.includes('Date') ? 'date' : 'text'}
-                                                            value={field.includes('Date') ? (selectedWorker[field] ? String(selectedWorker[field]).split('T')[0] : '') : (selectedWorker[field] || '')}
-                                                            onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.value})} />
-                                                    )
-                                                ) : (
-                                                    <span className="font-bold text-slate-800">{field.includes('Date') ? (selectedWorker[field] ? new Date(selectedWorker[field]).toLocaleDateString() : '-') : String(selectedWorker[field] || '-')}</span>
-                                                )}
-                                            </div>
-                                        ))}
+                                {/* FORM AREA (Single Screen, No Scroll if possible) */}
+                                <div className="p-4 grid grid-cols-3 gap-4 h-full content-start overflow-y-auto custom-scrollbar">
+                                    <div className="bg-white p-3 rounded-xl border shadow-sm h-fit">
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest border-b pb-1">Basic Profile</h4>
+                                        {FIELD_GROUPS.basic.map(f => renderField(f))}
                                     </div>
 
-                                    {/* PASSPORT & ADDRESS */}
-                                    <div className="space-y-6">
-                                        <div className="glass-card p-6 space-y-4 bg-slate-900">
-                                            <h3 className="text-xs font-black uppercase text-emerald-400 tracking-widest border-b border-slate-800 pb-2 mb-4">Passport & Legal</h3>
-                                            {ALL_FIELDS.slice(8, 11).map(field => (
-                                                <div key={field} className="flex flex-col">
-                                                    <label className="text-[10px] font-extrabold text-slate-500 uppercase mb-1">{field}</label>
-                                                    {isEditing ? (
-                                                        <input className="bg-slate-800 border-none text-white rounded-lg p-2 font-bold text-sm focus:ring-2 ring-emerald-500/50"
-                                                            type={field.includes('Date') || field.includes('Expiry') ? 'date' : 'text'}
-                                                            value={field.includes('Date') || field.includes('Expiry') ? (selectedWorker[field] ? String(selectedWorker[field]).split('T')[0] : '') : (selectedWorker[field] || '')}
-                                                            onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.value})} />
-                                                    ) : (
-                                                        <span className="font-black text-emerald-50 text-lg tracking-tight">{field.includes('Date') || field.includes('Expiry') ? (selectedWorker[field] ? new Date(selectedWorker[field]).toLocaleDateString() : '-') : String(selectedWorker[field] || '-')}</span>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
+                                    <div className="bg-white p-3 rounded-xl border shadow-sm h-fit">
+                                        <h4 className="text-[10px] font-black text-emerald-500 uppercase mb-3 tracking-widest border-b pb-1">Passport Details</h4>
+                                        {FIELD_GROUPS.passport.map(f => renderField(f))}
+                                    </div>
 
-                                        <div className="glass-card p-6 space-y-4">
-                                            <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest border-b pb-2 mb-4">Location & Logistics</h3>
-                                            {ALL_FIELDS.slice(11).map(field => (
-                                                <div key={field} className="flex flex-col">
-                                                    <label className="text-[10px] font-extrabold text-slate-400 uppercase mb-1">{field}</label>
-                                                    {isEditing && field !== 'Google drive' ? (
-                                                        field === 'Province' || field === 'District' || field === 'Size' ? (
-                                                            <select className="bg-slate-50 border rounded-lg p-2 font-bold text-sm"
-                                                                value={selectedWorker[field] || ''} onChange={e => {
-                                                                    const val = e.target.value;
-                                                                    if(field === 'Province') {
-                                                                        const dists = masterOptions.provinceMap[val] || [];
-                                                                        setSelectedWorker({...selectedWorker, Province: val, District: dists.length === 1 ? dists[0] : ''});
-                                                                    } else {
-                                                                        setSelectedWorker({...selectedWorker, [field]: val});
-                                                                    }
-                                                                }}>
-                                                                <option value="">-</option>
-                                                                {(field === 'Province' ? masterOptions.provinces : field === 'District' ? masterOptions.provinceMap[selectedWorker['Province']] || [] : masterOptions.Size || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                                                            </select>
-                                                        ) : (
-                                                            <input className="bg-slate-50 border rounded-lg p-2 font-bold text-sm"
-                                                                value={selectedWorker[field] || ''} onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.value})} />
-                                                        )
-                                                    ) : (
-                                                        field === 'Google drive' ? (
-                                                            <a href={selectedWorker[field]} target="_blank" className="text-blue-500 font-black text-sm hover:underline">OPEN DRIVE LINK ↗</a>
-                                                        ) : (
-                                                            <span className="font-bold text-slate-800">{String(selectedWorker[field] || '-')}</span>
-                                                        )
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
+                                    <div className="bg-white p-3 rounded-xl border shadow-sm h-fit">
+                                        <h4 className="text-[10px] font-black text-blue-500 uppercase mb-3 tracking-widest border-b pb-1">Address & Links</h4>
+                                        {FIELD_GROUPS.address.map(f => renderField(f))}
                                     </div>
                                 </div>
-                            </div>
+                            </>
                         ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-slate-300">
-                                <div className="text-6xl mb-4">📁</div>
-                                <p className="font-bold uppercase tracking-widest text-xs">Select a worker from the list</p>
+                            <div className="h-full flex items-center justify-center text-slate-300 font-bold uppercase tracking-widest text-xs">
+                                Select a worker to view details
                             </div>
                         )}
                     </div>
