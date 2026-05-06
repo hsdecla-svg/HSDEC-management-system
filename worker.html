@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Management - Manual Type Selection</title>
+    <title>HSDEC Management - MRZ Focused Scan</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -54,10 +54,7 @@
             const [searchQuery, setSearchQuery] = useState('');
             const [isSaving, setIsSaving] = useState(false);
             const [isScanning, setIsScanning] = useState(false);
-            
-            // パスポートの型を手動選択するためのステート (デフォルトはP型)
             const [passportType, setPassportType] = useState('P'); 
-
             const [masterOptions, setMasterOptions] = useState({ provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
 
             useEffect(() => { fetchData(); }, []);
@@ -90,66 +87,64 @@
                 setIsScanning(true);
                 try {
                     await window.loadTesseract();
-                    const workerOCR = await Tesseract.createWorker(['lao', 'eng']);
-                    const { data: { text, lines } } = await workerOCR.recognize(file);
+                    // MRZはアルファベット・数字・記号のみなので 'eng' のみで精度を高める
+                    const workerOCR = await Tesseract.createWorker(['eng']);
+                    const { data: { lines } } = await workerOCR.recognize(file);
                     await workerOCR.terminate();
                     
-                    const rawLines = lines.map(l => l.text.trim()).filter(t => t.length > 2);
-                    let extracted = { ...selectedWorker };
+                    const rawLines = lines.map(l => l.text.trim().replace(/\s/g, ''));
+                    // MRZらしい行（< を含み、長さが30文字以上の行）を抽出
+                    const mrzLines = rawLines.filter(l => l.includes('<') && l.length > 30);
 
-                    // 1. 下部MRZから番号を取得（共通）
-                    const mrzLines = rawLines.filter(l => l.includes('<<'));
                     if (mrzLines.length >= 2) {
-                        const l2 = mrzLines[mrzLines.length - 1].replace(/ /g, '');
-                        extracted['Passport No.'] = l2.substring(0, 9).replace(/</g, '');
-                    }
+                        const line1 = mrzLines[mrzLines.length - 2];
+                        const line2 = mrzLines[mrzLines.length - 1];
 
-                    // 2. 選択された型に基づいてロジックを切り替え
-                    if (passportType === 'P') {
-                        // --- 新様式 (P型) 専用ロジック ---
-                        extracted['ຊື່ ແລະ ນາມສະກຸນ'] = rawLines[0]; 
-                        rawLines.forEach((line, idx) => {
-                            if (line.toUpperCase().includes('PROVINCE')) {
-                                extracted['Province'] = line.replace(/PROVINCE/i, '').trim();
-                                const addressLine = rawLines[idx + 1] || "";
-                                if (addressLine.includes(',')) {
-                                    const parts = addressLine.split(',');
-                                    extracted['Village'] = parts[0].trim();
-                                    extracted['District'] = parts[1].trim();
-                                }
-                            }
-                        });
-                    } else {
-                        // --- 従来様式 (PA型) 専用ロジック ---
-                        const photoSideLines = rawLines.filter(l => !l.includes('<<') && l.length > 5);
-                        if (photoSideLines.length >= 7) {
-                            extracted['Full Name'] = `${photoSideLines[0]} ${photoSideLines[1]}`.trim();
-                            extracted['ຊື່ ແລະ ນາມສະກຸນ'] = photoSideLines[2];
-                        }
-                    }
+                        let extracted = { ...selectedWorker };
 
-                    // 共通：生年月日と有効期限の抽出
-                    rawLines.forEach(line => {
-                        const dateMatch = line.match(/\d{2}[/.-]\d{2}[/.-]\d{4}/);
-                        if (dateMatch) {
-                            if (!extracted['Date of birth']) extracted['Date of birth'] = dateMatch[0];
-                            else extracted['Date of Expiry'] = dateMatch[0];
-                        }
-                    });
+                        // 1. Full Name (MRZ 1行目から抽出)
+                        // P<LAO や POLAO の後から名前が始まる
+                        const nameStartIdx = passportType === 'P' ? 5 : 5; 
+                        const namePart = line1.substring(nameStartIdx);
+                        extracted['Full Name'] = namePart.replace(/<+/g, ' ').trim();
 
-                    // 3. 発行日の自動計算 (P型なら+1日)
-                    if (extracted['Date of Expiry']) {
-                        const expDate = new Date(extracted['Date of Expiry']);
-                        if (!isNaN(expDate)) {
-                            let issue = new Date(expDate.getFullYear() - 10, expDate.getMonth(), expDate.getDate());
+                        // 2. Passport Data (MRZ 2行目から抽出)
+                        // 形式: [番号9桁] [国3桁] [生年月日6桁] [性別] [有効期限6桁]
+                        extracted['Passport No.'] = line2.substring(0, 9).replace(/</g, '');
+                        
+                        const dobRaw = line2.substring(13, 19);
+                        const sexRaw = line2.substring(20, 21);
+                        const expRaw = line2.substring(21, 27);
+
+                        // 日付変換関数 (YYMMDD -> YYYY-MM-DD)
+                        const toISODate = (raw) => {
+                            if (!/^\d{6}$/.test(raw)) return "";
+                            const yr = parseInt(raw.substring(0, 2));
+                            const yearPrefix = yr < 50 ? "20" : "19";
+                            return `${yearPrefix}${raw.substring(0, 2)}-${raw.substring(2, 4)}-${raw.substring(4, 6)}`;
+                        };
+
+                        extracted['Date of birth'] = toISODate(dobRaw);
+                        extracted['Sex'] = sexRaw === 'M' ? 'M' : sexRaw === 'F' ? 'F' : '';
+                        
+                        const expiryDate = toISODate(expRaw);
+                        extracted['Date of Expiry'] = expiryDate;
+
+                        // 3. 発行日の自動計算
+                        if (expiryDate) {
+                            const exp = new Date(expiryDate);
+                            let issue = new Date(exp.getFullYear() - 10, exp.getMonth(), exp.getDate());
+                            // P型（新パスポート）なら+1日
                             if (passportType === 'P') {
                                 issue.setDate(issue.getDate() + 1);
                             }
                             extracted['Date of issue'] = issue.toISOString().split('T')[0];
                         }
-                    }
 
-                    setSelectedWorker(extracted);
+                        setSelectedWorker(extracted);
+                    } else {
+                        alert("Could not detect MRZ lines clearly. Please capture the bottom of the passport clearly.");
+                    }
                 } catch (err) { alert("Scan fail: " + err.message); } finally { setIsScanning(false); }
             };
 
@@ -243,7 +238,7 @@
                     <div className="flex-grow flex flex-col bg-slate-50 overflow-hidden relative">
                         {isScanning && <div className="absolute inset-0 bg-white/90 z-50 flex flex-col items-center justify-center font-bold text-emerald-600">
                             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mb-2"></div>
-                            SCANNING PASSPORT ({passportType} TYPE)...
+                            SCANNING MRZ ({passportType} TYPE)...
                         </div>}
                         
                         {selectedWorker ? (
@@ -256,14 +251,13 @@
                                     <div className="flex gap-2 items-center">
                                         {isEditing ? (
                                             <>
-                                                {/* 型選択スイッチ */}
                                                 <div className="flex bg-slate-200 p-0.5 rounded-lg mr-2">
                                                     <button onClick={() => setPassportType('P')} className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all ${passportType === 'P' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}>P型 (新)</button>
                                                     <button onClick={() => setPassportType('PA')} className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all ${passportType === 'PA' ? 'bg-white shadow text-slate-800' : 'text-slate-500'}`}>PA型 (旧)</button>
                                                 </div>
 
                                                 <label className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold text-[11px] cursor-pointer hover:bg-emerald-700 shadow-md">
-                                                    📷 SCAN {passportType}
+                                                    📷 SCAN MRZ
                                                     <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
                                                 </label>
                                                 <button onClick={() => setIsEditing(false)} className="px-3 py-1.5 text-[11px] font-bold text-slate-500">CANCEL</button>
@@ -281,7 +275,7 @@
                                         {FIELD_GROUPS.basic.map(f => renderField(f))}
                                     </div>
                                     <div className="bg-white p-3 rounded-xl border shadow-sm">
-                                        <h4 className="text-[10px] font-black text-emerald-500 uppercase mb-3 tracking-widest border-b pb-1">Passport</h4>
+                                        <h4 className="text-[10px] font-black text-emerald-500 uppercase mb-3 tracking-widest border-b pb-1">Passport (From MRZ)</h4>
                                         {FIELD_GROUPS.passport.map(f => renderField(f))}
                                     </div>
                                     <div className="bg-white p-3 rounded-xl border shadow-sm">
