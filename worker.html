@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC System - Precise OCR Engine</title>
+    <title>HSDEC System - Lao Passport Optimized</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -16,11 +16,10 @@
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; height: 100vh; overflow: hidden; font-size: 13px; }
         .lao-text { font-family: 'Phetsarath OT', 'Phetsarath', sans-serif; }
         .mrz-font { font-family: 'Courier New', Courier, monospace; letter-spacing: 0.05em; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         input, select { border: 1px solid #e2e8f0 !important; }
         .list-item-active { background-color: #f0fdf4; border-right: 3px solid #10b981; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -48,35 +47,20 @@
             address: ['Village', 'District', 'Province', 'Google drive']
         };
 
-        const FIELD_LABELS = { 'ລໍາດັບ': 'No.', 'ສະຖານະ': 'Status', 'ຊື່ ແລະ ນາມສະກຸນ': 'Lao Name', 'Full Name': 'English Name' };
-
-        // --- OCR Correction Logic ---
         const fixPassportNo = (raw) => {
             if (!raw) return "";
+            // スペースや記号を除去し大文字へ
             let clean = raw.toUpperCase().replace(/[\s<]/g, '');
-            let prefix = "";
-            let body = "";
-
-            if (clean.startsWith('PA')) {
-                prefix = "PA";
-                body = clean.substring(2, 9);
-            } else if (clean.startsWith('P')) {
-                prefix = "P";
-                body = clean.substring(1, 8);
-            } else {
-                prefix = clean.substring(0, 2);
-                body = clean.substring(2);
-            }
-            // 数字部分の読み取りミス補正 (G,Q,O,D -> 0, I -> 1, S -> 5)
-            body = body.replace(/[GQKOD]/g, '0').replace(/I/g, '1').replace(/S/g, '5').replace(/Z/g, '2');
-            return prefix + body;
+            // Pから始まる8〜9桁を想定。読み取りミス（PAO -> PA0など）を補正
+            let body = clean.startsWith('P') ? clean.substring(1) : clean;
+            body = body.replace(/[GQKOD]/g, '0').replace(/I/g, '1').replace(/S/g, '5');
+            return 'P' + body.substring(0, 7); // P + 数字7桁に強制
         };
 
-        const cleanNameArea = (text) => {
+        const cleanName = (text) => {
             if (!text) return "";
-            let name = text.split('<<<')[0];
-            name = name.split(/[CKLS]{3,}/)[0]; // 3文字以上連続するゴミをカット
-            return name.replace(/<+/g, ' ').trim();
+            let name = text.split('<<<')[0].replace(/<+/g, ' ').trim();
+            return name.split(/[CKLS]{3,}/)[0].trim(); // ノイズ除去
         };
 
         function App() {
@@ -86,7 +70,6 @@
             const [selectedWorker, setSelectedWorker] = useState(null);
             const [isEditing, setIsEditing] = useState(false);
             const [searchQuery, setSearchQuery] = useState('');
-            const [isSaving, setIsSaving] = useState(false);
             const [isScanning, setIsScanning] = useState(false);
             const [scanStatus, setScanStatus] = useState("");
             const [masterOptions, setMasterOptions] = useState({ provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
@@ -99,7 +82,7 @@
                     const res = await fetch(GAS_URL);
                     const json = await res.json();
                     setWorkers(json.workers || []);
-                    setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
+                    setMasterOptions(json.options || {});
                     const batches = [...new Set((json.workers || []).map(w => w.batch || w._sheetName?.replace("Batch","")))].sort((a,b)=>a-b);
                     if (batches.length > 0 && !selectedBatch) setSelectedBatch(batches[0]);
                 } catch (e) { console.error(e); }
@@ -107,28 +90,22 @@
             };
 
             const filteredWorkers = useMemo(() => {
-                return workers
-                    .filter(w => (w.batch || w._sheetName?.replace("Batch","")) == selectedBatch)
+                return workers.filter(w => (w.batch || w._sheetName?.replace("Batch","")) == selectedBatch)
                     .filter(w => {
-                        const searchStr = `${w['Full Name']} ${w['ຊື່ ແລະ ນາມສະກຸນ']} ${w['Passport No.']}`.toLowerCase();
-                        return searchStr.includes(searchQuery.toLowerCase());
-                    }).sort((a,b) => (a['ລໍาดັບ'] || 0) - (b['ລໍาดັບ'] || 0));
+                        const s = `${w['Full Name']} ${w['ຊື່ ແລະ ນາມສະກຸນ']} ${w['Passport No.']}`.toLowerCase();
+                        return s.includes(searchQuery.toLowerCase());
+                    }).sort((a,b) => (a['ລໍາດັບ'] || 0) - (b['ລໍາດັບ'] || 0));
             }, [workers, selectedBatch, searchQuery]);
 
             const handlePassportScan = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 setIsScanning(true);
-                setScanStatus("Initializing OCR...");
+                setScanStatus("OCR Processing...");
                 
                 try {
                     await window.loadTesseract();
                     const workerOCR = await Tesseract.createWorker(['eng']);
-                    await workerOCR.setParameters({
-                        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
-                        tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-                    });
-
                     const img = new Image();
                     img.src = URL.createObjectURL(file);
                     await new Promise(r => img.onload = r);
@@ -141,188 +118,125 @@
                     if (mrzLines.length >= 2) {
                         const line1 = mrzLines[mrzLines.length - 2];
                         const line2 = mrzLines[mrzLines.length - 1];
-                        let extracted = { ...selectedWorker };
+                        let ext = { ...selectedWorker };
 
-                        // 1. Passport No & Logic Selection
-                        const rawPassNo = line2.substring(0, 9);
-                        const passNo = fixPassportNo(rawPassNo);
-                        extracted['Passport No.'] = passNo;
+                        // 1. Passport No (Force P + 7 digits)
+                        ext['Passport No.'] = fixPassportNo(line2.substring(0, 9));
 
-                        // 2. Name Cleaning
-                        extracted['Full Name'] = cleanNameArea(line1.substring(5));
+                        // 2. Name
+                        ext['Full Name'] = cleanName(line1.substring(5));
 
-                        // 3. Birth Date & Sex
-                        const dobRaw = line2.substring(13, 19);
-                        const sex = line2.substring(20, 21);
-                        const formatYear = (yy) => (parseInt(yy) < 50 ? `20${yy}` : `19${yy}`);
-                        extracted['Date of birth'] = `${formatYear(dobRaw.substring(0,2))}-${dobRaw.substring(2,4)}-${dobRaw.substring(4,6)}`;
-                        extracted['Sex'] = sex === 'M' ? 'M' : (sex === 'F' ? 'F' : '');
+                        // 3. Birth & Sex
+                        const dob = line2.substring(13, 19);
+                        const yr = parseInt(dob.substring(0,2)) < 50 ? `20${dob.substring(0,2)}` : `19${dob.substring(0,2)}`;
+                        ext['Date of birth'] = `${yr}-${dob.substring(2,4)}-${dob.substring(4,6)}`;
+                        ext['Sex'] = line2[20] === 'M' ? 'M' : (line2[20] === 'F' ? 'F' : '');
 
-                        // 4. Expiry & Issue Date Logic (PRECISE CALCULATION)
+                        // 4. Expiry & Issue (10 Years + 1 Day Rule)
                         const expRaw = line2.substring(21, 27);
-                        const expiryDate = `20${expRaw.substring(0,2)}-${expRaw.substring(2,4)}-${expRaw.substring(4,6)}`;
-                        extracted['Date of Expiry'] = expiryDate;
+                        const expiry = `20${expRaw.substring(0,2)}-${expRaw.substring(2,4)}-${expRaw.substring(4,6)}`;
+                        ext['Date of Expiry'] = expiry;
 
-                        if (expiryDate) {
-                            const exp = new Date(expiryDate);
-                            // パスポート番号が Pから始まる8桁なら5年、PAから始まる9桁なら10年戻す
-                            const yearsBack = passNo.startsWith('PA') ? 10 : 5;
-                            let issue = new Date(exp.getFullYear() - yearsBack, exp.getMonth(), exp.getDate());
-                            
-                            // 有効期限の翌日が発行日になるルール (+1日)
+                        if (expiry) {
+                            const d = new Date(expiry);
+                            // 一律10年戻して1日足す
+                            let issue = new Date(d.getFullYear() - 10, d.getMonth(), d.getDate());
                             issue.setDate(issue.getDate() + 1);
-                            extracted['Date of issue'] = issue.toISOString().split('T')[0];
+                            ext['Date of issue'] = issue.toISOString().split('T')[0];
                         }
 
-                        setSelectedWorker(extracted);
-                        setScanStatus("Success!");
-                    } else { throw new Error("Could not detect MRZ area."); }
-                } catch (err) { alert(err.message); }
+                        setSelectedWorker(ext);
+                        setScanStatus("Done!");
+                    }
+                } catch (err) { alert("Scan Failed"); }
                 setIsScanning(false);
             };
 
             const handleSave = async () => {
-                setIsSaving(true);
+                setIsEditing(false); // UI先行反映
                 try {
                     const payload = { ...selectedWorker, action: selectedWorker._row ? "update" : "addNew", batch: selectedBatch };
                     await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-                    await fetchData();
-                    setIsEditing(false);
+                    fetchData();
                 } catch (e) { alert("Save Error"); }
-                setIsSaving(false);
             };
 
             const renderField = (field) => {
                 const isDate = field.includes('Date') || field.includes('Expiry');
-                const value = selectedWorker[field];
-                const label = FIELD_LABELS[field] || field;
-                const isLaoField = ['ຊື່ ແລະ ນາມສະກຸນ', 'Village', 'District', 'Province'].includes(field);
+                const val = selectedWorker[field];
+                const isLao = ['ຊື່ ແລະ ນາມສະກຸນ', 'Village', 'District', 'Province'].includes(field);
 
-                if (!isEditing) {
-                    return (
-                        <div key={field} className="border-b border-slate-100 py-1.5 flex justify-between items-center">
-                            <span className="text-[10px] text-slate-400 font-bold uppercase">{label}</span>
-                            <span className={`font-semibold text-slate-700 ${isLaoField ? 'lao-text text-sm' : ''} ${field.includes('Passport') ? 'mrz-font' : ''}`}>
-                                {field === 'Google drive' ? <a href={value} target="_blank" className="text-blue-500">View ↗</a> : 
-                                 isDate ? (value ? new Date(value).toLocaleDateString('en-GB') : '-') : String(value || '-')}
-                            </span>
-                        </div>
-                    );
-                }
+                if (!isEditing) return (
+                    <div key={field} className="border-b border-slate-100 py-1.5 flex justify-between">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">{field}</span>
+                        <span className={`font-semibold ${isLao ? 'lao-text text-sm' : ''}`}>
+                            {isDate ? (val ? new Date(val).toLocaleDateString('en-GB') : '-') : String(val || '-')}
+                        </span>
+                    </div>
+                );
 
                 return (
-                    <div key={field} className="flex flex-col mb-2">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">{label}</label>
-                        {['Sex', 'ສະຖານະ', 'Size', 'Province', 'District'].includes(field) ? (
-                            <select className="p-1 text-xs rounded bg-white w-full" value={value || ''}
-                                onChange={e => {
-                                    const v = e.target.value;
-                                    if(field === 'Province') {
-                                        const dists = masterOptions.provinceMap[v] || [];
-                                        setSelectedWorker({...selectedWorker, Province: v, District: dists.length === 1 ? dists[0] : ''});
-                                    } else { setSelectedWorker({...selectedWorker, [field]: v}); }
-                                }}>
-                                <option value="">- Select -</option>
-                                {(field === 'Province' ? masterOptions.provinces : field === 'District' ? masterOptions.provinceMap[selectedWorker['Province']] || [] : masterOptions[field === 'Sex' ? 'Sex' : field === 'ສະຖານະ' ? 'Status' : 'Size'] || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                            </select>
-                        ) : field === 'Re-entry' ? (
-                            <input type="checkbox" className="w-4 h-4" checked={value === true || value === 'TRUE'} onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.checked})} />
-                        ) : (
-                            <input className={`p-1 text-xs rounded w-full ${isLaoField ? 'lao-text' : ''}`} type={field === 'Age' || field === 'ລໍາດັບ' ? 'number' : isDate ? 'date' : 'text'}
-                                value={isDate ? (value ? String(value).split('T')[0] : '') : (value || '')}
-                                onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.value})} />
-                        )}
+                    <div key={field} className="mb-2">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">{field}</label>
+                        <input className={`w-full p-1 text-xs rounded border ${isLao ? 'lao-text' : ''}`} 
+                               type={isDate ? 'date' : 'text'} 
+                               value={isDate ? (val ? String(val).split('T')[0] : '') : (val || '')}
+                               onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.value})} />
                     </div>
                 );
             };
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-emerald-600 tracking-tighter italic">HSDEC SYSTEM LOADING...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-emerald-600">HSDEC SYSTEM LOADING...</div>;
 
             return (
                 <div className="flex h-screen w-screen overflow-hidden">
-                    <div className="w-72 bg-white border-r flex flex-col shadow-sm z-10">
+                    <div className="w-72 bg-white border-r flex flex-col shadow-sm">
                         <div className="p-3 border-b bg-slate-50 space-y-2">
-                            <div className="flex gap-2">
-                                <select className="flex-grow p-1.5 text-xs font-bold rounded border bg-white" value={selectedBatch || ''} onChange={e => {setSelectedBatch(e.target.value); setSelectedWorker(null);}}>
-                                    {[...new Set(workers.map(w => w.batch || w._sheetName?.replace("Batch","")))].sort((a,b)=>a-b).map(num => <option key={num} value={num}>BATCH {num}</option>)}
-                                </select>
-                                <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setIsEditing(true); }} className="bg-slate-800 text-white px-3 py-1 rounded text-[10px] font-bold">ADD NEW</button>
-                            </div>
+                            <select className="w-full p-1.5 text-xs font-bold rounded border" value={selectedBatch || ''} onChange={e => setSelectedBatch(e.target.value)}>
+                                {[...new Set(workers.map(w => w.batch || w._sheetName?.replace("Batch","")))].sort((a,b)=>a-b).map(n => <option key={n} value={n}>BATCH {n}</option>)}
+                            </select>
                             <input type="text" placeholder="Search..." className="w-full p-1.5 text-xs rounded border" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                         </div>
                         <div className="flex-grow overflow-y-auto custom-scrollbar">
                             {filteredWorkers.map((w, i) => (
-                                <div key={i} onClick={() => { setSelectedWorker(w); setIsEditing(false); }} className={`p-3 border-b cursor-pointer transition-all hover:bg-slate-50 ${selectedWorker?._row === w._row ? 'list-item-active' : ''}`}>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-[10px] text-slate-400 font-bold">#{w['ລໍາດັບ'] || '0'}</span>
-                                        <span className="text-emerald-600 font-bold text-xs">{w['Full Name']}</span>
-                                    </div>
+                                <div key={i} onClick={() => { setSelectedWorker(w); setIsEditing(false); }} className={`p-3 border-b cursor-pointer ${selectedWorker?._row === w._row ? 'list-item-active' : ''}`}>
+                                    <div className="text-emerald-600 font-bold text-xs">{w['Full Name']}</div>
                                     <div className="text-slate-500 lao-text text-sm truncate">{w['ຊື່ ແລະ ນາມສະກຸນ']}</div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    <div className="flex-grow flex flex-col bg-slate-50 overflow-hidden relative">
-                        {isScanning && <div className="absolute inset-0 bg-slate-900/80 z-[100] flex flex-col items-center justify-center text-white backdrop-blur-sm">
-                            <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent mb-4"></div>
-                            <div className="text-xl font-bold tracking-widest">{scanStatus}</div>
-                        </div>}
-                        
+                    <div className="flex-grow bg-slate-50 relative flex flex-col">
+                        {isScanning && <div className="absolute inset-0 bg-slate-900/60 z-50 flex items-center justify-center text-white font-bold">{scanStatus}</div>}
                         {selectedWorker ? (
                             <>
                                 <div className="bg-white border-b px-6 py-3 flex justify-between items-center shadow-sm">
-                                    <div className="flex flex-col">
-                                        <span className="text-xl font-black tracking-tight text-slate-800 uppercase">{selectedWorker['Full Name'] || 'New Entry'}</span>
-                                        <span className="text-emerald-600 lao-text text-lg leading-tight">{selectedWorker['ຊື່ ແລະ ນາມສະກຸນ']}</span>
+                                    <div>
+                                        <div className="text-xl font-black text-slate-800">{selectedWorker['Full Name']}</div>
+                                        <div className="text-emerald-600 lao-text text-lg">{selectedWorker['ຊື່ ແລະ ນາມສະກຸນ']}</div>
                                     </div>
                                     <div className="flex gap-2">
                                         {isEditing ? (
                                             <>
-                                                <label className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-[11px] shadow-md cursor-pointer hover:bg-emerald-700">
-                                                    📷 SCAN FILE
-                                                    <input type="file" accept="image/*" className="hidden" onChange={handlePassportScan} />
-                                                </label>
-                                                <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-[11px] font-bold text-slate-400">CANCEL</button>
-                                                <button onClick={handleSave} disabled={isSaving} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold text-[11px]">{isSaving ? 'SAVING...' : 'SAVE'}</button>
+                                                <label className="bg-emerald-600 text-white px-4 py-2 rounded font-bold text-[11px] cursor-pointer">📷 SCAN<input type="file" accept="image/*" className="hidden" onChange={handlePassportScan} /></label>
+                                                <button onClick={handleSave} className="bg-slate-900 text-white px-6 py-2 rounded font-bold text-[11px]">SAVE</button>
                                             </>
-                                        ) : (
-                                            <button onClick={() => setIsEditing(true)} className="bg-white border px-5 py-2 rounded-lg font-bold text-[11px] shadow-sm">EDIT</button>
-                                        )}
+                                        ) : <button onClick={() => setIsEditing(true)} className="bg-white border px-5 py-2 rounded font-bold text-[11px]">EDIT</button>}
                                     </div>
                                 </div>
-
-                                <div className="p-6 grid grid-cols-3 gap-6 h-full content-start overflow-y-auto custom-scrollbar">
-                                    <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                                        <h4 className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest border-b pb-2">Personal</h4>
-                                        {FIELD_GROUPS.basic.map(f => renderField(f))}
-                                    </div>
-                                    <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                                        <h4 className="text-[10px] font-black text-emerald-500 uppercase mb-4 tracking-widest border-b pb-2">Passport (Auto-Calc)</h4>
-                                        {FIELD_GROUPS.passport.map(f => renderField(f))}
-                                        <div className="mt-4 p-3 bg-blue-50 rounded-lg text-[10px] text-blue-700 leading-relaxed">
-                                            <b>Auto-Rule:</b><br/>
-                                            - PA (9 chars): 10 Years calculation.<br/>
-                                            - P (8 chars): 5 Years calculation.<br/>
-                                            - Issue Date: Expiry - Years + 1 Day.
-                                        </div>
-                                    </div>
-                                    <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                                        <h4 className="text-[10px] font-black text-blue-500 uppercase mb-4 tracking-widest border-b pb-2">Address</h4>
-                                        {FIELD_GROUPS.address.map(f => renderField(f))}
-                                    </div>
+                                <div className="p-6 grid grid-cols-2 gap-6 overflow-y-auto">
+                                    <div className="bg-white p-5 rounded-xl border shadow-sm">{FIELD_GROUPS.basic.map(f => renderField(f))}</div>
+                                    <div className="bg-white p-5 rounded-xl border shadow-sm">{FIELD_GROUPS.passport.map(f => renderField(f))}</div>
                                 </div>
                             </>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-slate-200 font-black uppercase tracking-[0.4em] text-2xl">Select a Profile</div>
-                        )}
+                        ) : <div className="m-auto text-slate-300 font-bold text-2xl">SELECT WORKER</div>}
                     </div>
                 </div>
             );
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
 </html>
