@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Management - MRZ Specialist</title>
+    <title>HSDEC Management - Auto-Type MRZ Scanner</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -55,9 +55,6 @@
             const [isSaving, setIsSaving] = useState(false);
             const [isScanning, setIsScanning] = useState(false);
             
-            const [showScanModal, setShowScanModal] = useState(false);
-            const [tempPassportType, setTempPassportType] = useState('P');
-
             const [masterOptions, setMasterOptions] = useState({ provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
 
             useEffect(() => { fetchData(); }, []);
@@ -88,7 +85,6 @@
                 const file = e.target.files[0];
                 if (!file) return;
                 
-                setShowScanModal(false);
                 setIsScanning(true);
                 
                 try {
@@ -106,14 +102,15 @@
 
                         let extracted = { ...selectedWorker };
 
-                        // 1. Full Name: Stop parsing if 3 or more '<' appear
+                        // 1. Full Name: Stops if 3+ '<' occur
                         const namePart = line1.substring(5); 
-                        const nameMatches = namePart.split('<<<');
-                        const cleanNamePart = nameMatches[0];
+                        const cleanNamePart = namePart.split('<<<')[0];
                         extracted['Full Name'] = cleanNamePart.replace(/<+/g, ' ').trim();
 
-                        // 2. Passport Details from Line 2
-                        extracted['Passport No.'] = line2.substring(0, 9).replace(/</g, '');
+                        // 2. Passport No & Dates
+                        const passportNo = line2.substring(0, 9).replace(/</g, '');
+                        extracted['Passport No.'] = passportNo;
+                        
                         const dobRaw = line2.substring(13, 19);
                         const sexRaw = line2.substring(20, 21);
                         const expRaw = line2.substring(21, 27);
@@ -130,24 +127,28 @@
                         const expiryDate = toISODate(expRaw);
                         extracted['Date of Expiry'] = expiryDate;
 
-                        // 3. Issue Date Calculation
+                        // 3. Auto-calculated Issue Date based on Passport Type
                         if (expiryDate) {
                             const exp = new Date(expiryDate);
                             let issue = new Date(exp.getFullYear() - 10, exp.getMonth(), exp.getDate());
                             
-                            // Specific Rule: P-Type gets +1 day to the calculated date. PA-Type remains same day.
-                            if (tempPassportType === 'P') {
+                            // Check if Passport starts with "P" but NOT "PA"
+                            const isPType = passportNo.startsWith('P') && !passportNo.startsWith('PA');
+                            
+                            if (isPType) {
+                                // P-Type: Date of Expiry + 1 day (10 years prior)
                                 issue.setDate(issue.getDate() + 1);
                             } 
+                            // PA-Type: Same day as Expiry (10 years prior)
                             
                             extracted['Date of issue'] = issue.toISOString().split('T')[0];
                         }
 
                         setSelectedWorker(extracted);
                     } else {
-                        alert("MRZ lines not found. Please try a clearer photo.");
+                        alert("Could not detect MRZ clearly. Please take a closer photo of the bottom of the passport.");
                     }
-                } catch (err) { alert("OCR Error: " + err.message); } finally { setIsScanning(false); }
+                } catch (err) { alert("OCR Scan Error: " + err.message); } finally { setIsScanning(false); }
             };
 
             const handleSave = async () => {
@@ -205,11 +206,11 @@
                 );
             };
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-emerald-600 tracking-widest">HSDEC LOADING...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-emerald-600 tracking-tighter">HSDEC LOADING...</div>;
 
             return (
                 <div className="flex h-screen w-screen overflow-hidden">
-                    {/* Left List */}
+                    {/* List Sidebar */}
                     <div className="w-64 bg-white border-r flex flex-col shadow-sm z-10">
                         <div className="p-2 border-b bg-slate-50 space-y-2">
                             <div className="flex gap-1">
@@ -220,7 +221,7 @@
                                 </select>
                                 <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setIsEditing(true); }} className="bg-slate-800 text-white px-2 py-1 rounded text-[10px] font-bold">+ NEW</button>
                             </div>
-                            <input type="text" placeholder="Search..." className="w-full p-1 text-xs rounded border" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                            <input type="text" placeholder="Search workers..." className="w-full p-1 text-xs rounded border" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                         </div>
                         <div className="flex-grow overflow-y-auto custom-scrollbar">
                             {filteredWorkers.map((w, i) => (
@@ -236,79 +237,53 @@
                         </div>
                     </div>
 
-                    {/* Main Area */}
+                    {/* Main Workspace */}
                     <div className="flex-grow flex flex-col bg-slate-50 overflow-hidden relative">
                         {isScanning && <div className="absolute inset-0 bg-white/90 z-50 flex flex-col items-center justify-center font-bold text-emerald-600">
                             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mb-2"></div>
-                            READING MRZ DATA...
+                            AUTO-DETECTING MRZ DATA...
                         </div>}
-
-                        {/* Scan Flow Modal */}
-                        {showScanModal && (
-                            <div className="absolute inset-0 bg-black/60 z-50 flex items-center justify-center backdrop-blur-sm">
-                                <div className="bg-white p-6 rounded-2xl shadow-2xl w-80 text-center">
-                                    <h3 className="font-black text-slate-800 text-lg mb-2">SCAN PASSPORT</h3>
-                                    <p className="text-slate-400 text-[11px] mb-6 font-bold uppercase tracking-wider">Select Passport Type</p>
-                                    
-                                    <div className="flex gap-2 mb-6">
-                                        <button onClick={() => setTempPassportType('P')} className={`flex-1 py-4 rounded-xl font-bold border-2 transition-all ${tempPassportType === 'P' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-100 text-slate-300 hover:border-slate-200'}`}>
-                                            P-TYPE<br/><span className="text-[9px] opacity-60">(New)</span>
-                                        </button>
-                                        <button onClick={() => setTempPassportType('PA')} className={`flex-1 py-4 rounded-xl font-bold border-2 transition-all ${tempPassportType === 'PA' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-100 text-slate-300 hover:border-slate-200'}`}>
-                                            PA-TYPE<br/><span className="text-[9px] opacity-60">(Old)</span>
-                                        </button>
-                                    </div>
-
-                                    <div className="flex flex-col gap-2">
-                                        <label className="bg-slate-900 text-white py-3.5 rounded-xl font-bold cursor-pointer hover:bg-black transition-all shadow-lg active:scale-95">
-                                            CHOOSE PHOTO & START
-                                            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
-                                        </label>
-                                        <button onClick={() => setShowScanModal(false)} className="text-slate-400 font-bold py-2 text-xs uppercase tracking-widest mt-2">Close</button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                         
                         {selectedWorker ? (
                             <>
                                 <div className="bg-white border-b px-4 py-2 flex justify-between items-center shadow-sm">
                                     <div className="flex items-center gap-4">
-                                        <span className="text-lg font-black tracking-tighter uppercase">{selectedWorker['Full Name'] || 'New Entry'}</span>
+                                        <span className="text-lg font-black tracking-tighter uppercase">{selectedWorker['Full Name'] || 'New Profile'}</span>
                                         <span className="text-emerald-600 font-bold">{selectedWorker['ຊື່ ແລະ ນາມສະກຸນ']}</span>
                                     </div>
                                     <div className="flex gap-2 items-center">
                                         {isEditing ? (
                                             <>
-                                                <button onClick={() => setShowScanModal(true)} className="bg-emerald-600 text-white px-4 py-1.5 rounded-lg font-bold text-[11px] shadow-md hover:bg-emerald-700 active:scale-95 transition-all">
-                                                    📷 SCAN MRZ
-                                                </button>
+                                                <label className="bg-emerald-600 text-white px-4 py-1.5 rounded-lg font-bold text-[11px] shadow-md hover:bg-emerald-700 active:scale-95 transition-all cursor-pointer">
+                                                    📷 SCAN PASSPORT
+                                                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
+                                                </label>
                                                 <button onClick={() => setIsEditing(false)} className="px-3 py-1.5 text-[11px] font-bold text-slate-400">CANCEL</button>
-                                                <button onClick={handleSave} disabled={isSaving} className="bg-slate-900 text-white px-5 py-1.5 rounded-lg font-bold text-[11px]">SAVE</button>
+                                                <button onClick={handleSave} disabled={isSaving} className="bg-slate-900 text-white px-5 py-1.5 rounded-lg font-bold text-[11px]">SAVE DATA</button>
                                             </>
                                         ) : (
-                                            <button onClick={() => setIsEditing(true)} className="bg-white border px-4 py-1.5 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50">EDIT</button>
+                                            <button onClick={() => setIsEditing(true)} className="bg-white border px-4 py-1.5 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50 transition-colors">EDIT</button>
                                         )}
                                     </div>
                                 </div>
 
                                 <div className="p-4 grid grid-cols-3 gap-4 h-full content-start overflow-y-auto custom-scrollbar">
                                     <div className="bg-white p-3 rounded-xl border shadow-sm">
-                                        <h4 className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest border-b pb-1">Worker Profile</h4>
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest border-b pb-1">General Info</h4>
                                         {FIELD_GROUPS.basic.map(f => renderField(f))}
                                     </div>
                                     <div className="bg-white p-3 rounded-xl border shadow-sm">
-                                        <h4 className="text-[10px] font-black text-emerald-500 uppercase mb-3 tracking-widest border-b pb-1">Passport (MRZ Data)</h4>
+                                        <h4 className="text-[10px] font-black text-emerald-500 uppercase mb-3 tracking-widest border-b pb-1">Passport (Auto-Parsed)</h4>
                                         {FIELD_GROUPS.passport.map(f => renderField(f))}
                                     </div>
                                     <div className="bg-white p-3 rounded-xl border shadow-sm">
-                                        <h4 className="text-[10px] font-black text-blue-500 uppercase mb-3 tracking-widest border-b pb-1">Address & Links</h4>
+                                        <h4 className="text-[10px] font-black text-blue-500 uppercase mb-3 tracking-widest border-b pb-1">Location & Drive</h4>
                                         {FIELD_GROUPS.address.map(f => renderField(f))}
                                     </div>
                                 </div>
                             </>
                         ) : (
-                            <div className="h-full flex items-center justify-center text-slate-200 font-black uppercase tracking-[0.2em] text-xl">Select a Worker</div>
+                            <div className="h-full flex items-center justify-center text-slate-200 font-black uppercase tracking-[0.3em] text-lg">Select Worker to Start</div>
                         )}
                     </div>
                 </div>
