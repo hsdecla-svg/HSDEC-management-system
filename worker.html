@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Management - MRZ Logic Specialist</title>
+    <title>HSDEC Management System</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -12,7 +12,19 @@
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f1f5f9; height: 100vh; overflow: hidden; font-size: 13px; }
+        /* Phetsarath OT constraint for Lao text */
+        @import url('https://fonts.googleapis.com/css2?family=Phetsarath:wght@400;700&display=swap');
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: #f1f5f9; 
+            height: 100vh; 
+            overflow: hidden; 
+            font-size: 13px; 
+        }
+        .lao-text { 
+            font-family: 'Phetsarath OT', 'Phetsarath', sans-serif; 
+        }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -43,6 +55,13 @@
             basic: ['ລໍາດັບ', 'ສະຖານະ', 'Re-entry', 'Full Name', 'ຊື່ ແລະ ນາມສະກຸນ', 'Sex', 'Date of birth', 'Age', 'Size'],
             passport: ['Passport No.', 'Date of issue', 'Date of Expiry'],
             address: ['Village', 'District', 'Province', 'Google drive']
+        };
+
+        const FIELD_LABELS = {
+            'ລໍາດັບ': 'No.',
+            'ສະຖານະ': 'Status',
+            'ຊື່ ແລະ ນາມສະກຸນ': 'Lao Name',
+            'Full Name': 'English Name'
         };
 
         function App() {
@@ -84,7 +103,6 @@
             const handlePassportScan = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                
                 setIsScanning(true);
                 
                 try {
@@ -99,17 +117,16 @@
                     if (mrzLines.length >= 2) {
                         const line1 = mrzLines[mrzLines.length - 2];
                         const line2 = mrzLines[mrzLines.length - 1];
-
                         let extracted = { ...selectedWorker };
 
-                        // 1. 名前解析: 3つ以上の連続する '<' で停止
+                        // 1. Name Parsing (Stops at <<<)
                         const namePart = line1.substring(5); 
                         const cleanNamePart = namePart.split('<<<')[0];
                         extracted['Full Name'] = cleanNamePart.replace(/<+/g, ' ').trim();
 
-                        // 2. パスポート番号と日付の抽出
-                        const passportNo = line2.substring(0, 9).replace(/</g, '');
-                        extracted['Passport No.'] = passportNo;
+                        // 2. Passport Logic
+                        const rawPassport = line2.substring(0, 9).replace(/</g, '');
+                        extracted['Passport No.'] = rawPassport;
                         
                         const dobRaw = line2.substring(13, 19);
                         const sexRaw = line2.substring(20, 21);
@@ -127,17 +144,18 @@
                         const expiryDate = toISODate(expRaw);
                         extracted['Date of Expiry'] = expiryDate;
 
-                        // 3. 発行日の自動計算ロジック
+                        // 3. Conditional Issue Date Logic by Type
                         if (expiryDate) {
                             const exp = new Date(expiryDate);
-                            // 基準として10年前を設定
                             let issue = new Date(exp.getFullYear() - 10, exp.getMonth(), exp.getDate());
                             
-                            // タイプ判定
-                            if (passportNo.startsWith('PA')) {
-                                // PA型: 日付・月は同じ、年だけ-10 (そのまま)
-                            } else if (passportNo.startsWith('P')) {
-                                // P型: 有効期限の10年前の日付に +1日
+                            // PA Type: starts with PA (2 letters + 7 digits)
+                            if (rawPassport.startsWith('PA')) {
+                                // issue date = expiry date - 10 years (already calculated)
+                            } 
+                            // P Type: starts with P and followed by numbers (1 letter + 7 digits)
+                            else if (rawPassport.startsWith('P')) {
+                                // issue date = (expiry date + 1 day) - 10 years
                                 issue.setDate(issue.getDate() + 1);
                             }
                             
@@ -146,9 +164,9 @@
 
                         setSelectedWorker(extracted);
                     } else {
-                        alert("MRZを検出できませんでした。パスポートの下部を明るい場所で撮影してください。");
+                        alert("MRZ not detected. Please capture the passport bottom clearly.");
                     }
-                } catch (err) { alert("OCRエラー: " + err.message); } finally { setIsScanning(false); }
+                } catch (err) { alert("Scan Error: " + err.message); } finally { setIsScanning(false); }
             };
 
             const handleSave = async () => {
@@ -158,21 +176,23 @@
                     await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
                     await fetchData();
                     setIsEditing(false);
-                } catch (e) { alert("保存エラー"); }
+                } catch (e) { alert("Save Error"); }
                 setIsSaving(false);
             };
 
             const renderField = (field) => {
                 const isDate = field.includes('Date') || field.includes('Expiry');
                 const value = selectedWorker[field];
-                
+                const label = FIELD_LABELS[field] || field;
+                const isLaoField = field === 'ຊື່ ແລະ ນາມສະກຸນ' || field === 'Village' || field === 'District' || field === 'Province';
+
                 if (!isEditing) {
                     return (
-                        <div key={field} className="border-b border-slate-100 py-1 flex justify-between items-center">
-                            <span className="text-[10px] text-slate-400 font-bold uppercase">{field}</span>
-                            <span className="font-semibold text-slate-700">
-                                {field === 'Google drive' ? <a href={value} target="_blank" className="text-blue-500">Open ↗</a> : 
-                                 isDate ? (value ? new Date(value).toLocaleDateString() : '-') : String(value || '-')}
+                        <div key={field} className="border-b border-slate-100 py-1.5 flex justify-between items-center">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase">{label}</span>
+                            <span className={`font-semibold text-slate-700 ${isLaoField ? 'lao-text text-sm' : ''}`}>
+                                {field === 'Google drive' ? <a href={value} target="_blank" className="text-blue-500">View ↗</a> : 
+                                 isDate ? (value ? new Date(value).toLocaleDateString('en-GB') : '-') : String(value || '-')}
                             </span>
                         </div>
                     );
@@ -180,9 +200,9 @@
 
                 return (
                     <div key={field} className="flex flex-col mb-2">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">{field}</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">{label}</label>
                         {field === 'Sex' || field === 'ສະຖານະ' || field === 'Size' || field === 'Province' || field === 'District' ? (
-                            <select className="p-1 text-xs rounded bg-white w-full" value={value || ''}
+                            <select className={`p-1 text-xs rounded bg-white w-full ${isLaoField ? 'lao-text' : ''}`} value={value || ''}
                                 onChange={e => {
                                     const v = e.target.value;
                                     if(field === 'Province') {
@@ -192,13 +212,13 @@
                                         setSelectedWorker({...selectedWorker, [field]: v});
                                     }
                                 }}>
-                                <option value="">-</option>
-                                {(field === 'Province' ? masterOptions.provinces : field === 'District' ? masterOptions.provinceMap[selectedWorker['Province']] || [] : masterOptions[field === 'Sex' ? 'Sex' : field === 'ສະຖານະ' ? 'Status' : 'Size'] || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                <option value="">- Select -</option>
+                                {(field === 'Province' ? masterOptions.provinces : field === 'District' ? masterOptions.provinceMap[selectedWorker['Province']] || [] : masterOptions[field === 'Sex' ? 'Sex' : field === 'ສະຖານະ' ? 'Status' : 'Size'] || []).map(opt => <option key={opt} value={opt} className="lao-text">{opt}</option>)}
                             </select>
                         ) : field === 'Re-entry' ? (
                             <input type="checkbox" className="w-4 h-4" checked={value === true || value === 'TRUE'} onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.checked})} />
                         ) : (
-                            <input className="p-1 text-xs rounded w-full" type={field === 'Age' || field === 'ລໍາດັບ' ? 'number' : isDate ? 'date' : 'text'}
+                            <input className={`p-1 text-xs rounded w-full ${isLaoField ? 'lao-text' : ''}`} type={field === 'Age' || field === 'ລໍາດັບ' ? 'number' : isDate ? 'date' : 'text'}
                                 value={isDate ? (value ? String(value).split('T')[0] : '') : (value || '')}
                                 onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.value})} />
                         )}
@@ -206,84 +226,84 @@
                 );
             };
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-emerald-600 tracking-wider">HSDEC システム起動中...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-emerald-600 tracking-tighter">LOADING HSDEC SYSTEM...</div>;
 
             return (
                 <div className="flex h-screen w-screen overflow-hidden">
-                    {/* サイドバー */}
-                    <div className="w-64 bg-white border-r flex flex-col shadow-sm z-10">
-                        <div className="p-2 border-b bg-slate-50 space-y-2">
-                            <div className="flex gap-1">
-                                <select className="flex-grow p-1 text-xs font-bold rounded border" value={selectedBatch || ''} onChange={e => {setSelectedBatch(e.target.value); setSelectedWorker(null);}}>
+                    {/* Sidebar */}
+                    <div className="w-72 bg-white border-r flex flex-col shadow-sm z-10">
+                        <div className="p-3 border-b bg-slate-50 space-y-2">
+                            <div className="flex gap-2">
+                                <select className="flex-grow p-1.5 text-xs font-bold rounded border bg-white" value={selectedBatch || ''} onChange={e => {setSelectedBatch(e.target.value); setSelectedWorker(null);}}>
                                     {[...new Set(workers.map(w => w.batch || w._sheetName?.replace("Batch","")))].sort((a,b)=>a-b).map(num => (
                                         <option key={num} value={num}>BATCH {num}</option>
                                     ))}
                                 </select>
-                                <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setIsEditing(true); }} className="bg-slate-800 text-white px-2 py-1 rounded text-[10px] font-bold">+ NEW</button>
+                                <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setIsEditing(true); }} className="bg-slate-800 text-white px-3 py-1 rounded text-[10px] font-bold">ADD NEW</button>
                             </div>
-                            <input type="text" placeholder="検索..." className="w-full p-1 text-xs rounded border" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                            <input type="text" placeholder="Search by name or ID..." className="w-full p-1.5 text-xs rounded border" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                         </div>
                         <div className="flex-grow overflow-y-auto custom-scrollbar">
                             {filteredWorkers.map((w, i) => (
                                 <div key={i} onClick={() => { setSelectedWorker(w); setIsEditing(false); }}
-                                    className={`p-2 border-b cursor-pointer text-[11px] transition-all hover:bg-slate-50 ${selectedWorker?._row === w._row ? 'list-item-active' : ''}`}>
-                                    <div className="flex justify-between font-bold">
-                                        <span className="text-slate-400">#{w['ລໍາດັບ']}</span>
-                                        <span className="text-emerald-600">{w['Full Name']}</span>
+                                    className={`p-3 border-b cursor-pointer transition-all hover:bg-slate-50 ${selectedWorker?._row === w._row ? 'list-item-active' : ''}`}>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-[10px] text-slate-400 font-bold">#{w['ລໍາດັບ'] || '0'}</span>
+                                        <span className="text-emerald-600 font-bold text-xs">{w['Full Name']}</span>
                                     </div>
-                                    <div className="text-slate-500 truncate">{w['ຊື່ ແລະ ນາມສະກຸນ']}</div>
+                                    <div className="text-slate-500 lao-text text-sm truncate">{w['ຊື່ ແລະ ນາມສະກຸນ']}</div>
                                 </div>
                             ))}
                         </div>
                     </div>
 
-                    {/* メイン画面 */}
+                    {/* Main Content */}
                     <div className="flex-grow flex flex-col bg-slate-50 overflow-hidden relative">
                         {isScanning && <div className="absolute inset-0 bg-white/90 z-50 flex flex-col items-center justify-center font-bold text-emerald-600">
                             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-600 mb-2"></div>
-                            MRZスキャン中...
+                            SCANNING PASSPORT DATA...
                         </div>}
                         
                         {selectedWorker ? (
                             <>
-                                <div className="bg-white border-b px-4 py-2 flex justify-between items-center shadow-sm">
-                                    <div className="flex items-center gap-4">
-                                        <span className="text-lg font-black tracking-tighter uppercase">{selectedWorker['Full Name'] || '新規登録'}</span>
-                                        <span className="text-emerald-600 font-bold">{selectedWorker['ຊື່ ແລະ ນາມສະກຸນ']}</span>
+                                <div className="bg-white border-b px-6 py-3 flex justify-between items-center shadow-sm">
+                                    <div className="flex flex-col">
+                                        <span className="text-xl font-black tracking-tight text-slate-800 uppercase">{selectedWorker['Full Name'] || 'New Entry'}</span>
+                                        <span className="text-emerald-600 lao-text text-lg leading-tight">{selectedWorker['ຊື່ ແລະ ນາມສະກຸນ']}</span>
                                     </div>
                                     <div className="flex gap-2 items-center">
                                         {isEditing ? (
                                             <>
-                                                <label className="bg-emerald-600 text-white px-4 py-1.5 rounded-lg font-bold text-[11px] shadow-md hover:bg-emerald-700 active:scale-95 transition-all cursor-pointer">
-                                                    📷 SCAN PASSPORT
+                                                <label className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-[11px] shadow-md hover:bg-emerald-700 cursor-pointer transition-transform active:scale-95">
+                                                    📷 SCAN MRZ
                                                     <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
                                                 </label>
-                                                <button onClick={() => setIsEditing(false)} className="px-3 py-1.5 text-[11px] font-bold text-slate-400">CANCEL</button>
-                                                <button onClick={handleSave} disabled={isSaving} className="bg-slate-900 text-white px-5 py-1.5 rounded-lg font-bold text-[11px]">SAVE</button>
+                                                <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-[11px] font-bold text-slate-400 hover:text-slate-600">CANCEL</button>
+                                                <button onClick={handleSave} disabled={isSaving} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold text-[11px] hover:bg-black">SAVE WORKER</button>
                                             </>
                                         ) : (
-                                            <button onClick={() => setIsEditing(true)} className="bg-white border px-4 py-1.5 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50">EDIT</button>
+                                            <button onClick={() => setIsEditing(true)} className="bg-white border px-5 py-2 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50">EDIT PROFILE</button>
                                         )}
                                     </div>
                                 </div>
 
-                                <div className="p-4 grid grid-cols-3 gap-4 h-full content-start overflow-y-auto custom-scrollbar">
-                                    <div className="bg-white p-3 rounded-xl border shadow-sm">
-                                        <h4 className="text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest border-b pb-1">Worker Profile</h4>
+                                <div className="p-6 grid grid-cols-3 gap-6 h-full content-start overflow-y-auto custom-scrollbar">
+                                    <div className="bg-white p-5 rounded-2xl border shadow-sm">
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest border-b pb-2">Personal Information</h4>
                                         {FIELD_GROUPS.basic.map(f => renderField(f))}
                                     </div>
-                                    <div className="bg-white p-3 rounded-xl border shadow-sm">
-                                        <h4 className="text-[10px] font-black text-emerald-500 uppercase mb-3 tracking-widest border-b pb-1">Passport Details</h4>
+                                    <div className="bg-white p-5 rounded-2xl border shadow-sm">
+                                        <h4 className="text-[10px] font-black text-emerald-500 uppercase mb-4 tracking-widest border-b pb-2">Passport (Auto-Calc)</h4>
                                         {FIELD_GROUPS.passport.map(f => renderField(f))}
                                     </div>
-                                    <div className="bg-white p-3 rounded-xl border shadow-sm">
-                                        <h4 className="text-[10px] font-black text-blue-500 uppercase mb-3 tracking-widest border-b pb-1">Address & Media</h4>
+                                    <div className="bg-white p-5 rounded-2xl border shadow-sm">
+                                        <h4 className="text-[10px] font-black text-blue-500 uppercase mb-4 tracking-widest border-b pb-2">Address & Documents</h4>
                                         {FIELD_GROUPS.address.map(f => renderField(f))}
                                     </div>
                                 </div>
                             </>
                         ) : (
-                            <div className="h-full flex items-center justify-center text-slate-200 font-black uppercase tracking-[0.3em] text-xl">ワーカーを選択してください</div>
+                            <div className="h-full flex items-center justify-center text-slate-200 font-black uppercase tracking-[0.4em] text-2xl">Select a Worker Profile</div>
                         )}
                     </div>
                 </div>
