@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Management - Dual Passport Logic</title>
+    <title>HSDEC Management - Drive Search Logic</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -86,7 +86,6 @@
                 setIsScanning(true);
                 try {
                     await window.loadTesseract();
-                    // ラオス語と英語の両方を認識
                     const workerOCR = await Tesseract.createWorker(['lao', 'eng']);
                     const { data: { text, lines } } = await workerOCR.recognize(file);
                     await workerOCR.terminate();
@@ -94,7 +93,6 @@
                     const rawLines = lines.map(l => l.text.trim()).filter(t => t.length > 2);
                     let extracted = { ...selectedWorker };
 
-                    // 下部のMRZ (共通) を探す
                     const mrzLines = rawLines.filter(l => l.includes('<<'));
                     let passportNo = "";
                     if (mrzLines.length >= 2) {
@@ -104,12 +102,7 @@
                     }
 
                     if (passportNo.startsWith('P') && !passportNo.startsWith('PA')) {
-                        // --- 新様式 (P番号) のロジック ---
-                        // 1. ラオス語名 (ページ上部)
                         extracted['ຊື່ ແລະ ນາມສະກຸນ'] = rawLines[0]; 
-                        
-                        // 2. 住所 (中央左 3行)
-                        // Province (2行目), Village, District (3行目)
                         rawLines.forEach((line, idx) => {
                             if (line.toUpperCase().includes('PROVINCE')) {
                                 extracted['Province'] = line.replace(/PROVINCE/i, '').trim();
@@ -122,9 +115,6 @@
                             }
                         });
                     } else if (passportNo.startsWith('PA')) {
-                        // --- 従来様式 (PA番号) のロジック ---
-                        // 顔写真横 7行を解析
-                        // [Surname, Given Name, Lao Name, LAO, Birth Place, Issue, Expiry]
                         const photoSideLines = rawLines.filter(l => !l.includes('<<') && l.length > 5);
                         if (photoSideLines.length >= 7) {
                             extracted['Full Name'] = `${photoSideLines[0]} ${photoSideLines[1]}`.trim();
@@ -132,7 +122,6 @@
                             extracted['Date of issue'] = photoSideLines[5].replace(/[^0-9/-]/g, '');
                             extracted['Date of Expiry'] = photoSideLines[6].replace(/[^0-9/-]/g, '');
                         }
-                        // 右側から生年月日(Date of Birth)を探す
                         rawLines.forEach(line => {
                             if (line.match(/\d{2}[/.-]\d{2}[/.-]\d{4}/)) {
                                 extracted['Date of birth'] = line.match(/\d{2}[/.-]\d{2}[/.-]\d{4}/)[0];
@@ -140,7 +129,6 @@
                         });
                     }
 
-                    // 発行日の計算ルールを適用 (Pなら+1日, PAならそのまま)
                     if (extracted['Date of Expiry']) {
                         const expDate = new Date(extracted['Date of Expiry']);
                         if (!isNaN(expDate)) {
@@ -176,8 +164,22 @@
                         <div key={field} className="border-b border-slate-100 py-1 flex justify-between items-center">
                             <span className="text-[10px] text-slate-400 font-bold uppercase">{field}</span>
                             <span className="font-semibold text-slate-700">
-                                {field === 'Google drive' ? <a href={value} target="_blank" className="text-blue-500">Open ↗</a> : 
-                                 isDate ? (value ? new Date(value).toLocaleDateString() : '-') : String(value || '-')}
+                                {field === 'Google drive' ? (
+                                    <div className="flex gap-2 items-center">
+                                        {/* 元々のURLがある場合はそれを表示 */}
+                                        {value && <a href={value} target="_blank" className="text-blue-500">Link ↗</a>}
+                                        {/* パスポート番号に基づいた検索用リンクを動的に生成 */}
+                                        {selectedWorker['Passport No.'] && (
+                                            <a 
+                                                href={`https://drive.google.com/drive/search?q=${selectedWorker['Passport No.']}`} 
+                                                target="_blank" 
+                                                className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[9px] hover:bg-blue-100 transition-colors"
+                                            >
+                                                🔍 FIND DOCS
+                                            </a>
+                                        )}
+                                    </div>
+                                ) : isDate ? (value ? new Date(value).toLocaleDateString() : '-') : String(value || '-')}
                             </span>
                         </div>
                     );
