@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Management System - Enhanced OCR</title>
+    <title>HSDEC System - Precise OCR Engine</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -13,17 +13,8 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         @import url('https://fonts.googleapis.com/css2?family=Phetsarath:wght@400;700&display=swap');
-
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background: #f1f5f9; 
-            height: 100vh; 
-            overflow: hidden; 
-            font-size: 13px; 
-        }
-        .lao-text { 
-            font-family: 'Phetsarath OT', 'Phetsarath', sans-serif; 
-        }
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; height: 100vh; overflow: hidden; font-size: 13px; }
+        .lao-text { font-family: 'Phetsarath OT', 'Phetsarath', sans-serif; }
         .mrz-font { font-family: 'Courier New', Courier, monospace; letter-spacing: 0.05em; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
@@ -57,45 +48,35 @@
             address: ['Village', 'District', 'Province', 'Google drive']
         };
 
-        const FIELD_LABELS = {
-            'ລໍາດັບ': 'No.',
-            'ສະຖານະ': 'Status',
-            'ຊື່ ແລະ ນາມສະກຸນ': 'Lao Name',
-            'Full Name': 'English Name'
-        };
+        const FIELD_LABELS = { 'ລໍາດັບ': 'No.', 'ສະຖານະ': 'Status', 'ຊື່ ແລະ ນາມສະກຸນ': 'Lao Name', 'Full Name': 'English Name' };
 
-        // --- NEW: Enhanced Correction Helpers ---
+        // --- OCR Correction Logic ---
         const fixPassportNo = (raw) => {
             if (!raw) return "";
-            let clean = raw.toUpperCase().replace(/\s/g, '');
-            let prefix = clean.substring(0, 2);
-            let body = clean.substring(2);
-            // 数字部分の読み取りミスを補正 (G, Q, O -> 0, I -> 1)
+            let clean = raw.toUpperCase().replace(/[\s<]/g, '');
+            let prefix = "";
+            let body = "";
+
+            if (clean.startsWith('PA')) {
+                prefix = "PA";
+                body = clean.substring(2, 9);
+            } else if (clean.startsWith('P')) {
+                prefix = "P";
+                body = clean.substring(1, 8);
+            } else {
+                prefix = clean.substring(0, 2);
+                body = clean.substring(2);
+            }
+            // 数字部分の読み取りミス補正 (G,Q,O,D -> 0, I -> 1, S -> 5)
             body = body.replace(/[GQKOD]/g, '0').replace(/I/g, '1').replace(/S/g, '5').replace(/Z/g, '2');
             return prefix + body;
         };
 
         const cleanNameArea = (text) => {
             if (!text) return "";
-            // MRZの区切り文字「<<<」以降や、読み取りノイズ（連続する特定文字）を除去
             let name = text.split('<<<')[0];
-            // 2文字以上連続する C, K, L, S などのゴミをカット
-            name = name.split(/[CKLS]{2,}/)[0];
+            name = name.split(/[CKLS]{3,}/)[0]; // 3文字以上連続するゴミをカット
             return name.replace(/<+/g, ' ').trim();
-        };
-
-        const getCheckDigit = (str) => {
-            const weights = [7, 3, 1];
-            let sum = 0;
-            for (let i = 0; i < str.length; i++) {
-                const char = str[i];
-                let val = 0;
-                if (char >= '0' && char <= '9') val = parseInt(char);
-                else if (char >= 'A' && char <= 'Z') val = char.charCodeAt(0) - 55;
-                else if (char === '<') val = 0;
-                sum += val * weights[i % 3];
-            }
-            return sum % 10;
         };
 
         function App() {
@@ -108,7 +89,6 @@
             const [isSaving, setIsSaving] = useState(false);
             const [isScanning, setIsScanning] = useState(false);
             const [scanStatus, setScanStatus] = useState("");
-            
             const [masterOptions, setMasterOptions] = useState({ provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
 
             useEffect(() => { fetchData(); }, []);
@@ -132,34 +112,14 @@
                     .filter(w => {
                         const searchStr = `${w['Full Name']} ${w['ຊື່ ແລະ ນາມສະກຸນ']} ${w['Passport No.']}`.toLowerCase();
                         return searchStr.includes(searchQuery.toLowerCase());
-                    }).sort((a,b) => (a['ລໍາດັບ'] || 0) - (b['ລໍາດັບ'] || 0));
+                    }).sort((a,b) => (a['ລໍาดັບ'] || 0) - (b['ລໍาดັບ'] || 0));
             }, [workers, selectedBatch, searchQuery]);
-
-            const preprocessImage = (img) => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                const cropY = img.height * 0.6;
-                const cropH = img.height * 0.4;
-                canvas.width = img.width;
-                canvas.height = cropH;
-                ctx.drawImage(img, 0, cropY, img.width, cropH, 0, 0, img.width, cropH);
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const data = imageData.data;
-                for (let i = 0; i < data.length; i += 4) {
-                    const avg = (data[i] + data[i+1] + data[i+2]) / 3;
-                    const threshold = 125; // Slightly adjusted
-                    const val = avg > threshold ? 255 : 0;
-                    data[i] = data[i+1] = data[i+2] = val;
-                }
-                ctx.putImageData(imageData, 0, 0);
-                return canvas.toDataURL('image/png');
-            };
 
             const handlePassportScan = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
                 setIsScanning(true);
-                setScanStatus("Engine Initializing...");
+                setScanStatus("Initializing OCR...");
                 
                 try {
                     await window.loadTesseract();
@@ -169,69 +129,58 @@
                         tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
                     });
 
-                    setScanStatus("Processing Image...");
                     const img = new Image();
                     img.src = URL.createObjectURL(file);
                     await new Promise(r => img.onload = r);
-                    const processedData = preprocessImage(img);
-
-                    setScanStatus("Reading MRZ...");
-                    const { data: { text } } = await workerOCR.recognize(processedData);
+                    
+                    const { data: { text } } = await workerOCR.recognize(img);
                     await workerOCR.terminate();
                     
-                    // Cleanup text and find MRZ lines
-                    const mrzLines = text.split('\n')
-                        .map(l => l.trim().replace(/\s/g, ''))
-                        .filter(l => l.length >= 30);
+                    const mrzLines = text.split('\n').map(l => l.trim().replace(/\s/g, '')).filter(l => l.length >= 30);
 
                     if (mrzLines.length >= 2) {
-                        setScanStatus("Applying Rules...");
                         const line1 = mrzLines[mrzLines.length - 2];
                         const line2 = mrzLines[mrzLines.length - 1];
                         let extracted = { ...selectedWorker };
 
-                        // 1. Name Parsing with Clean Rules
-                        extracted['Full Name'] = cleanNameArea(line1.substring(5));
-
-                        // 2. Passport No with Number Correction
+                        // 1. Passport No & Logic Selection
                         const rawPassNo = line2.substring(0, 9);
                         const passNo = fixPassportNo(rawPassNo);
                         extracted['Passport No.'] = passNo;
-                        
+
+                        // 2. Name Cleaning
+                        extracted['Full Name'] = cleanNameArea(line1.substring(5));
+
+                        // 3. Birth Date & Sex
                         const dobRaw = line2.substring(13, 19);
                         const sex = line2.substring(20, 21);
-                        const expRaw = line2.substring(21, 27);
-
                         const formatYear = (yy) => (parseInt(yy) < 50 ? `20${yy}` : `19${yy}`);
                         extracted['Date of birth'] = `${formatYear(dobRaw.substring(0,2))}-${dobRaw.substring(2,4)}-${dobRaw.substring(4,6)}`;
                         extracted['Sex'] = sex === 'M' ? 'M' : (sex === 'F' ? 'F' : '');
-                        
+
+                        // 4. Expiry & Issue Date Logic (PRECISE CALCULATION)
+                        const expRaw = line2.substring(21, 27);
                         const expiryDate = `20${expRaw.substring(0,2)}-${expRaw.substring(2,4)}-${expRaw.substring(4,6)}`;
                         extracted['Date of Expiry'] = expiryDate;
 
-                        // 3. Logic for Issue Date (NEW: Based on 10-trial results)
                         if (expiryDate) {
                             const exp = new Date(expiryDate);
-                            // 以前はそのまま10年前だったが、結果に基づき一律「+1日」して調整
-                            let issue = new Date(exp.getFullYear() - 10, exp.getMonth(), exp.getDate());
-                            issue.setDate(issue.getDate() + 1); 
+                            // パスポート番号が Pから始まる8桁なら5年、PAから始まる9桁なら10年戻す
+                            const yearsBack = passNo.startsWith('PA') ? 10 : 5;
+                            let issue = new Date(exp.getFullYear() - yearsBack, exp.getMonth(), exp.getDate());
                             
+                            // 有効期限の翌日が発行日になるルール (+1日)
+                            issue.setDate(issue.getDate() + 1);
                             extracted['Date of issue'] = issue.toISOString().split('T')[0];
                         }
 
                         setSelectedWorker(extracted);
-                        setScanStatus("Complete!");
-                        setTimeout(() => setIsScanning(false), 800);
-                    } else {
-                        throw new Error("MRZ detection failed. Please retry with a clearer photo.");
-                    }
-                } catch (err) { 
-                    alert("Scan Error: " + err.message); 
-                    setIsScanning(false);
-                }
+                        setScanStatus("Success!");
+                    } else { throw new Error("Could not detect MRZ area."); }
+                } catch (err) { alert(err.message); }
+                setIsScanning(false);
             };
 
-            // (以下、handleSave, renderField, UI部分は変更ありませんが、そのまま含めます)
             const handleSave = async () => {
                 setIsSaving(true);
                 try {
@@ -247,7 +196,7 @@
                 const isDate = field.includes('Date') || field.includes('Expiry');
                 const value = selectedWorker[field];
                 const label = FIELD_LABELS[field] || field;
-                const isLaoField = field === 'ຊື່ ແລະ ນາມສະກຸນ' || field === 'Village' || field === 'District' || field === 'Province';
+                const isLaoField = ['ຊື່ ແລະ ນາມສະກຸນ', 'Village', 'District', 'Province'].includes(field);
 
                 if (!isEditing) {
                     return (
@@ -264,19 +213,17 @@
                 return (
                     <div key={field} className="flex flex-col mb-2">
                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-0.5">{label}</label>
-                        {field === 'Sex' || field === 'ສະຖານະ' || field === 'Size' || field === 'Province' || field === 'District' ? (
-                            <select className={`p-1 text-xs rounded bg-white w-full ${isLaoField ? 'lao-text' : ''}`} value={value || ''}
+                        {['Sex', 'ສະຖານະ', 'Size', 'Province', 'District'].includes(field) ? (
+                            <select className="p-1 text-xs rounded bg-white w-full" value={value || ''}
                                 onChange={e => {
                                     const v = e.target.value;
                                     if(field === 'Province') {
                                         const dists = masterOptions.provinceMap[v] || [];
                                         setSelectedWorker({...selectedWorker, Province: v, District: dists.length === 1 ? dists[0] : ''});
-                                    } else {
-                                        setSelectedWorker({...selectedWorker, [field]: v});
-                                    }
+                                    } else { setSelectedWorker({...selectedWorker, [field]: v}); }
                                 }}>
                                 <option value="">- Select -</option>
-                                {(field === 'Province' ? masterOptions.provinces : field === 'District' ? masterOptions.provinceMap[selectedWorker['Province']] || [] : masterOptions[field === 'Sex' ? 'Sex' : field === 'ສະຖານະ' ? 'Status' : 'Size'] || []).map(opt => <option key={opt} value={opt} className="lao-text">{opt}</option>)}
+                                {(field === 'Province' ? masterOptions.provinces : field === 'District' ? masterOptions.provinceMap[selectedWorker['Province']] || [] : masterOptions[field === 'Sex' ? 'Sex' : field === 'ສະຖານະ' ? 'Status' : 'Size'] || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
                             </select>
                         ) : field === 'Re-entry' ? (
                             <input type="checkbox" className="w-4 h-4" checked={value === true || value === 'TRUE'} onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.checked})} />
@@ -289,27 +236,23 @@
                 );
             };
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-emerald-600 tracking-tighter">LOADING HSDEC SYSTEM...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-bold text-emerald-600 tracking-tighter italic">HSDEC SYSTEM LOADING...</div>;
 
             return (
                 <div className="flex h-screen w-screen overflow-hidden">
-                    {/* Sidebar */}
                     <div className="w-72 bg-white border-r flex flex-col shadow-sm z-10">
                         <div className="p-3 border-b bg-slate-50 space-y-2">
                             <div className="flex gap-2">
                                 <select className="flex-grow p-1.5 text-xs font-bold rounded border bg-white" value={selectedBatch || ''} onChange={e => {setSelectedBatch(e.target.value); setSelectedWorker(null);}}>
-                                    {[...new Set(workers.map(w => w.batch || w._sheetName?.replace("Batch","")))].sort((a,b)=>a-b).map(num => (
-                                        <option key={num} value={num}>BATCH {num}</option>
-                                    ))}
+                                    {[...new Set(workers.map(w => w.batch || w._sheetName?.replace("Batch","")))].sort((a,b)=>a-b).map(num => <option key={num} value={num}>BATCH {num}</option>)}
                                 </select>
                                 <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setIsEditing(true); }} className="bg-slate-800 text-white px-3 py-1 rounded text-[10px] font-bold">ADD NEW</button>
                             </div>
-                            <input type="text" placeholder="Search by name or ID..." className="w-full p-1.5 text-xs rounded border" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                            <input type="text" placeholder="Search..." className="w-full p-1.5 text-xs rounded border" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                         </div>
                         <div className="flex-grow overflow-y-auto custom-scrollbar">
                             {filteredWorkers.map((w, i) => (
-                                <div key={i} onClick={() => { setSelectedWorker(w); setIsEditing(false); }}
-                                    className={`p-3 border-b cursor-pointer transition-all hover:bg-slate-50 ${selectedWorker?._row === w._row ? 'list-item-active' : ''}`}>
+                                <div key={i} onClick={() => { setSelectedWorker(w); setIsEditing(false); }} className={`p-3 border-b cursor-pointer transition-all hover:bg-slate-50 ${selectedWorker?._row === w._row ? 'list-item-active' : ''}`}>
                                     <div className="flex justify-between items-center mb-1">
                                         <span className="text-[10px] text-slate-400 font-bold">#{w['ລໍາດັບ'] || '0'}</span>
                                         <span className="text-emerald-600 font-bold text-xs">{w['Full Name']}</span>
@@ -320,7 +263,6 @@
                         </div>
                     </div>
 
-                    {/* Main Content */}
                     <div className="flex-grow flex flex-col bg-slate-50 overflow-hidden relative">
                         {isScanning && <div className="absolute inset-0 bg-slate-900/80 z-[100] flex flex-col items-center justify-center text-white backdrop-blur-sm">
                             <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent mb-4"></div>
@@ -334,42 +276,45 @@
                                         <span className="text-xl font-black tracking-tight text-slate-800 uppercase">{selectedWorker['Full Name'] || 'New Entry'}</span>
                                         <span className="text-emerald-600 lao-text text-lg leading-tight">{selectedWorker['ຊື່ ແລະ ນາມສະກຸນ']}</span>
                                     </div>
-                                    <div className="flex gap-2 items-center">
+                                    <div className="flex gap-2">
                                         {isEditing ? (
                                             <>
-                                                <label className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-[11px] shadow-md hover:bg-emerald-700 cursor-pointer transition-transform active:scale-95">
-                                                    📷 SCAN PASSPORT
-                                                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePassportScan} />
+                                                <label className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-[11px] shadow-md cursor-pointer hover:bg-emerald-700">
+                                                    📷 SCAN FILE
+                                                    <input type="file" accept="image/*" className="hidden" onChange={handlePassportScan} />
                                                 </label>
-                                                <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-[11px] font-bold text-slate-400 hover:text-slate-600">CANCEL</button>
-                                                <button onClick={handleSave} disabled={isSaving} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold text-[11px] hover:bg-black">SAVE WORKER</button>
+                                                <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-[11px] font-bold text-slate-400">CANCEL</button>
+                                                <button onClick={handleSave} disabled={isSaving} className="bg-slate-900 text-white px-6 py-2 rounded-lg font-bold text-[11px]">{isSaving ? 'SAVING...' : 'SAVE'}</button>
                                             </>
                                         ) : (
-                                            <button onClick={() => setIsEditing(true)} className="bg-white border px-5 py-2 rounded-lg font-bold text-[11px] shadow-sm hover:bg-slate-50">EDIT PROFILE</button>
+                                            <button onClick={() => setIsEditing(true)} className="bg-white border px-5 py-2 rounded-lg font-bold text-[11px] shadow-sm">EDIT</button>
                                         )}
                                     </div>
                                 </div>
 
                                 <div className="p-6 grid grid-cols-3 gap-6 h-full content-start overflow-y-auto custom-scrollbar">
                                     <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                                        <h4 className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest border-b pb-2">Personal Information</h4>
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest border-b pb-2">Personal</h4>
                                         {FIELD_GROUPS.basic.map(f => renderField(f))}
                                     </div>
                                     <div className="bg-white p-5 rounded-2xl border shadow-sm">
                                         <h4 className="text-[10px] font-black text-emerald-500 uppercase mb-4 tracking-widest border-b pb-2">Passport (Auto-Calc)</h4>
                                         {FIELD_GROUPS.passport.map(f => renderField(f))}
-                                        <div className="mt-4 p-3 bg-emerald-50 rounded-lg text-[10px] text-emerald-700 font-medium">
-                                            Enhanced Engine: Rule-based correction for Name and Passport IDs enabled.
+                                        <div className="mt-4 p-3 bg-blue-50 rounded-lg text-[10px] text-blue-700 leading-relaxed">
+                                            <b>Auto-Rule:</b><br/>
+                                            - PA (9 chars): 10 Years calculation.<br/>
+                                            - P (8 chars): 5 Years calculation.<br/>
+                                            - Issue Date: Expiry - Years + 1 Day.
                                         </div>
                                     </div>
                                     <div className="bg-white p-5 rounded-2xl border shadow-sm">
-                                        <h4 className="text-[10px] font-black text-blue-500 uppercase mb-4 tracking-widest border-b pb-2">Address & Documents</h4>
+                                        <h4 className="text-[10px] font-black text-blue-500 uppercase mb-4 tracking-widest border-b pb-2">Address</h4>
                                         {FIELD_GROUPS.address.map(f => renderField(f))}
                                     </div>
                                 </div>
                             </>
                         ) : (
-                            <div className="h-full flex items-center justify-center text-slate-200 font-black uppercase tracking-[0.4em] text-2xl">Select a Worker Profile</div>
+                            <div className="h-full flex items-center justify-center text-slate-200 font-black uppercase tracking-[0.4em] text-2xl">Select a Profile</div>
                         )}
                     </div>
                 </div>
