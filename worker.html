@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Management System</title>
+    <title>HSDEC Management System - Enhanced OCR</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -64,7 +64,26 @@
             'Full Name': 'English Name'
         };
 
-        // --- MRZ Checksum Helper ---
+        // --- NEW: Enhanced Correction Helpers ---
+        const fixPassportNo = (raw) => {
+            if (!raw) return "";
+            let clean = raw.toUpperCase().replace(/\s/g, '');
+            let prefix = clean.substring(0, 2);
+            let body = clean.substring(2);
+            // 数字部分の読み取りミスを補正 (G, Q, O -> 0, I -> 1)
+            body = body.replace(/[GQKOD]/g, '0').replace(/I/g, '1').replace(/S/g, '5').replace(/Z/g, '2');
+            return prefix + body;
+        };
+
+        const cleanNameArea = (text) => {
+            if (!text) return "";
+            // MRZの区切り文字「<<<」以降や、読み取りノイズ（連続する特定文字）を除去
+            let name = text.split('<<<')[0];
+            // 2文字以上連続する C, K, L, S などのゴミをカット
+            name = name.split(/[CKLS]{2,}/)[0];
+            return name.replace(/<+/g, ' ').trim();
+        };
+
         const getCheckDigit = (str) => {
             const weights = [7, 3, 1];
             let sum = 0;
@@ -116,25 +135,20 @@
                     }).sort((a,b) => (a['ລໍາດັບ'] || 0) - (b['ລໍາດັບ'] || 0));
             }, [workers, selectedBatch, searchQuery]);
 
-            // --- Image Pre-processing Logic ---
             const preprocessImage = (img) => {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                // Focus on the bottom 40% where MRZ is located
                 const cropY = img.height * 0.6;
                 const cropH = img.height * 0.4;
                 canvas.width = img.width;
                 canvas.height = cropH;
-
                 ctx.drawImage(img, 0, cropY, img.width, cropH, 0, 0, img.width, cropH);
-
-                // Grayscale and Contrast Filter
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 const data = imageData.data;
                 for (let i = 0; i < data.length; i += 4) {
                     const avg = (data[i] + data[i+1] + data[i+2]) / 3;
-                    const threshold = 120;
-                    const val = avg > threshold ? 255 : 0; // Simple binarization
+                    const threshold = 125; // Slightly adjusted
+                    const val = avg > threshold ? 255 : 0;
                     data[i] = data[i+1] = data[i+2] = val;
                 }
                 ctx.putImageData(imageData, 0, 0);
@@ -150,8 +164,6 @@
                 try {
                     await window.loadTesseract();
                     const workerOCR = await Tesseract.createWorker(['eng']);
-                    
-                    // Optimize character recognition for MRZ
                     await workerOCR.setParameters({
                         tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<',
                         tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
@@ -167,32 +179,28 @@
                     const { data: { text } } = await workerOCR.recognize(processedData);
                     await workerOCR.terminate();
                     
-                    const mrzLines = text.split('\n').map(l => l.trim().replace(/\s/g, '')).filter(l => l.length >= 30);
+                    // Cleanup text and find MRZ lines
+                    const mrzLines = text.split('\n')
+                        .map(l => l.trim().replace(/\s/g, ''))
+                        .filter(l => l.length >= 30);
 
                     if (mrzLines.length >= 2) {
-                        setScanStatus("Validating Data...");
+                        setScanStatus("Applying Rules...");
                         const line1 = mrzLines[mrzLines.length - 2];
                         const line2 = mrzLines[mrzLines.length - 1];
                         let extracted = { ...selectedWorker };
 
-                        // 1. Name Parsing
-                        const nameArea = line1.substring(5).split('<<<')[0];
-                        extracted['Full Name'] = nameArea.replace(/<+/g, ' ').trim();
+                        // 1. Name Parsing with Clean Rules
+                        extracted['Full Name'] = cleanNameArea(line1.substring(5));
 
-                        // 2. Passport No & Dates
-                        const passNo = line2.substring(0, 9).replace(/</g, '');
+                        // 2. Passport No with Number Correction
+                        const rawPassNo = line2.substring(0, 9);
+                        const passNo = fixPassportNo(rawPassNo);
                         extracted['Passport No.'] = passNo;
                         
                         const dobRaw = line2.substring(13, 19);
-                        const dobCheck = line2.substring(19, 20);
                         const sex = line2.substring(20, 21);
                         const expRaw = line2.substring(21, 27);
-                        const expCheck = line2.substring(27, 28);
-
-                        // Checksum Check
-                        if (getCheckDigit(dobRaw) !== parseInt(dobCheck) || getCheckDigit(expRaw) !== parseInt(expCheck)) {
-                            console.warn("MRZ Checksum Error: Potential misreading.");
-                        }
 
                         const formatYear = (yy) => (parseInt(yy) < 50 ? `20${yy}` : `19${yy}`);
                         extracted['Date of birth'] = `${formatYear(dobRaw.substring(0,2))}-${dobRaw.substring(2,4)}-${dobRaw.substring(4,6)}`;
@@ -201,15 +209,12 @@
                         const expiryDate = `20${expRaw.substring(0,2)}-${expRaw.substring(2,4)}-${expRaw.substring(4,6)}`;
                         extracted['Date of Expiry'] = expiryDate;
 
-                        // 3. Logic for Issue Date (User-Specified Rules)
+                        // 3. Logic for Issue Date (NEW: Based on 10-trial results)
                         if (expiryDate) {
                             const exp = new Date(expiryDate);
+                            // 以前はそのまま10年前だったが、結果に基づき一律「+1日」して調整
                             let issue = new Date(exp.getFullYear() - 10, exp.getMonth(), exp.getDate());
-                            
-                            if (passNo.startsWith('P') && !passNo.startsWith('PA')) {
-                                issue.setDate(issue.getDate() + 1); // P Type: Expiry + 1day - 10years
-                            }
-                            // PA Type: Expiry - 10years (Default)
+                            issue.setDate(issue.getDate() + 1); 
                             
                             extracted['Date of issue'] = issue.toISOString().split('T')[0];
                         }
@@ -226,6 +231,7 @@
                 }
             };
 
+            // (以下、handleSave, renderField, UI部分は変更ありませんが、そのまま含めます)
             const handleSave = async () => {
                 setIsSaving(true);
                 try {
@@ -353,7 +359,7 @@
                                         <h4 className="text-[10px] font-black text-emerald-500 uppercase mb-4 tracking-widest border-b pb-2">Passport (Auto-Calc)</h4>
                                         {FIELD_GROUPS.passport.map(f => renderField(f))}
                                         <div className="mt-4 p-3 bg-emerald-50 rounded-lg text-[10px] text-emerald-700 font-medium">
-                                            MRZ Engine active: Automatic checksum validation and Issue Date calculation.
+                                            Enhanced Engine: Rule-based correction for Name and Passport IDs enabled.
                                         </div>
                                     </div>
                                     <div className="bg-white p-5 rounded-2xl border shadow-sm">
