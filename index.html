@@ -41,6 +41,9 @@
         .fc-button { background: transparent !important; border: none !important; color: #64748b !important; font-weight: 900 !important; }
 
         #eventModal { display: none; position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); align-items: center; justify-content: center; }
+        
+        /* 画面モードタブのカスタムスタイル */
+        .tab-active { background: #10b981; color: white; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3); }
     </style>
 </head>
 <body class="min-h-screen flex flex-col items-center p-6 text-white">
@@ -55,17 +58,32 @@
             <div id="calendar"></div>
         </div>
 
-        <div class="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
-            <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Select User</label>
-            <select id="user-select" class="w-full bg-slate-800 border-none p-4 rounded-xl mb-4 text-white font-bold outline-none">
-                <option value="Takashi">Takashi (Admin)</option>
-                <option value="Chansouk">Chansouk (Staff)</option>
-                <option value="Mim">Mim (Staff)</option>
-                <option value="Chanthaviphone">Chanthaviphone (VV)</option>
-                <option value="Sengmala">Sengmala (SV)</option>
-                <option value="Guest">Guest</option>
-            </select>
-            <input type="password" id="pass" placeholder="••••••••" class="w-full bg-slate-800 border-none p-5 rounded-2xl mb-6 text-white text-center text-2xl focus:ring-2 focus:ring-emerald-500 outline-none">
+        <div class="bg-white/5 p-8 rounded-[2.5rem] border border-white/10 shadow-2xl space-y-4">
+            
+            <div>
+                <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Select Layout Mode</label>
+                <div class="grid grid-cols-2 bg-slate-800 p-1 rounded-2xl border border-white/5">
+                    <button id="mode-pc" onclick="setScreenMode('pc')" class="py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all tab-active">💻 PC Mode</button>
+                    <button id="mode-mobile" onclick="setScreenMode('mobile')" class="py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all text-slate-400">📱 Mobile Mode</button>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Select User</label>
+                <select id="user-select" class="w-full bg-slate-800 border-none p-4 rounded-xl text-white font-bold outline-none">
+                    <option value="Takashi">Takashi (Admin)</option>
+                    <option value="Chansouk">Chansouk (Staff)</option>
+                    <option value="Mim">Mim (Staff)</option>
+                    <option value="Chanthaviphone">Chanthaviphone (VV)</option>
+                    <option value="Sengmala">Sengmala (SV)</option>
+                    <option value="Guest">Guest</option>
+                </select>
+            </div>
+
+            <div>
+                <input type="password" id="pass" placeholder="••••••••" class="w-full bg-slate-800 border-none p-5 rounded-2xl text-white text-center text-2xl focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+
             <button onclick="login()" class="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-emerald-500/20 active:scale-95 transition-all uppercase tracking-widest">Enter System</button>
             <p id="error" class="text-rose-500 text-xs mt-6 text-center hidden font-black uppercase tracking-widest italic">Access Denied.</p>
         </div>
@@ -75,7 +93,10 @@
         <div class="flex justify-between items-end px-4">
             <div>
                 <h2 class="text-5xl font-black italic tracking-tighter text-white uppercase">Control Hub</h2>
-                <p id="welcome-msg" class="text-emerald-500 font-black uppercase text-[10px] tracking-widest mt-2">Logged in</p>
+                <div class="flex gap-4 mt-2">
+                    <p id="welcome-msg" class="text-emerald-500 font-black uppercase text-[10px] tracking-widest">Logged in</p>
+                    <p id="current-mode-msg" class="text-blue-400 font-black uppercase text-[10px] tracking-widest">MODE: PC</p>
+                </div>
             </div>
             <button onclick="location.reload()" class="text-[10px] font-black text-slate-500 hover:text-white uppercase border border-slate-700 px-6 py-3 rounded-full transition">Logout</button>
         </div>
@@ -106,8 +127,24 @@
         };
 
         let mainCalendar;
+        let selectedScreenMode = 'pc'; // デフォルトはPCモード
 
         window.onload = function() { initCalendar(); };
+
+        // モード切替の関数
+        function setScreenMode(mode) {
+            selectedScreenMode = mode;
+            const pcBtn = document.getElementById('mode-pc');
+            const mobileBtn = document.getElementById('mode-mobile');
+            
+            if (mode === 'pc') {
+                pcBtn.className = "py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all tab-active";
+                mobileBtn.className = "py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all text-slate-400";
+            } else {
+                pcBtn.className = "py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all text-slate-400";
+                mobileBtn.className = "py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all tab-active";
+            }
+        }
 
         function initCalendar() {
             mainCalendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
@@ -149,12 +186,12 @@
             document.getElementById('auth-section').classList.add('hidden');
             document.getElementById('menu-section').classList.remove('hidden');
             document.getElementById('welcome-msg').innerText = `IDENTIFIED AS: ${name} / ROLE: ${role.toUpperCase()}`;
+            document.getElementById('current-mode-msg').innerText = `MODE: ${selectedScreenMode.toUpperCase()}`;
             
             const grid = document.getElementById('menu-grid');
             grid.innerHTML = ''; 
             
             const allMenus = [
-                // action ではなく url を指定して別ファイルへ飛ばすように設定
                 { title: 'Timeline', desc: 'HISTORY & SCHEDULE', icon: '⏳', url: 'timeline.html', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
                 { title: 'Workers', desc: 'DATABASE MANAGEMENT', icon: '👤', url: 'worker.html', roles: ['admin', 'staff', 'sv', 'vv', 'guest'] },
                 { title: 'Calendar Edit', desc: 'SCHEDULE OVERRIDE', icon: '📅', url: 'calendar_edit.html', roles: ['admin', 'staff'] },
@@ -168,7 +205,14 @@
                 if (m.roles.includes(role)) {
                     const card = document.createElement('div');
                     card.className = "menu-card p-10 rounded-[2.5rem] cursor-pointer group";
-                    card.onclick = () => location.href = m.url; // リンク移動に統一
+                    
+                    // 外部サイト（Googleドライブ等）以外は、末尾に「?mode=pc」または「?mode=mobile」をつけて遷移させる
+                    if (m.url.startsWith('http')) {
+                        card.onclick = () => window.open(m.url, '_blank');
+                    } else {
+                        card.onclick = () => location.href = `${m.url}?mode=${selectedScreenMode}`;
+                    }
+                    
                     card.innerHTML = `<div class="text-4xl mb-4 group-hover:scale-110 transition-transform">${m.icon}</div><h3 class="text-2xl font-black tracking-tight uppercase italic">${m.title}</h3><p class="text-slate-500 text-[10px] mt-3 font-bold uppercase tracking-widest">${m.desc}</p>`;
                     grid.appendChild(card);
                 }
