@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Management System - Full Dual Version</title>
+    <title>HSDEC Management System - Fixed Version</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -43,14 +43,14 @@
         const { useState, useEffect, useMemo } = React;
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbytKqKDwwARk9D2h1Ggw_iS41b7bDJVB6B-DUyMwFfzkfUK4G-V-wsDF27vaXSI_zoygw/exec';
         
-        // A〜R列の項目グループ定義
+        // A〜R列のグループ
         const FIELD_GROUPS = {
             basic: ['no', 'status', 'reEntry', 'laoName', 'engName', 'sex', 'dob', 'age', 'size'],
             passport: ['passport', 'dateOfIssue', 'dateOfExpiry'],
             address: ['village', 'district', 'province', 'driveUrl', 'acName', 'acNo']
         };
 
-        // 画面表示用のカスタムラベル（各列のアルファベット付き）
+        // アルファベット付き表示名
         const FIELD_LABELS = {
             'no': 'A: No.',
             'status': 'B: ສະຖານະ (Status)',
@@ -72,10 +72,10 @@
             'driveUrl': 'R: Google drive'
         };
 
-        // 生年月日から今日時点の年齢を自動計算する関数
-        const calculateAge = (dobString) => {
-            if (!dobString) return "";
-            const birthDate = new Date(dobString);
+        // 生年月日から本日の年齢を自動計算
+        const calculateAge = (dobInput) => {
+            if (!dobInput) return "";
+            const birthDate = new Date(dobInput);
             if (isNaN(birthDate.getTime())) return "";
             const today = new Date();
             let age = today.getFullYear() - birthDate.getFullYear();
@@ -86,7 +86,18 @@
             return age;
         };
 
-        // 日付データを YYYY/MM/DD 表記に変換するヘルパー関数
+        // スプレッドシートからの日付文字列をHTML用（YYYY-MM-DD）に安全変換する関数
+        const convertToInputDate = (dateStr) => {
+            if (!dateStr) return "";
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return "";
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        };
+
+        // 閲覧用：日付を YYYY/MM/DD 形式で表示
         const formatDateToSlash = (dateInput) => {
             if (!dateInput) return "-";
             const d = new Date(dateInput);
@@ -244,7 +255,7 @@
                         const formatYear = (yy) => (parseInt(yy) < 50 ? `20${yy}` : `19${yy}`);
                         const dobCalc = `${formatYear(dobRaw.substring(0,2))}-${dobRaw.substring(2,4)}-${dobRaw.substring(4,6)}`;
                         ext.dob = dobCalc;
-                        ext.age = calculateAge(dobCalc); // スキャン時も年齢を自動計算
+                        ext.age = calculateAge(dobCalc); 
                         
                         ext.sex = line2[20] === 'M' ? 'M' : (line2[20] === 'F' ? 'F' : '');
 
@@ -269,8 +280,14 @@
             const handleSave = async () => {
                 setIsSaving(true);
                 try {
+                    // 保存する直前に日付フォーマットをスプレッドシート準拠の YYYY/MM/DD に再構築
+                    const finalWorker = { ...selectedWorker };
+                    if (finalWorker.dob) finalWorker.dob = formatDateToSlash(finalWorker.dob);
+                    if (finalWorker.dateOfIssue) finalWorker.dateOfIssue = formatDateToSlash(finalWorker.dateOfIssue);
+                    if (finalWorker.dateOfExpiry) finalWorker.dateOfExpiry = formatDateToSlash(finalWorker.dateOfExpiry);
+
                     const payload = { 
-                        ...selectedWorker, 
+                        ...finalWorker, 
                         action: selectedWorker._row ? "update" : "addNew", 
                         batch: selectedWorker.batch || selectedBatch
                     };
@@ -303,7 +320,7 @@
                     <div key={field} className="flex flex-col mb-2.5">
                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-0.5 tracking-wider">{label}</label>
                         
-                        {/* F: Sex のみ M/F の選択式 */}
+                        {/* F: Sex -> MかFの選択式 */}
                         {field === 'sex' ? (
                             <select className="p-2 text-xs rounded bg-white w-full" value={value || ''}
                                 onChange={e => setSelectedWorker({...selectedWorker, sex: e.target.value})}>
@@ -322,12 +339,13 @@
                         ) : (
                             <input className={`p-2 text-xs rounded w-full ${field === 'laoName' ? 'lao-text' : ''}`} 
                                 type={field === 'no' ? 'number' : isDate ? 'date' : 'text'}
-                                value={isDate ? (value ? String(value).split('T')[0] : '') : (value || '')}
-                                disabled={field === 'age'} /* 年齢は自動計算のため入力無効化（表示のみ自動更新） */
+                                value={isDate ? convertToInputDate(value) : (value || '')}
+                                disabled={field === 'age'} /* Ageは自動計算なので入力不可 */
                                 onChange={e => {
                                     const val = e.target.value;
                                     let nextWorker = { ...selectedWorker, [field]: val };
-                                    // 生年月日が変更された場合、年齢を自動再計算してセット
+                                    
+                                    // 生年月日(dob)が入力されたら即時年齢を自動計算
                                     if (field === 'dob') {
                                         nextWorker.age = calculateAge(val);
                                     }
@@ -412,7 +430,7 @@
                                     </div>
                                 </div>
 
-                                {/* カラム・グリッド配置 */}
+                                {/* メインコンテンツ */}
                                 <div className={`p-4 md:p-6 grid ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} gap-4 md:gap-6 h-full content-start overflow-y-auto custom-scrollbar select-text`}>
                                     
                                     {/* Personal Block */}
@@ -434,11 +452,10 @@
                                             {FIELD_GROUPS.address.map(f => renderField(f))}
                                         </div>
 
-                                        {/* パスポートファイル表示エリア */}
+                                        {/* ドキュメント表示 */}
                                         <div className="mt-2 flex-grow flex flex-col">
                                             <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center justify-between">
                                                 <span>📄 Passport File Document</span>
-                                                <span className="text-[9px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded font-normal">Detecting "PASSPORT"</span>
                                             </h5>
                                             
                                             {passportDriveUrl ? (
