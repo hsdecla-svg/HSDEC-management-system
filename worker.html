@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Management System - Robust Direct Version</title>
+    <title>HSDEC Management System - Perfect Match Version</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -43,73 +43,87 @@
         const { useState, useEffect, useMemo } = React;
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbytKqKDwwARk9D2h1Ggw_iS41b7bDJVB6B-DUyMwFfzkfUK4G-V-wsDF27vaXSI_zoygw/exec';
         
-        // HTML内で管理する基本フィールド名
+        // A〜R列の画面グループ構成
         const FIELD_GROUPS = {
             basic: ['no', 'status', 'reEntry', 'laoName', 'engName', 'sex', 'dob', 'age', 'size'],
             passport: ['passport', 'dateOfIssue', 'dateOfExpiry'],
             address: ['village', 'district', 'province', 'driveUrl', 'acName', 'acNo']
         };
 
-        // 画面表示用のラベル名（アルファベット付き）
+        // 実際のデータ並び順に100%準拠したアルファベット付きラベル名
         const FIELD_LABELS = {
             'no': 'A: No.',
             'status': 'B: ສະຖານະ (Status)',
             'reEntry': 'C: Re-entry',
             'laoName': 'D: ຊື່ ແລະ ນາມສະກຸນ',
             'engName': 'E: Full Name',
-            'sex': 'F: Sex',
-            'dob': 'G: Date of birth',
-            'age': 'H: Age',
-            'passport': 'I: Passport No.',
-            'dateOfIssue': 'J: Date of issue',
-            'dateOfExpiry': 'K: Date of expiry',
-            'village': 'L: Village',
-            'district': 'M: District',
-            'province': 'N: Province',
-            'size': 'O: Size',
-            'acName': 'P: AC - Name',
-            'acNo': 'Q: AC - No',
-            'driveUrl': 'R: Google drive'
+            'dob': 'F: Date of birth',
+            'age': 'G: Age',
+            'passport': 'H: Passport No.',
+            'dateOfIssue': 'I: Date of issue',
+            'dateOfExpiry': 'J: Date of expiry',
+            'village': 'K: Village',
+            'district': 'L: District',
+            'province': 'M: Province',
+            'sex': 'N: Sex',
+            'driveUrl': 'O: Google drive',
+            'size': 'P: Size',
+            'acName': 'Q: AC - Name',
+            'acNo': 'R: AC - No'
         };
 
-        // GASから送られてきたオブジェクトから、ズレている可能性のあるキーを柔軟に探す最強のマッピング関数
-        const findValueByFlexibleKey = (rawWorker, targetField) => {
-            if (!rawWorker) return "";
+        // 提供された実際のデータ配列（A〜R）のインデックス定義
+        const ROW_INDEX_MAP = {
+            no: 0,          // A: 1
+            status: 1,      // B: ຄູ່
+            reEntry: 2,     // C: TRUE
+            laoName: 3,     // D: ທ້າວ ທອງຄຳ ພູມປັນຍາ
+            engName: 4,     // E: PHOUMPANYA THONGKHAMM
+            dob: 5,         // F: 1995/04/06
+            age: 6,         // G: 31
+            passport: 7,    // H: P3239655
+            dateOfIssue: 8, // I: 2025/02/19
+            dateOfExpiry: 9,// J: 2035/02/18
+            village: 10,    // K: THAXANG
+            district: 11,   // L: PAKNGEUM
+            province: 12,   // M: VIENTIANE
+            sex: 13,        // N: M
+            driveUrl: 14,   // O: https://drive.google.com/...
+            size: 15,       // P: （書いてあれば洋服サイズ英文字）
+            acName: 16,     // Q: AC - Name
+            acNo: 17        // R: AC - No
+        };
+
+        // GASから届いたデータを配列・オブジェクト問わず直接ぶっこ抜く超強力マッパー
+        const extractValueDirectly = (worker, field) => {
+            if (!worker) return "";
             
-            // フィールドごとの表記揺れパターン定義（大文字小文字を区別せず部分一致で探す）
-            const aliasMap = {
-                'sex': ['sex', 'gender', 'f:'],
-                'dob': ['dob', 'birth', 'g:'],
-                'age': ['age', 'h:'],
-                'dateOfIssue': ['issue', 'j:'],
-                'dateOfExpiry': ['expiry', 'expire', 'k:'],
-                'village': ['village', 'l:'],
-                'district': ['district', 'm:'],
-                'province': ['province', 'n:'],
-                'size': ['size', 'o:']
-            };
+            // 1. もしGASから「生配列」のまま行データが届いている場合、インデックスから直接ぶっこ抜く
+            if (Array.isArray(worker)) {
+                const idx = ROW_INDEX_MAP[field];
+                return worker[idx] !== undefined && worker[idx] !== null ? String(worker[idx]).trim() : "";
+            }
+            
+            // 2. もしオブジェクトで届いている場合、インデックス番号付きプロパティ（"0", "1"...）または正確なキー名を柔軟に走査
+            const idx = ROW_INDEX_MAP[field];
+            if (worker[idx] !== undefined && worker[idx] !== null) return String(worker[idx]).trim();
+            if (worker[`_${idx}`] !== undefined && worker[`_${idx}`] !== null) return String(worker[`_${idx}`]).trim();
 
-            const keywords = aliasMap[targetField] || [targetField];
-            const workerKeys = Object.keys(rawWorker);
+            // 表記揺れ（大文字小文字・アルファベット付き）を網羅して検索
+            const targetKeys = [
+                field.toLowerCase(),
+                FIELD_LABELS[field]?.toLowerCase(),
+                FIELD_LABELS[field]?.split(':')[0]?.toLowerCase()
+            ];
 
-            // 1. まず完全一致または小文字変換で一致するものを探す
-            for (let k of workerKeys) {
-                if (k.toLowerCase() === targetField.toLowerCase()) {
-                    return String(rawWorker[k] !== undefined && rawWorker[k] !== null ? rawWorker[k] : "").trim();
+            for (let k of Object.keys(worker)) {
+                const kl = k.toLowerCase();
+                if (targetKeys.some(tk => kl === tk || kl.includes(tk) || tk.includes(kl))) {
+                    return String(worker[k] !== undefined && worker[k] !== null ? worker[k] : "").trim();
                 }
             }
 
-            // 2. 表記揺れキーワードリストに含まれる文字が、GASのキーに含まれているか探す
-            for (let keyword of keywords) {
-                for (let k of workerKeys) {
-                    if (k.toLowerCase().includes(keyword.toLowerCase())) {
-                        return String(rawWorker[k] !== undefined && rawWorker[k] !== null ? rawWorker[k] : "").trim();
-                    }
-                }
-            }
-
-            // 3. それでも見つからない場合は、そのままのフィールド名でオブジェクトから取得を試みる
-            return String(rawWorker[targetField] !== undefined && rawWorker[targetField] !== null ? rawWorker[targetField] : "").trim();
+            return worker[field] !== undefined && worker[field] !== null ? String(worker[field]).trim() : "";
         };
 
         const fixPassportNo = (raw) => {
@@ -160,30 +174,30 @@
                     let allWorkers = [];
                     Object.keys(json).forEach(sheetName => {
                         if (sheetName !== 'options' && json[sheetName] && json[sheetName].rows) {
-                            const sheetWorkers = json[sheetName].rows.map(worker => {
-                                // 柔軟なキー解析（findValueByFlexibleKey）を通して確実にデータをマッピング
+                            const sheetWorkers = json[sheetName].rows.map((rawRow, index) => {
+                                // 実際のA〜Rのデータ構造に完全一対一マッピング
                                 return {
-                                    _row: worker._row,
+                                    _row: rawRow._row || (index + 2),
                                     batch: sheetName,
-                                    no: findValueByFlexibleKey(worker, 'no'),
-                                    status: findValueByFlexibleKey(worker, 'status'),
-                                    reEntry: worker.reEntry,
-                                    laoName: findValueByFlexibleKey(worker, 'laoName'),
-                                    engName: findValueByFlexibleKey(worker, 'engName'),
-                                    sex: findValueByFlexibleKey(worker, 'sex'),
-                                    dob: findValueByFlexibleKey(worker, 'dob'),
-                                    age: findValueByFlexibleKey(worker, 'age'),
-                                    passport: findValueByFlexibleKey(worker, 'passport'),
-                                    dateOfIssue: findValueByFlexibleKey(worker, 'dateOfIssue'),
-                                    dateOfExpiry: findValueByFlexibleKey(worker, 'dateOfExpiry'),
-                                    village: findValueByFlexibleKey(worker, 'village'),
-                                    district: findValueByFlexibleKey(worker, 'district'),
-                                    province: findValueByFlexibleKey(worker, 'province'),
-                                    size: findValueByFlexibleKey(worker, 'size'),
-                                    acName: findValueByFlexibleKey(worker, 'acName'),
-                                    acNo: findValueByFlexibleKey(worker, 'acNo'),
-                                    driveUrl: findValueByFlexibleKey(worker, 'driveUrl'),
-                                    _rawObj: worker // 念のためオリジナルを保持
+                                    no: extractValueDirectly(rawRow, 'no'),
+                                    status: extractValueDirectly(rawRow, 'status'),
+                                    reEntry: extractValueDirectly(rawRow, 'reEntry'),
+                                    laoName: extractValueDirectly(rawRow, 'laoName'),
+                                    engName: extractValueDirectly(rawRow, 'engName'),
+                                    dob: extractValueDirectly(rawRow, 'dob'),
+                                    age: extractValueDirectly(rawRow, 'age'),
+                                    passport: extractValueDirectly(rawRow, 'passport'),
+                                    dateOfIssue: extractValueDirectly(rawRow, 'dateOfIssue'),
+                                    dateOfExpiry: extractValueDirectly(rawRow, 'dateOfExpiry'),
+                                    village: extractValueDirectly(rawRow, 'village'),
+                                    district: extractValueDirectly(rawRow, 'district'),
+                                    province: extractValueDirectly(rawRow, 'province'),
+                                    sex: extractValueDirectly(rawRow, 'sex'),
+                                    driveUrl: extractValueDirectly(rawRow, 'driveUrl'),
+                                    size: extractValueDirectly(rawRow, 'size'),
+                                    acName: extractValueDirectly(rawRow, 'acName'),
+                                    acNo: extractValueDirectly(rawRow, 'acNo'),
+                                    _rawObj: rawRow
                                 };
                             });
                             allWorkers = allWorkers.concat(sheetWorkers);
@@ -262,7 +276,7 @@
                         const dobDD = line2.substring(17, 19);
                         const yearFull = parseInt(dobYY) < 50 ? `20${dobYY}` : `19${dobYY}`;
                         ext.dob = `${yearFull}/${dobMM}/${dobDD}`;
-                        ext.age = ""; // シート側の再計算に委ねる
+                        ext.age = ""; 
                         
                         ext.sex = line2[20] === 'M' ? 'M' : (line2[20] === 'F' ? 'F' : '');
 
@@ -284,10 +298,15 @@
             const handleSave = async () => {
                 setIsSaving(true);
                 try {
-                    // 送信用のデータ構造を作成（GAS側の既存の受け取りロジックに合わせるため、オリジナルオブジェクトのキー構成も維持して上書き）
                     const basePayload = selectedWorker._rawObj ? { ...selectedWorker._rawObj } : {};
                     
-                    // 新しい値をマッピング
+                    // スプレッドシートの並び順インデックスに対しても確実に値を配置してGASへ送る
+                    Object.keys(ROW_INDEX_MAP).forEach(field => {
+                        const idx = ROW_INDEX_MAP[field];
+                        basePayload[idx] = selectedWorker[field];
+                        basePayload[field] = selectedWorker[field];
+                    });
+
                     const payload = { 
                         ...basePayload,
                         ...selectedWorker,
@@ -295,7 +314,6 @@
                         batch: selectedWorker.batch || selectedBatch
                     };
 
-                    // 不要な内部プロパティをクリーンアップ
                     delete payload._rawObj;
 
                     await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
@@ -309,21 +327,19 @@
                 const value = selectedWorker[field] || "";
                 const label = FIELD_LABELS[field] || field;
 
-                // 閲覧モード
                 if (!isEditing) {
                     return (
                         <div key={field} className="border-b border-slate-100 py-2 flex justify-between items-center select-text">
                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{label}</span>
                             <span className={`font-semibold text-slate-700 select-text ${field === 'laoName' ? 'lao-text text-sm' : ''} ${field === 'passport' ? 'mrz-font' : ''}`}>
                                 {field === 'driveUrl' ? (value ? <a href={value} target="_blank" className="text-blue-500 underline">Link ↗</a> : '-') : 
-                                 field === 'reEntry' ? (value === true || value === 'TRUE' ? '✅ Yes' : '❌ No') :
+                                 field === 'reEntry' ? (value === true || String(value).toUpperCase() === 'TRUE' ? '✅ Yes' : '❌ No') :
                                  value || '-'}
                             </span>
                         </div>
                     );
                 }
 
-                // 編集モード
                 return (
                     <div key={field} className="flex flex-col mb-2.5">
                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-0.5 tracking-wider">{label}</label>
@@ -342,7 +358,7 @@
                                 {(masterOptions.Status || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
                             </select>
                         ) : field === 'reEntry' ? (
-                            <input type="checkbox" className="w-5 h-5 accent-emerald-600 mt-1" checked={value === true || value === 'TRUE'} onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.checked})} />
+                            <input type="checkbox" className="w-5 h-5 accent-emerald-600 mt-1" checked={value === true || String(value).toUpperCase() === 'TRUE'} onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.checked})} />
                         ) : (
                             <input className={`p-2 text-xs rounded w-full font-semibold ${field === 'laoName' ? 'lao-text' : ''}`} 
                                 type="text"
