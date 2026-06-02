@@ -41,7 +41,7 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyifduAqJK0w_ibjEkt1QZV6rDaop7fRb_HD3ZifvkBOMG5urgn9LzwUjc3_GaUC6Gl7A/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzfSonLlMApUKglvBf_y07Sed2q7_wPfqy3x9nsHvYTTZG2GNlz4guKTZUfwshwwErzsw/exec';
         
         const FIELD_GROUPS = {
             basic: ['ລໍາດັບ', 'ສະຖານະ', 'Re-entry', 'Full Name', 'ຊື່ ແລະ นາມສະກຸນ', 'Sex', 'Date of birth', 'Age', 'Size'],
@@ -52,17 +52,9 @@
         const FIELD_LABELS = {
             'ລໍາດັບ': 'No.',
             'ສະຖານະ': 'Status',
-            'ຊື່ ແລະ นາມສະກຸນ': 'Lao Name',
+            'ຊື່ ແລະ นາມສະกຸນ': 'Lao Name',
             'Full Name': 'English Name'
         };
-
-        // 新規登録時のシート選択肢の一覧
-        const BATCH_SHEET_OPTIONS = [
-            { label: 'Batch 1 [19]', value: '1' },
-            { label: 'Batch 2 [32]', value: '2' },
-            { label: 'Batch 3 [49]', value: '3' },
-            { label: 'Batch 4 [49]', value: '4' }
-        ];
 
         const fixPassportNo = (raw) => {
             if (!raw) return "";
@@ -87,7 +79,7 @@
         function App() {
             const [workers, setWorkers] = useState([]);
             const [loading, setLoading] = useState(true);
-            const [selectedBatch, setSelectedBatch] = useState(null);
+            const [selectedBatch, setSelectedBatch] = useState("");
             const [selectedWorker, setSelectedWorker] = useState(null);
             const [isEditing, setIsEditing] = useState(false);
             const [searchQuery, setSearchQuery] = useState('');
@@ -96,7 +88,6 @@
             const [scanStatus, setScanStatus] = useState("");
             const [masterOptions, setMasterOptions] = useState({ provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
 
-            // URLパラメータからモード（pc / mobile）を取得。デフォルトはpc
             const screenMode = useMemo(() => {
                 const params = new URLSearchParams(window.location.search);
                 return params.get('mode') === 'mobile' ? 'mobile' : 'pc';
@@ -107,63 +98,59 @@
             const fetchData = async () => {
                 setLoading(true);
                 try {
-                // 1. GASから最新の全バッチデータを取得
-                const response = await fetch(`${GAS_URL}?type=json`); 
-                const json = await response.json(); // エラー原因だった「res」を「response」に修正して一本化
+                    const response = await fetch(`${GAS_URL}?type=json`); 
+                    const json = await response.json();
 
-                // 2. GASから返ってきた全シートのデータを一つのリストにまとめる処理
-                let allWorkers = [];
-        
-                // json の中身（各シート名）をループして、rows を一つの配列に合体させる
-                Object.keys(json).forEach(sheetName => {
-                    if (json[sheetName] && json[sheetName].rows) {
-                        const sheetWorkers = json[sheetName].rows.map(worker => ({
-                            ...worker,
-                            batch: sheetName // 各データがどのシート（Batch 1 [19] など）のものか識別用に保存
-                        }));
-                        allWorkers = allWorkers.concat(sheetWorkers);
+                    let allWorkers = [];
+                    Object.keys(json).forEach(sheetName => {
+                        if (sheetName !== 'options' && json[sheetName] && json[sheetName].rows) {
+                            const sheetWorkers = json[sheetName].rows.map(worker => {
+                                // 詳細画面の表示グループ項目にマッピングを最適化
+                                return {
+                                    ...worker,
+                                    batch: sheetName,
+                                    'ລໍາດັບ': worker.no,
+                                    'ຊື່ ແລະ นາມສະກຸນ': worker.laoName,
+                                    'Full Name': worker.engName,
+                                    'ສະຖານະ': worker.visa || worker.status || ""
+                                };
+                            });
+                            allWorkers = allWorkers.concat(sheetWorkers);
+                        }
+                    });
+
+                    setWorkers(allWorkers);
+                    setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
+
+                    const batches = Object.keys(json).filter(name => name !== 'options');
+                    if (batches.length > 0 && !selectedBatch) {
+                        setSelectedBatch(batches[0]);
                     }
-                });
-
-                // 3. 画面の各ステート（状態）にデータをセット
-                setWorkers(allWorkers);
-
-                // マスタオプション（選択項目）の初期値をセット（もしjson内にあれば上書き、なければ空）
-                setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
-
-                // 4. 有効なバッチ（シート名）の一覧を取得して選択肢を自動生成
-                const batches = Object.keys(json).filter(sheetName => !json[sheetName].error);
-        
-                // まだバッチが選択されていなければ、最初のバッチをデフォルトで選択
-                if (batches.length > 0 && !selectedBatch) {
-                    setSelectedBatch(batches[0]);
+                } catch (e) { 
+                    console.error("Fetch Data Error:", e); 
                 }
+                setLoading(false);
+            };
 
-              } catch (e) { 
-              console.error("Fetch Data Error:", e); 
-              }
-              setLoading(false);
-           };
+            const batchList = useMemo(() => {
+                return [...new Set(workers.map(w => w.batch))].filter(Boolean).sort();
+            }, [workers]);
 
             const filteredWorkers = useMemo(() => {
                 return workers
-                    .filter(w => (w.batch || w._sheetName?.replace("Batch","")) == selectedBatch)
+                    .filter(w => w.batch === selectedBatch)
                     .filter(w => {
-                        const searchStr = `${w['Full Name']} ${w['ຊື່ ແລະ นາມສະກຸນ']} ${w['Passport No.']}`.toLowerCase();
+                        const searchStr = `${w.engName} ${w.laoName} ${w['Passport No.'] || ''}`.toLowerCase();
                         return searchStr.includes(searchQuery.toLowerCase());
-                    }).sort((a,b) => (a['ລໍາດັບ'] || 0) - (b['ລໍາດັບ'] || 0));
+                    }).sort((a,b) => (parseInt(a.no) || 0) - (parseInt(b.no) || 0));
             }, [workers, selectedBatch, searchQuery]);
 
-            // Google DriveのURLからフォルダーIDを抽出して、埋め込みビューURLを作る関数
             const passportDriveUrl = useMemo(() => {
                 if (!selectedWorker || !selectedWorker['Google drive']) return null;
                 const urlStr = selectedWorker['Google drive'];
-                // フォルダIDを抽出する正規表現 (folders/ の後ろの文字列、または id= の後ろの文字列)
                 const match = urlStr.match(/folders\/([a-zA-Z0-9-_]+)/) || urlStr.match(/id=([a-zA-Z0-9-_]+)/);
                 if (match && match[1]) {
-                    const folderId = match[1];
-                    // Google Driveのフォルダ埋め込みURLを生成 (Grid表示、かつ初期状態でPASSPORTの文字列を認識しやすいように設計)
-                    return `https://drive.google.com/embeddedfolderview?id=${folderId}#grid`;
+                    return `https://drive.google.com/embeddedfolderview?id=${match[1]}#grid`;
                 }
                 return null;
             }, [selectedWorker]);
@@ -198,6 +185,7 @@
 
                         ext['Passport No.'] = fixPassportNo(line2.substring(0, 9));
                         ext['Full Name'] = cleanNameArea(line1.substring(5));
+                        ext.engName = ext['Full Name'];
 
                         const dobRaw = line2.substring(13, 19);
                         const formatYear = (yy) => (parseInt(yy) < 50 ? `20${yy}` : `19${yy}`);
@@ -225,7 +213,15 @@
             const handleSave = async () => {
                 setIsSaving(true);
                 try {
-                    const payload = { ...selectedWorker, action: selectedWorker._row ? "update" : "addNew", batch: selectedWorker.batch || selectedBatch };
+                    const payload = { 
+                        ...selectedWorker, 
+                        action: selectedWorker._row ? "update" : "addNew", 
+                        batch: selectedWorker.batch || selectedBatch,
+                        no: selectedWorker['ລໍາດับ'] || selectedWorker.no,
+                        laoName: selectedWorker['ຊື່ ແລະ นາມສະກຸນ'] || selectedWorker.laoName,
+                        engName: selectedWorker['Full Name'] || selectedWorker.engName,
+                        visa: selectedWorker['ສະຖານະ'] || selectedWorker.visa
+                    };
                     await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
                     await fetchData();
                     setIsEditing(false);
@@ -269,7 +265,7 @@
                         ) : field === 'Re-entry' ? (
                             <input type="checkbox" className="w-5 h-5 accent-emerald-600 mt-1" checked={value === true || value === 'TRUE'} onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.checked})} />
                         ) : (
-                            <input className={`p-2 text-xs rounded w-full ${isLaoField ? 'lao-text' : ''}`} type={field === 'Age' || field === 'ລໍາດັບ' ? 'number' : isDate ? 'date' : 'text'}
+                            <input className={`p-2 text-xs rounded w-full ${isLaoField ? 'lao-text' : ''}`} type={field === 'Age' || field === 'ລໍາດับ' ? 'number' : isDate ? 'date' : 'text'}
                                 value={isDate ? (value ? String(value).split('T')[0] : '') : (value || '')}
                                 onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.value})} />
                         )}
@@ -289,8 +285,8 @@
                         <div className="p-4 border-b bg-slate-50 space-y-3">
                             <div className="flex gap-2">
                                 <select className="flex-grow p-2 text-xs font-black rounded border bg-white text-slate-700" value={selectedBatch || ''} onChange={e => {setSelectedBatch(e.target.value); setSelectedWorker(null);}}>
-                                    {[...new Set(workers.map(w => w.batch || w._sheetName?.replace("Batch","")))].sort((a,b)=>a-b).map(num => (
-                                        <option key={num} value={num}>BATCH {num}</option>
+                                    {batchList.map(name => (
+                                        <option key={name} value={name}>{name.toUpperCase()}</option>
                                     ))}
                                 </select>
                                 <button onClick={() => { setSelectedWorker({batch: selectedBatch}); setIsEditing(true); }} className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-[11px] font-black tracking-wider uppercase shadow-sm">ADD NEW</button>
@@ -302,10 +298,10 @@
                                 <div key={i} onClick={() => { setSelectedWorker(w); setIsEditing(false); }}
                                     className={`p-4 border-b cursor-pointer transition-all hover:bg-slate-50 ${selectedWorker?._row === w._row ? 'list-item-active' : ''}`}>
                                     <div className="flex justify-between items-center mb-1">
-                                        <span className="text-[10px] text-slate-400 font-bold">#{w['ລໍາດັບ'] || '0'}</span>
-                                        <span className="text-emerald-600 font-black text-xs uppercase tracking-tight">{w['Full Name']}</span>
+                                        <span className="text-[10px] text-slate-400 font-bold">#{w.no || '0'}</span>
+                                        <span className="text-emerald-600 font-black text-xs uppercase tracking-tight">{w.engName}</span>
                                     </div>
-                                    <div className="text-slate-500 lao-text text-sm truncate">{w['ຊື່ ແລະ นາມສະກຸນ']}</div>
+                                    <div className="text-slate-500 lao-text text-sm truncate">{w.laoName}</div>
                                 </div>
                             ))}
                         </div>
@@ -331,8 +327,8 @@
                                             </button>
                                         )}
                                         <div className="truncate select-text">
-                                            <span className="text-base md:text-xl font-black text-slate-800 block truncate uppercase tracking-tight">{selectedWorker['Full Name'] || 'New Entry'}</span>
-                                            <span className="text-emerald-600 lao-text text-base md:text-lg leading-tight block truncate">{selectedWorker['ຊື່ ແລະ นາມສະກຸນ']}</span>
+                                            <span className="text-base md:text-xl font-black text-slate-800 block truncate uppercase tracking-tight">{selectedWorker.engName || 'New Entry'}</span>
+                                            <span className="text-emerald-600 lao-text text-base md:text-lg leading-tight block truncate">{selectedWorker.laoName}</span>
                                         </div>
                                     </div>
                                     <div className="flex gap-2 items-center w-full sm:w-auto justify-end">
@@ -358,28 +354,6 @@
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm select-text">
                                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b pb-2">Personal</h4>
                                         
-                                        {/* 新規追加時のみ一番上に表示されるシート名選択用の欄 */}
-                                        {!selectedWorker._row && (
-                                            <div className="flex flex-col mb-2.5 bg-amber-50/50 p-2 rounded-xl border border-dashed border-amber-200">
-                                                <label className="text-[10px] font-black text-amber-700 uppercase mb-0.5 tracking-wider">★ Target Sheet (登録先グループ)</label>
-                                                {isEditing ? (
-                                                    <select 
-                                                        className="p-2 text-xs rounded bg-white w-full font-bold text-slate-700 border-amber-300" 
-                                                        value={selectedWorker.batch || ''}
-                                                        onChange={e => setSelectedWorker({...selectedWorker, batch: e.target.value})}
-                                                    >
-                                                        {BATCH_SHEET_OPTIONS.map(opt => (
-                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                        ))}
-                                                    </select>
-                                                ) : (
-                                                    <span className="font-semibold text-slate-700 py-1">
-                                                        {BATCH_SHEET_OPTIONS.find(opt => opt.value == (selectedWorker.batch || selectedBatch))?.label || '-'}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-
                                         {FIELD_GROUPS.basic.map(f => renderField(f))}
                                     </div>
                                     
