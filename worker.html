@@ -41,7 +41,7 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxltguHRjvz-Th9IAc50tIg93xHHD8f3UhMoOig9BoY8u53QPS34WGgTPOqJYtLs5vHkw/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyifduAqJK0w_ibjEkt1QZV6rDaop7fRb_HD3ZifvkBOMG5urgn9LzwUjc3_GaUC6Gl7A/exec';
         
         const FIELD_GROUPS = {
             basic: ['ລໍາດັບ', 'ສະຖານະ', 'Re-entry', 'Full Name', 'ຊື່ ແລະ นາມສະກຸນ', 'Sex', 'Date of birth', 'Age', 'Size'],
@@ -107,7 +107,8 @@
             const fetchData = async () => {
                 setLoading(true);
                 try {
-                    const res = await fetch(GAS_URL);
+                    const response = await fetch(`${GAS_URL}?type=json`); 
+                    const data = await response.json();
                     const json = await res.json();
                     setWorkers(json.workers || []);
                     setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
