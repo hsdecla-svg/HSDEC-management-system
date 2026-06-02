@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Management System - Spreadsheet Direct Version</title>
+    <title>HSDEC Management System - Robust Direct Version</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -43,14 +43,14 @@
         const { useState, useEffect, useMemo } = React;
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbytKqKDwwARk9D2h1Ggw_iS41b7bDJVB6B-DUyMwFfzkfUK4G-V-wsDF27vaXSI_zoygw/exec';
         
-        // A〜R列のグループ定義
+        // HTML内で管理する基本フィールド名
         const FIELD_GROUPS = {
             basic: ['no', 'status', 'reEntry', 'laoName', 'engName', 'sex', 'dob', 'age', 'size'],
             passport: ['passport', 'dateOfIssue', 'dateOfExpiry'],
             address: ['village', 'district', 'province', 'driveUrl', 'acName', 'acNo']
         };
 
-        // アルファベット付き表示名
+        // 画面表示用のラベル名（アルファベット付き）
         const FIELD_LABELS = {
             'no': 'A: No.',
             'status': 'B: ສະຖານະ (Status)',
@@ -72,10 +72,44 @@
             'driveUrl': 'R: Google drive'
         };
 
-        // JavaScript側での自動計算を廃止、またはフォーマットを一切変更せずに文字列として扱う
-        const formatRawValue = (val) => {
-            if (val === undefined || val === null) return "";
-            return String(val).trim();
+        // GASから送られてきたオブジェクトから、ズレている可能性のあるキーを柔軟に探す最強のマッピング関数
+        const findValueByFlexibleKey = (rawWorker, targetField) => {
+            if (!rawWorker) return "";
+            
+            // フィールドごとの表記揺れパターン定義（大文字小文字を区別せず部分一致で探す）
+            const aliasMap = {
+                'sex': ['sex', 'gender', 'f:'],
+                'dob': ['dob', 'birth', 'g:'],
+                'age': ['age', 'h:'],
+                'dateOfIssue': ['issue', 'j:'],
+                'dateOfExpiry': ['expiry', 'expire', 'k:'],
+                'village': ['village', 'l:'],
+                'district': ['district', 'm:'],
+                'province': ['province', 'n:'],
+                'size': ['size', 'o:']
+            };
+
+            const keywords = aliasMap[targetField] || [targetField];
+            const workerKeys = Object.keys(rawWorker);
+
+            // 1. まず完全一致または小文字変換で一致するものを探す
+            for (let k of workerKeys) {
+                if (k.toLowerCase() === targetField.toLowerCase()) {
+                    return String(rawWorker[k] !== undefined && rawWorker[k] !== null ? rawWorker[k] : "").trim();
+                }
+            }
+
+            // 2. 表記揺れキーワードリストに含まれる文字が、GASのキーに含まれているか探す
+            for (let keyword of keywords) {
+                for (let k of workerKeys) {
+                    if (k.toLowerCase().includes(keyword.toLowerCase())) {
+                        return String(rawWorker[k] !== undefined && rawWorker[k] !== null ? rawWorker[k] : "").trim();
+                    }
+                }
+            }
+
+            // 3. それでも見つからない場合は、そのままのフィールド名でオブジェクトから取得を試みる
+            return String(rawWorker[targetField] !== undefined && rawWorker[targetField] !== null ? rawWorker[targetField] : "").trim();
         };
 
         const fixPassportNo = (raw) => {
@@ -96,12 +130,6 @@
             let name = text.split('<<<')[0];
             name = name.split(/[CKLS]{3,}/)[0]; 
             return name.replace(/<+/g, ' ').trim();
-        };
-
-        // OCRスキャン時のみ使用する、日付文字列（YYYY/MM/DD）作成ヘルパー
-        const buildSlashDate = (yy, mm, dd, isExpiry = false) => {
-            const year = isExpiry ? `20${yy}` : (parseInt(yy) < 50 ? `20${yy}` : `19${yy}`);
-            return `${year}/${mm}/${dd}`;
         };
 
         function App() {
@@ -133,27 +161,29 @@
                     Object.keys(json).forEach(sheetName => {
                         if (sheetName !== 'options' && json[sheetName] && json[sheetName].rows) {
                             const sheetWorkers = json[sheetName].rows.map(worker => {
+                                // 柔軟なキー解析（findValueByFlexibleKey）を通して確実にデータをマッピング
                                 return {
                                     _row: worker._row,
                                     batch: sheetName,
-                                    no: formatRawValue(worker.no),
-                                    status: formatRawValue(worker.status),
+                                    no: findValueByFlexibleKey(worker, 'no'),
+                                    status: findValueByFlexibleKey(worker, 'status'),
                                     reEntry: worker.reEntry,
-                                    laoName: formatRawValue(worker.laoName),
-                                    engName: formatRawValue(worker.engName),
-                                    sex: formatRawValue(worker.sex),
-                                    dob: formatRawValue(worker.dob),
-                                    age: formatRawValue(worker.age),
-                                    passport: formatRawValue(worker.passport),
-                                    dateOfIssue: formatRawValue(worker.dateOfIssue),
-                                    dateOfExpiry: formatRawValue(worker.dateOfExpiry),
-                                    village: formatRawValue(worker.village),
-                                    district: formatRawValue(worker.district),
-                                    province: formatRawValue(worker.province),
-                                    size: formatRawValue(worker.size),
-                                    acName: formatRawValue(worker.acName),
-                                    acNo: formatRawValue(worker.acNo),
-                                    driveUrl: formatRawValue(worker.driveUrl)
+                                    laoName: findValueByFlexibleKey(worker, 'laoName'),
+                                    engName: findValueByFlexibleKey(worker, 'engName'),
+                                    sex: findValueByFlexibleKey(worker, 'sex'),
+                                    dob: findValueByFlexibleKey(worker, 'dob'),
+                                    age: findValueByFlexibleKey(worker, 'age'),
+                                    passport: findValueByFlexibleKey(worker, 'passport'),
+                                    dateOfIssue: findValueByFlexibleKey(worker, 'dateOfIssue'),
+                                    dateOfExpiry: findValueByFlexibleKey(worker, 'dateOfExpiry'),
+                                    village: findValueByFlexibleKey(worker, 'village'),
+                                    district: findValueByFlexibleKey(worker, 'district'),
+                                    province: findValueByFlexibleKey(worker, 'province'),
+                                    size: findValueByFlexibleKey(worker, 'size'),
+                                    acName: findValueByFlexibleKey(worker, 'acName'),
+                                    acNo: findValueByFlexibleKey(worker, 'acNo'),
+                                    driveUrl: findValueByFlexibleKey(worker, 'driveUrl'),
+                                    _rawObj: worker // 念のためオリジナルを保持
                                 };
                             });
                             allWorkers = allWorkers.concat(sheetWorkers);
@@ -227,21 +257,20 @@
                         ext.passport = fixPassportNo(line2.substring(0, 9));
                         ext.engName = cleanNameArea(line1.substring(5));
 
-                        // OCR読込時も YYYY/MM/DD の文字列として直接生成して代入
                         const dobYY = line2.substring(13, 15);
                         const dobMM = line2.substring(15, 17);
                         const dobDD = line2.substring(17, 19);
-                        ext.dob = buildSlashDate(dobYY, dobMM, dobDD, false);
-                        ext.age = ""; // スプレッドシート内の数式で自動計算させるため、ここでは空にするかシート側に委ねる
+                        const yearFull = parseInt(dobYY) < 50 ? `20${dobYY}` : `19${dobYY}`;
+                        ext.dob = `${yearFull}/${dobMM}/${dobDD}`;
+                        ext.age = ""; // シート側の再計算に委ねる
                         
                         ext.sex = line2[20] === 'M' ? 'M' : (line2[20] === 'F' ? 'F' : '');
 
                         const expYY = line2.substring(21, 23);
                         const expMM = line2.substring(23, 25);
                         const expDD = line2.substring(25, 27);
-                        ext.dateOfExpiry = buildSlashDate(expYY, expMM, expDD, true);
+                        ext.dateOfExpiry = `20${expYY}/${expMM}/${expDD}`;
 
-                        // 発行日を計算 (有効期限の10年前+1日)
                         const expYearFull = parseInt(`20${expYY}`);
                         ext.dateOfIssue = `${expYearFull - 10}/${expMM}/${String(parseInt(expDD) + 1).padStart(2, '0')}`;
 
@@ -255,11 +284,20 @@
             const handleSave = async () => {
                 setIsSaving(true);
                 try {
+                    // 送信用のデータ構造を作成（GAS側の既存の受け取りロジックに合わせるため、オリジナルオブジェクトのキー構成も維持して上書き）
+                    const basePayload = selectedWorker._rawObj ? { ...selectedWorker._rawObj } : {};
+                    
+                    // 新しい値をマッピング
                     const payload = { 
-                        ...selectedWorker, 
+                        ...basePayload,
+                        ...selectedWorker,
                         action: selectedWorker._row ? "update" : "addNew", 
                         batch: selectedWorker.batch || selectedBatch
                     };
+
+                    // 不要な内部プロパティをクリーンアップ
+                    delete payload._rawObj;
+
                     await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
                     await fetchData();
                     setIsEditing(false);
@@ -271,7 +309,7 @@
                 const value = selectedWorker[field] || "";
                 const label = FIELD_LABELS[field] || field;
 
-                // 閲覧モード：スプレッドシートの文字を加工せずそのまま表示
+                // 閲覧モード
                 if (!isEditing) {
                     return (
                         <div key={field} className="border-b border-slate-100 py-2 flex justify-between items-center select-text">
@@ -290,7 +328,6 @@
                     <div key={field} className="flex flex-col mb-2.5">
                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-0.5 tracking-wider">{label}</label>
                         
-                        {/* F: Sex のみ選択式（M/F） */}
                         {field === 'sex' ? (
                             <select className="p-2 text-xs rounded bg-white w-full font-semibold" value={value}
                                 onChange={e => setSelectedWorker({...selectedWorker, sex: e.target.value})}>
@@ -307,12 +344,11 @@
                         ) : field === 'reEntry' ? (
                             <input type="checkbox" className="w-5 h-5 accent-emerald-600 mt-1" checked={value === true || value === 'TRUE'} onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.checked})} />
                         ) : (
-                            /* 日付タイプを input type="text" に変更し、シートの YYYY/MM/DD 文字列をそのまま手打ち・表示できるように修正 */
                             <input className={`p-2 text-xs rounded w-full font-semibold ${field === 'laoName' ? 'lao-text' : ''}`} 
                                 type="text"
                                 value={value}
                                 placeholder={['dob', 'dateOfIssue', 'dateOfExpiry'].includes(field) ? "YYYY/MM/DD" : ""}
-                                disabled={field === 'age'} /* Age(H列)はシート内の数式で自動計算させるため入力不可にする */
+                                disabled={field === 'age'} 
                                 onChange={e => {
                                     setSelectedWorker({ ...selectedWorker, [field]: e.target.value });
                                 }} />
