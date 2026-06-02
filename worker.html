@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Management System - Fixed Version</title>
+    <title>HSDEC Management System - Spreadsheet Direct Version</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -43,7 +43,7 @@
         const { useState, useEffect, useMemo } = React;
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbytKqKDwwARk9D2h1Ggw_iS41b7bDJVB6B-DUyMwFfzkfUK4G-V-wsDF27vaXSI_zoygw/exec';
         
-        // A〜R列のグループ
+        // A〜R列のグループ定義
         const FIELD_GROUPS = {
             basic: ['no', 'status', 'reEntry', 'laoName', 'engName', 'sex', 'dob', 'age', 'size'],
             passport: ['passport', 'dateOfIssue', 'dateOfExpiry'],
@@ -59,7 +59,7 @@
             'engName': 'E: Full Name',
             'sex': 'F: Sex',
             'dob': 'G: Date of birth',
-            'age': 'H: Age (Auto)',
+            'age': 'H: Age',
             'passport': 'I: Passport No.',
             'dateOfIssue': 'J: Date of issue',
             'dateOfExpiry': 'K: Date of expiry',
@@ -72,40 +72,10 @@
             'driveUrl': 'R: Google drive'
         };
 
-        // 生年月日から本日の年齢を自動計算
-        const calculateAge = (dobInput) => {
-            if (!dobInput) return "";
-            const birthDate = new Date(dobInput);
-            if (isNaN(birthDate.getTime())) return "";
-            const today = new Date();
-            let age = today.getFullYear() - birthDate.getFullYear();
-            const m = today.getMonth() - birthDate.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                age--;
-            }
-            return age;
-        };
-
-        // スプレッドシートからの日付文字列をHTML用（YYYY-MM-DD）に安全変換する関数
-        const convertToInputDate = (dateStr) => {
-            if (!dateStr) return "";
-            const d = new Date(dateStr);
-            if (isNaN(d.getTime())) return "";
-            const yyyy = d.getFullYear();
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd}`;
-        };
-
-        // 閲覧用：日付を YYYY/MM/DD 形式で表示
-        const formatDateToSlash = (dateInput) => {
-            if (!dateInput) return "-";
-            const d = new Date(dateInput);
-            if (isNaN(d.getTime())) return String(dateInput);
-            const yyyy = d.getFullYear();
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            return `${yyyy}/${mm}/${dd}`;
+        // JavaScript側での自動計算を廃止、またはフォーマットを一切変更せずに文字列として扱う
+        const formatRawValue = (val) => {
+            if (val === undefined || val === null) return "";
+            return String(val).trim();
         };
 
         const fixPassportNo = (raw) => {
@@ -126,6 +96,12 @@
             let name = text.split('<<<')[0];
             name = name.split(/[CKLS]{3,}/)[0]; 
             return name.replace(/<+/g, ' ').trim();
+        };
+
+        // OCRスキャン時のみ使用する、日付文字列（YYYY/MM/DD）作成ヘルパー
+        const buildSlashDate = (yy, mm, dd, isExpiry = false) => {
+            const year = isExpiry ? `20${yy}` : (parseInt(yy) < 50 ? `20${yy}` : `19${yy}`);
+            return `${year}/${mm}/${dd}`;
         };
 
         function App() {
@@ -160,24 +136,24 @@
                                 return {
                                     _row: worker._row,
                                     batch: sheetName,
-                                    no: worker.no,
-                                    status: worker.status,
+                                    no: formatRawValue(worker.no),
+                                    status: formatRawValue(worker.status),
                                     reEntry: worker.reEntry,
-                                    laoName: worker.laoName,
-                                    engName: worker.engName,
-                                    sex: worker.sex || "",
-                                    dob: worker.dob || "",
-                                    age: worker.age || "",
-                                    passport: worker.passport,
-                                    dateOfIssue: worker.dateOfIssue || "",
-                                    dateOfExpiry: worker.dateOfExpiry || "",
-                                    village: worker.village || "",
-                                    district: worker.district || "",
-                                    province: worker.province || "",
-                                    size: worker.size || "",
-                                    acName: worker.acName || "",
-                                    acNo: worker.acNo || "",
-                                    driveUrl: worker.driveUrl
+                                    laoName: formatRawValue(worker.laoName),
+                                    engName: formatRawValue(worker.engName),
+                                    sex: formatRawValue(worker.sex),
+                                    dob: formatRawValue(worker.dob),
+                                    age: formatRawValue(worker.age),
+                                    passport: formatRawValue(worker.passport),
+                                    dateOfIssue: formatRawValue(worker.dateOfIssue),
+                                    dateOfExpiry: formatRawValue(worker.dateOfExpiry),
+                                    village: formatRawValue(worker.village),
+                                    district: formatRawValue(worker.district),
+                                    province: formatRawValue(worker.province),
+                                    size: formatRawValue(worker.size),
+                                    acName: formatRawValue(worker.acName),
+                                    acNo: formatRawValue(worker.acNo),
+                                    driveUrl: formatRawValue(worker.driveUrl)
                                 };
                             });
                             allWorkers = allWorkers.concat(sheetWorkers);
@@ -251,24 +227,23 @@
                         ext.passport = fixPassportNo(line2.substring(0, 9));
                         ext.engName = cleanNameArea(line1.substring(5));
 
-                        const dobRaw = line2.substring(13, 19);
-                        const formatYear = (yy) => (parseInt(yy) < 50 ? `20${yy}` : `19${yy}`);
-                        const dobCalc = `${formatYear(dobRaw.substring(0,2))}-${dobRaw.substring(2,4)}-${dobRaw.substring(4,6)}`;
-                        ext.dob = dobCalc;
-                        ext.age = calculateAge(dobCalc); 
+                        // OCR読込時も YYYY/MM/DD の文字列として直接生成して代入
+                        const dobYY = line2.substring(13, 15);
+                        const dobMM = line2.substring(15, 17);
+                        const dobDD = line2.substring(17, 19);
+                        ext.dob = buildSlashDate(dobYY, dobMM, dobDD, false);
+                        ext.age = ""; // スプレッドシート内の数式で自動計算させるため、ここでは空にするかシート側に委ねる
                         
                         ext.sex = line2[20] === 'M' ? 'M' : (line2[20] === 'F' ? 'F' : '');
 
-                        const expRaw = line2.substring(21, 27);
-                        const expiry = `20${expRaw.substring(0,2)}-${expRaw.substring(2,4)}-${expRaw.substring(4,6)}`;
-                        ext.dateOfExpiry = expiry;
+                        const expYY = line2.substring(21, 23);
+                        const expMM = line2.substring(23, 25);
+                        const expDD = line2.substring(25, 27);
+                        ext.dateOfExpiry = buildSlashDate(expYY, expMM, expDD, true);
 
-                        if (expiry) {
-                            const d = new Date(expiry);
-                            let issue = new Date(d.getFullYear() - 10, d.getMonth(), d.getDate());
-                            issue.setDate(issue.getDate() + 1);
-                            ext.dateOfIssue = issue.toISOString().split('T')[0];
-                        }
+                        // 発行日を計算 (有効期限の10年前+1日)
+                        const expYearFull = parseInt(`20${expYY}`);
+                        ext.dateOfIssue = `${expYearFull - 10}/${expMM}/${String(parseInt(expDD) + 1).padStart(2, '0')}`;
 
                         setSelectedWorker(ext);
                         setScanStatus("Scan Complete!");
@@ -280,14 +255,8 @@
             const handleSave = async () => {
                 setIsSaving(true);
                 try {
-                    // 保存する直前に日付フォーマットをスプレッドシート準拠の YYYY/MM/DD に再構築
-                    const finalWorker = { ...selectedWorker };
-                    if (finalWorker.dob) finalWorker.dob = formatDateToSlash(finalWorker.dob);
-                    if (finalWorker.dateOfIssue) finalWorker.dateOfIssue = formatDateToSlash(finalWorker.dateOfIssue);
-                    if (finalWorker.dateOfExpiry) finalWorker.dateOfExpiry = formatDateToSlash(finalWorker.dateOfExpiry);
-
                     const payload = { 
-                        ...finalWorker, 
+                        ...selectedWorker, 
                         action: selectedWorker._row ? "update" : "addNew", 
                         batch: selectedWorker.batch || selectedBatch
                     };
@@ -299,10 +268,10 @@
             };
 
             const renderField = (field) => {
-                const isDate = ['dob', 'dateOfIssue', 'dateOfExpiry'].includes(field);
-                const value = selectedWorker[field];
+                const value = selectedWorker[field] || "";
                 const label = FIELD_LABELS[field] || field;
 
+                // 閲覧モード：スプレッドシートの文字を加工せずそのまま表示
                 if (!isEditing) {
                     return (
                         <div key={field} className="border-b border-slate-100 py-2 flex justify-between items-center select-text">
@@ -310,26 +279,27 @@
                             <span className={`font-semibold text-slate-700 select-text ${field === 'laoName' ? 'lao-text text-sm' : ''} ${field === 'passport' ? 'mrz-font' : ''}`}>
                                 {field === 'driveUrl' ? (value ? <a href={value} target="_blank" className="text-blue-500 underline">Link ↗</a> : '-') : 
                                  field === 'reEntry' ? (value === true || value === 'TRUE' ? '✅ Yes' : '❌ No') :
-                                 isDate ? formatDateToSlash(value) : String(value || '-')}
+                                 value || '-'}
                             </span>
                         </div>
                     );
                 }
 
+                // 編集モード
                 return (
                     <div key={field} className="flex flex-col mb-2.5">
                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-0.5 tracking-wider">{label}</label>
                         
-                        {/* F: Sex -> MかFの選択式 */}
+                        {/* F: Sex のみ選択式（M/F） */}
                         {field === 'sex' ? (
-                            <select className="p-2 text-xs rounded bg-white w-full" value={value || ''}
+                            <select className="p-2 text-xs rounded bg-white w-full font-semibold" value={value}
                                 onChange={e => setSelectedWorker({...selectedWorker, sex: e.target.value})}>
                                 <option value="">- Select -</option>
                                 <option value="M">M</option>
                                 <option value="F">F</option>
                             </select>
                         ) : field === 'status' ? (
-                            <select className="p-2 text-xs rounded bg-white w-full lao-text" value={value || ''}
+                            <select className="p-2 text-xs rounded bg-white w-full lao-text" value={value}
                                 onChange={e => setSelectedWorker({...selectedWorker, status: e.target.value})}>
                                 <option value="">- Select -</option>
                                 {(masterOptions.Status || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -337,19 +307,14 @@
                         ) : field === 'reEntry' ? (
                             <input type="checkbox" className="w-5 h-5 accent-emerald-600 mt-1" checked={value === true || value === 'TRUE'} onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.checked})} />
                         ) : (
-                            <input className={`p-2 text-xs rounded w-full ${field === 'laoName' ? 'lao-text' : ''}`} 
-                                type={field === 'no' ? 'number' : isDate ? 'date' : 'text'}
-                                value={isDate ? convertToInputDate(value) : (value || '')}
-                                disabled={field === 'age'} /* Ageは自動計算なので入力不可 */
+                            /* 日付タイプを input type="text" に変更し、シートの YYYY/MM/DD 文字列をそのまま手打ち・表示できるように修正 */
+                            <input className={`p-2 text-xs rounded w-full font-semibold ${field === 'laoName' ? 'lao-text' : ''}`} 
+                                type="text"
+                                value={value}
+                                placeholder={['dob', 'dateOfIssue', 'dateOfExpiry'].includes(field) ? "YYYY/MM/DD" : ""}
+                                disabled={field === 'age'} /* Age(H列)はシート内の数式で自動計算させるため入力不可にする */
                                 onChange={e => {
-                                    const val = e.target.value;
-                                    let nextWorker = { ...selectedWorker, [field]: val };
-                                    
-                                    // 生年月日(dob)が入力されたら即時年齢を自動計算
-                                    if (field === 'dob') {
-                                        nextWorker.age = calculateAge(val);
-                                    }
-                                    setSelectedWorker(nextWorker);
+                                    setSelectedWorker({ ...selectedWorker, [field]: e.target.value });
                                 }} />
                         )}
                     </div>
