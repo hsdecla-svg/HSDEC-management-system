@@ -41,19 +41,35 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzfSonLlMApUKglvBf_y07Sed2q7_wPfqy3x9nsHvYTTZG2GNlz4guKTZUfwshwwErzsw/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbytKqKDwwARk9D2h1Ggw_iS41b7bDJVB6B-DUyMwFfzkfUK4G-V-wsDF27vaXSI_zoygw/exec';
         
+        // ⭐️ ご指定の項目配置（A〜R列）に合わせてグループを整理
         const FIELD_GROUPS = {
-            basic: ['ລໍາດັບ', 'ສະຖານະ', 'Re-entry', 'Full Name', 'ຊື່ ແລະ นາມສະກຸນ', 'Sex', 'Date of birth', 'Age', 'Size'],
-            passport: ['Passport No.', 'Date of issue', 'Date of Expiry'],
-            address: ['Village', 'District', 'Province', 'Google drive']
+            basic: ['no', 'status', 'reEntry', 'laoName', 'engName', 'sex', 'dob', 'age', 'size'],
+            passport: ['passport', 'dateOfIssue', 'dateOfExpiry'],
+            address: ['village', 'district', 'province', 'driveUrl', 'acName', 'acNo']
         };
 
+        // ⭐️ 画面表示用のきれいなラベル名
         const FIELD_LABELS = {
-            'ລໍາດັບ': 'No.',
-            'ສະຖານະ': 'Status',
-            'ຊື່ ແລະ นາມສະกຸນ': 'Lao Name',
-            'Full Name': 'English Name'
+            'no': 'A: No.',
+            'status': 'B: ສະຖານະ (Status)',
+            'reEntry': 'C: Re-entry',
+            'laoName': 'D: ຊື່ ແລະ ນາມສະກຸນ',
+            'engName': 'E: Full Name',
+            'sex': 'F: Sex',
+            'dob': 'G: Date of birth',
+            'age': 'H: Age',
+            'passport': 'I: Passport No.',
+            'dateOfIssue': 'J: Date of issue',
+            'dateOfExpiry': 'K: Date of expiry',
+            'village': 'L: Village',
+            'district': 'M: District',
+            'province': 'N: Province',
+            'size': 'O: Size',
+            'acName': 'P: AC - Name',
+            'acNo': 'Q: AC - No',
+            'driveUrl': 'R: Google drive'
         };
 
         const fixPassportNo = (raw) => {
@@ -105,14 +121,28 @@
                     Object.keys(json).forEach(sheetName => {
                         if (sheetName !== 'options' && json[sheetName] && json[sheetName].rows) {
                             const sheetWorkers = json[sheetName].rows.map(worker => {
-                                // 詳細画面の表示グループ項目にマッピングを最適化
+                                // ⭐️ GAS側から送られてくる配列データを綺麗にマッピング
                                 return {
-                                    ...worker,
+                                    _row: worker._row,
                                     batch: sheetName,
-                                    'ລໍາດັບ': worker.no,
-                                    'ຊື່ ແລະ นາມສະກຸນ': worker.laoName,
-                                    'Full Name': worker.engName,
-                                    'ສະຖານະ': worker.visa || worker.status || ""
+                                    no: worker.no,
+                                    status: worker.status,
+                                    reEntry: worker.reEntry,
+                                    laoName: worker.laoName,
+                                    engName: worker.engName,
+                                    sex: worker.sex || "",
+                                    dob: worker.dob || "",
+                                    age: worker.age || "",
+                                    passport: worker.passport,
+                                    dateOfIssue: worker.dateOfIssue || "",
+                                    dateOfExpiry: worker.dateOfExpiry || "",
+                                    village: worker.village || "",
+                                    district: worker.district || "",
+                                    province: worker.province || "",
+                                    size: worker.size || "",
+                                    acName: worker.acName || "",
+                                    acNo: worker.acNo || "",
+                                    driveUrl: worker.driveUrl
                                 };
                             });
                             allWorkers = allWorkers.concat(sheetWorkers);
@@ -120,7 +150,7 @@
                     });
 
                     setWorkers(allWorkers);
-                    setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: [], Status: [], Size: [] });
+                    setMasterOptions(json.options || { provinces: [], provinceMap: {}, Sex: ["M", "F"], Status: ["Preparing", "Issued", "Done"], Size: ["S", "M", "L", "XL"] });
 
                     const batches = Object.keys(json).filter(name => name !== 'options');
                     if (batches.length > 0 && !selectedBatch) {
@@ -140,14 +170,14 @@
                 return workers
                     .filter(w => w.batch === selectedBatch)
                     .filter(w => {
-                        const searchStr = `${w.engName} ${w.laoName} ${w['Passport No.'] || ''}`.toLowerCase();
+                        const searchStr = `${w.engName} ${w.laoName} ${w.passport || ''}`.toLowerCase();
                         return searchStr.includes(searchQuery.toLowerCase());
                     }).sort((a,b) => (parseInt(a.no) || 0) - (parseInt(b.no) || 0));
             }, [workers, selectedBatch, searchQuery]);
 
             const passportDriveUrl = useMemo(() => {
-                if (!selectedWorker || !selectedWorker['Google drive']) return null;
-                const urlStr = selectedWorker['Google drive'];
+                if (!selectedWorker || !selectedWorker.driveUrl) return null;
+                const urlStr = selectedWorker.driveUrl;
                 const match = urlStr.match(/folders\/([a-zA-Z0-9-_]+)/) || urlStr.match(/id=([a-zA-Z0-9-_]+)/);
                 if (match && match[1]) {
                     return `https://drive.google.com/embeddedfolderview?id=${match[1]}#grid`;
@@ -183,29 +213,28 @@
                         const line2 = mrzLines[mrzLines.length - 1];
                         let ext = { ...selectedWorker };
 
-                        ext['Passport No.'] = fixPassportNo(line2.substring(0, 9));
-                        ext['Full Name'] = cleanNameArea(line1.substring(5));
-                        ext.engName = ext['Full Name'];
+                        ext.passport = fixPassportNo(line2.substring(0, 9));
+                        ext.engName = cleanNameArea(line1.substring(5));
 
                         const dobRaw = line2.substring(13, 19);
                         const formatYear = (yy) => (parseInt(yy) < 50 ? `20${yy}` : `19${yy}`);
-                        ext['Date of birth'] = `${formatYear(dobRaw.substring(0,2))}-${dobRaw.substring(2,4)}-${dobRaw.substring(4,6)}`;
-                        ext['Sex'] = line2[20] === 'M' ? 'M' : (line2[20] === 'F' ? 'F' : '');
+                        ext.dob = `${formatYear(dobRaw.substring(0,2))}-${dobRaw.substring(2,4)}-${dobRaw.substring(4,6)}`;
+                        ext.sex = line2[20] === 'M' ? 'M' : (line2[20] === 'F' ? 'F' : '');
 
                         const expRaw = line2.substring(21, 27);
                         const expiry = `20${expRaw.substring(0,2)}-${expRaw.substring(2,4)}-${expRaw.substring(4,6)}`;
-                        ext['Date of Expiry'] = expiry;
+                        ext.dateOfExpiry = expiry;
 
                         if (expiry) {
                             const d = new Date(expiry);
                             let issue = new Date(d.getFullYear() - 10, d.getMonth(), d.getDate());
                             issue.setDate(issue.getDate() + 1);
-                            ext['Date of issue'] = issue.toISOString().split('T')[0];
+                            ext.dateOfIssue = issue.toISOString().split('T')[0];
                         }
 
                         setSelectedWorker(ext);
                         setScanStatus("Scan Complete!");
-                    } else { throw new Error("MRZ Area not found."); }
+                    } else { throw new Error("MRZ Area not found. Please try clear photo."); }
                 } catch (err) { alert(err.message); }
                 setIsScanning(false);
             };
@@ -216,11 +245,7 @@
                     const payload = { 
                         ...selectedWorker, 
                         action: selectedWorker._row ? "update" : "addNew", 
-                        batch: selectedWorker.batch || selectedBatch,
-                        no: selectedWorker['ລໍາດับ'] || selectedWorker.no,
-                        laoName: selectedWorker['ຊື່ ແລະ นາມສະກຸນ'] || selectedWorker.laoName,
-                        engName: selectedWorker['Full Name'] || selectedWorker.engName,
-                        visa: selectedWorker['ສະຖານະ'] || selectedWorker.visa
+                        batch: selectedWorker.batch || selectedBatch
                     };
                     await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
                     await fetchData();
@@ -230,17 +255,18 @@
             };
 
             const renderField = (field) => {
-                const isDate = field.includes('Date') || field.includes('Expiry');
+                const isDate = field.toLowerCase().includes('date') || field.toLowerCase().includes('expiry') || field === 'dob';
                 const value = selectedWorker[field];
                 const label = FIELD_LABELS[field] || field;
-                const isLaoField = ['ຊື່ ແລະ นາມສະກຸນ', 'Village', 'District', 'Province'].includes(field);
+                const isLaoField = ['laoName', 'village', 'district', 'province'].includes(field);
 
                 if (!isEditing) {
                     return (
                         <div key={field} className="border-b border-slate-100 py-2 flex justify-between items-center select-text">
                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{label}</span>
-                            <span className={`font-semibold text-slate-700 select-text ${isLaoField ? 'lao-text text-sm' : ''} ${field.includes('Passport') ? 'mrz-font' : ''}`}>
-                                {field === 'Google drive' ? <a href={value} target="_blank" className="text-blue-500 underline">Link ↗</a> : 
+                            <span className={`font-semibold text-slate-700 select-text ${isLaoField ? 'lao-text text-sm' : ''} ${field === 'passport' ? 'mrz-font' : ''}`}>
+                                {field === 'driveUrl' ? (value ? <a href={value} target="_blank" className="text-blue-500 underline">Link ↗</a> : '-') : 
+                                 field === 'reEntry' ? (value === true || value === 'TRUE' ? '✅ Yes' : '❌ No') :
                                  isDate ? (value ? new Date(value).toLocaleDateString('en-GB') : '-') : String(value || '-')}
                             </span>
                         </div>
@@ -250,22 +276,22 @@
                 return (
                     <div key={field} className="flex flex-col mb-2.5">
                         <label className="text-[10px] font-bold text-slate-500 uppercase mb-0.5 tracking-wider">{label}</label>
-                        {['Sex', 'ສະຖານະ', 'Size', 'Province', 'District'].includes(field) ? (
+                        {['sex', 'status', 'size', 'province', 'district'].includes(field) ? (
                             <select className={`p-2 text-xs rounded bg-white w-full ${isLaoField ? 'lao-text' : ''}`} value={value || ''}
                                 onChange={e => {
                                     const v = e.target.value;
-                                    if(field === 'Province') {
+                                    if(field === 'province') {
                                         const dists = masterOptions.provinceMap[v] || [];
-                                        setSelectedWorker({...selectedWorker, Province: v, District: dists.length === 1 ? dists[0] : ''});
+                                        setSelectedWorker({...selectedWorker, province: v, district: dists.length === 1 ? dists[0] : ''});
                                     } else { setSelectedWorker({...selectedWorker, [field]: v}); }
                                 }}>
                                 <option value="">- Select -</option>
-                                {(field === 'Province' ? masterOptions.provinces : field === 'District' ? masterOptions.provinceMap[selectedWorker['Province']] || [] : masterOptions[field === 'Sex' ? 'Sex' : field === 'ສະຖານະ' ? 'Status' : 'Size'] || []).map(opt => <option key={opt} value={opt} className="lao-text">{opt}</option>)}
+                                {(field === 'province' ? masterOptions.provinces : field === 'district' ? masterOptions.provinceMap[selectedWorker['province']] || [] : masterOptions[field === 'sex' ? 'Sex' : field === 'status' ? 'Status' : 'Size'] || []).map(opt => <option key={opt} value={opt} className="lao-text">{opt}</option>)}
                             </select>
-                        ) : field === 'Re-entry' ? (
+                        ) : field === 'reEntry' ? (
                             <input type="checkbox" className="w-5 h-5 accent-emerald-600 mt-1" checked={value === true || value === 'TRUE'} onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.checked})} />
                         ) : (
-                            <input className={`p-2 text-xs rounded w-full ${isLaoField ? 'lao-text' : ''}`} type={field === 'Age' || field === 'ລໍາດับ' ? 'number' : isDate ? 'date' : 'text'}
+                            <input className={`p-2 text-xs rounded w-full ${isLaoField ? 'lao-text' : ''}`} type={field === 'age' || field === 'no' ? 'number' : isDate ? 'date' : 'text'}
                                 value={isDate ? (value ? String(value).split('T')[0] : '') : (value || '')}
                                 onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.value})} />
                         )}
@@ -353,7 +379,6 @@
                                     {/* Personal Block */}
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm select-text">
                                         <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b pb-2">Personal</h4>
-                                        
                                         {FIELD_GROUPS.basic.map(f => renderField(f))}
                                     </div>
                                     
@@ -367,7 +392,7 @@
                                         </div>
                                     </div>
                                     
-                                    {/* Address & Drive & Passport Photo Block */}
+                                    {/* Address & Drive Block */}
                                     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col select-text">
                                         <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3 border-b pb-2">Address & Drive</h4>
                                         <div className="mb-4">
