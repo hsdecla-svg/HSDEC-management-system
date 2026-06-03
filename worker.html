@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Management System - Perfect Match Version</title>
+    <title>HSDEC Management System - Strict Column Matrix Version</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -41,89 +41,84 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbytKqKDwwARk9D2h1Ggw_iS41b7bDJVB6B-DUyMwFfzkfUK4G-V-wsDF27vaXSI_zoygw/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzfSonLlMApUKglvBf_y07Sed2q7_wPfqy3x9nsHvYTTZG2GNlz4guKTZUfwshwwErzsw/exec';
         
-        // A〜R列の画面グループ構成
+        // 画面レイアウトのブロック構成
         const FIELD_GROUPS = {
             basic: ['no', 'status', 'reEntry', 'laoName', 'engName', 'sex', 'dob', 'age', 'size'],
             passport: ['passport', 'dateOfIssue', 'dateOfExpiry'],
             address: ['village', 'district', 'province', 'driveUrl', 'acName', 'acNo']
         };
 
-        // 実際のデータ並び順に100%準拠したアルファベット付きラベル名
+        // 実際のA〜R列に基づいた日本語・ラオ語対応の正確な画面用ラベル
         const FIELD_LABELS = {
-            'no': 'A: No.',
-            'status': 'B: ສະຖານະ (Status)',
-            'reEntry': 'C: Re-entry',
-            'laoName': 'D: ຊື່ ແລະ ນາມສະກຸນ',
-            'engName': 'E: Full Name',
-            'dob': 'F: Date of birth',
-            'age': 'G: Age',
-            'passport': 'H: Passport No.',
-            'dateOfIssue': 'I: Date of issue',
-            'dateOfExpiry': 'J: Date of expiry',
-            'village': 'K: Village',
-            'district': 'L: District',
-            'province': 'M: Province',
-            'sex': 'N: Sex',
-            'driveUrl': 'O: Google drive',
-            'size': 'P: Size',
-            'acName': 'Q: AC - Name',
-            'acNo': 'R: AC - No'
+            'no': 'A: No. (連番)',
+            'status': 'B: ສະຖານະ (ຄູ່ / ດ່ຽວ)',
+            'reEntry': 'C: Re-entry (再入国)',
+            'laoName': 'D: ຊື່ ແລະ ນາມສະກຸນ (ラオ語名)',
+            'engName': 'E: Full Name (英語名)',
+            'dob': 'F: Date of birth (生年月日)',
+            'age': 'G: Age (年齢)',
+            'passport': 'H: Passport No. (旅券番号)',
+            'dateOfIssue': 'I: Date of issue (発行日)',
+            'dateOfExpiry': 'J: Date of expiry (有効期限)',
+            'village': 'K: Village (村)',
+            'district': 'L: District (郡)',
+            'province': 'M: Province (県)',
+            'sex': 'N: Sex (M / F)',
+            'driveUrl': 'O: Google drive URL',
+            'size': 'P: Size (洋服サイズ)',
+            'acName': 'Q: AC - Name (口座名義)',
+            'acNo': 'R: AC - No (口座番号)'
         };
 
-        // 提供された実際のデータ配列（A〜R）のインデックス定義
-        const ROW_INDEX_MAP = {
-            no: 0,          // A: 1
-            status: 1,      // B: ຄູ່
-            reEntry: 2,     // C: TRUE
-            laoName: 3,     // D: ທ້າວ ທອງຄຳ ພູມປັນຍາ
-            engName: 4,     // E: PHOUMPANYA THONGKHAMM
-            dob: 5,         // F: 1995/04/06
-            age: 6,         // G: 31
-            passport: 7,    // H: P3239655
-            dateOfIssue: 8, // I: 2025/02/19
-            dateOfExpiry: 9,// J: 2035/02/18
-            village: 10,    // K: THAXANG
-            district: 11,   // L: PAKNGEUM
-            province: 12,   // M: VIENTIANE
-            sex: 13,        // N: M
-            driveUrl: 14,   // O: https://drive.google.com/...
-            size: 15,       // P: （書いてあれば洋服サイズ英文字）
-            acName: 16,     // Q: AC - Name
-            acNo: 17        // R: AC - No
+        // ユーザーから提供された確定スプレッドシート行列インデックスマッピング (0始まり)
+        const STRICT_MATRIX = {
+            no: 0,          // A
+            status: 1,      // B
+            reEntry: 2,     // C
+            laoName: 3,     // D
+            engName: 4,     // E
+            dob: 5,         // F
+            age: 6,         // G
+            passport: 7,    // H
+            dateOfIssue: 8, // I
+            dateOfExpiry: 9,// J
+            village: 10,    // K
+            district: 11,   // L
+            province: 12,   // M
+            sex: 13,        // N
+            driveUrl: 14,   // O
+            size: 15,       // P
+            acName: 16,     // Q
+            acNo: 17        // R
         };
 
-        // GASから届いたデータを配列・オブジェクト問わず直接ぶっこ抜く超強力マッパー
-        const extractValueDirectly = (worker, field) => {
-            if (!worker) return "";
-            
-            // 1. もしGASから「生配列」のまま行データが届いている場合、インデックスから直接ぶっこ抜く
-            if (Array.isArray(worker)) {
-                const idx = ROW_INDEX_MAP[field];
-                return worker[idx] !== undefined && worker[idx] !== null ? String(worker[idx]).trim() : "";
+        // 配列構造・オブジェクト構造のどちらでも指定インデックスから「値」を100%確実にブッコ抜く処理
+        const strictExtract = (rawRow, field) => {
+            if (!rawRow) return "";
+            const targetIdx = STRICT_MATRIX[field];
+
+            // 1. GASからデータが純粋な配列として届いているケース
+            if (Array.isArray(rawRow)) {
+                return rawRow[targetIdx] !== undefined && rawRow[targetIdx] !== null ? String(rawRow[targetIdx]).trim() : "";
             }
-            
-            // 2. もしオブジェクトで届いている場合、インデックス番号付きプロパティ（"0", "1"...）または正確なキー名を柔軟に走査
-            const idx = ROW_INDEX_MAP[field];
-            if (worker[idx] !== undefined && worker[idx] !== null) return String(worker[idx]).trim();
-            if (worker[`_${idx}`] !== undefined && worker[`_${idx}`] !== null) return String(worker[`_${idx}`]).trim();
 
-            // 表記揺れ（大文字小文字・アルファベット付き）を網羅して検索
-            const targetKeys = [
-                field.toLowerCase(),
-                FIELD_LABELS[field]?.toLowerCase(),
-                FIELD_LABELS[field]?.split(':')[0]?.toLowerCase()
-            ];
+            // 2. GASオブジェクトがインデックス番号のキー("0", "1", "2"...)を持っているケース
+            if (rawRow[targetIdx] !== undefined && rawRow[targetIdx] !== null) return String(rawRow[targetIdx]).trim();
+            if (rawRow[`_${targetIdx}`] !== undefined && rawRow[`_${targetIdx}`] !== null) return String(rawRow[`_${targetIdx}`]).trim();
 
-            for (let k of Object.keys(worker)) {
-                const kl = k.toLowerCase();
-                if (targetKeys.some(tk => kl === tk || kl.includes(tk) || tk.includes(kl))) {
-                    return String(worker[k] !== undefined && worker[k] !== null ? worker[k] : "").trim();
+            // 3. GASオブジェクトが英文字キー（ヘッダー文字列）で持っているケースのための予備走査
+            const keys = Object.keys(rawRow);
+            const lowerField = field.toLowerCase();
+            for (let k of keys) {
+                if (k.toLowerCase() === lowerField) {
+                    return rawRow[k] !== undefined && rawRow[k] !== null ? String(rawRow[k]).trim() : "";
                 }
             }
 
-            return worker[field] !== undefined && worker[field] !== null ? String(worker[field]).trim() : "";
+            // 4. どれにも当てはまらない場合はプロパティ直撃
+            return rawRow[field] !== undefined && rawRow[field] !== null ? String(rawRow[field]).trim() : "";
         };
 
         const fixPassportNo = (raw) => {
@@ -156,7 +151,7 @@
             const [isSaving, setIsSaving] = useState(false);
             const [isScanning, setIsScanning] = useState(false);
             const [scanStatus, setScanStatus] = useState("");
-            const [masterOptions, setMasterOptions] = useState({ Status: [] });
+            const [masterOptions, setMasterOptions] = useState({ Status: ["ຄູ່", "ດ່ຽວ"] });
 
             const screenMode = useMemo(() => {
                 const params = new URLSearchParams(window.location.search);
@@ -175,29 +170,29 @@
                     Object.keys(json).forEach(sheetName => {
                         if (sheetName !== 'options' && json[sheetName] && json[sheetName].rows) {
                             const sheetWorkers = json[sheetName].rows.map((rawRow, index) => {
-                                // 実際のA〜Rのデータ構造に完全一対一マッピング
+                                // 指定された行列位置（STRICT_MATRIX）から確実にマッピング
                                 return {
                                     _row: rawRow._row || (index + 2),
                                     batch: sheetName,
-                                    no: extractValueDirectly(rawRow, 'no'),
-                                    status: extractValueDirectly(rawRow, 'status'),
-                                    reEntry: extractValueDirectly(rawRow, 'reEntry'),
-                                    laoName: extractValueDirectly(rawRow, 'laoName'),
-                                    engName: extractValueDirectly(rawRow, 'engName'),
-                                    dob: extractValueDirectly(rawRow, 'dob'),
-                                    age: extractValueDirectly(rawRow, 'age'),
-                                    passport: extractValueDirectly(rawRow, 'passport'),
-                                    dateOfIssue: extractValueDirectly(rawRow, 'dateOfIssue'),
-                                    dateOfExpiry: extractValueDirectly(rawRow, 'dateOfExpiry'),
-                                    village: extractValueDirectly(rawRow, 'village'),
-                                    district: extractValueDirectly(rawRow, 'district'),
-                                    province: extractValueDirectly(rawRow, 'province'),
-                                    sex: extractValueDirectly(rawRow, 'sex'),
-                                    driveUrl: extractValueDirectly(rawRow, 'driveUrl'),
-                                    size: extractValueDirectly(rawRow, 'size'),
-                                    acName: extractValueDirectly(rawRow, 'acName'),
-                                    acNo: extractValueDirectly(rawRow, 'acNo'),
-                                    _rawObj: rawRow
+                                    no: strictExtract(rawRow, 'no'),
+                                    status: strictExtract(rawRow, 'status'),
+                                    reEntry: strictExtract(rawRow, 'reEntry'),
+                                    laoName: strictExtract(rawRow, 'laoName'),
+                                    engName: strictExtract(rawRow, 'engName'),
+                                    dob: strictExtract(rawRow, 'dob'),
+                                    age: strictExtract(rawRow, 'age'),
+                                    passport: strictExtract(rawRow, 'passport'),
+                                    dateOfIssue: strictExtract(rawRow, 'dateOfIssue'),
+                                    dateOfExpiry: strictExtract(rawRow, 'dateOfExpiry'),
+                                    village: strictExtract(rawRow, 'village'),
+                                    district: strictExtract(rawRow, 'district'),
+                                    province: strictExtract(rawRow, 'province'),
+                                    sex: strictExtract(rawRow, 'sex'),
+                                    driveUrl: strictExtract(rawRow, 'driveUrl'),
+                                    size: strictExtract(rawRow, 'size'),
+                                    acName: strictExtract(rawRow, 'acName'),
+                                    acNo: strictExtract(rawRow, 'acNo'),
+                                    _rawRawObj: rawRow // 元のオブジェクトをそのまま保存
                                 };
                             });
                             allWorkers = allWorkers.concat(sheetWorkers);
@@ -205,14 +200,16 @@
                     });
 
                     setWorkers(allWorkers);
-                    setMasterOptions(json.options || { Status: [] });
+                    if (json.options && json.options.Status) {
+                        setMasterOptions(json.options);
+                    }
 
                     const batches = Object.keys(json).filter(name => name !== 'options');
                     if (batches.length > 0 && !selectedBatch) {
                         setSelectedBatch(batches[0]);
                     }
                 } catch (e) { 
-                    console.error("Fetch Data Error:", e); 
+                    console.error("Fetch Data Matrix Error:", e); 
                 }
                 setLoading(false);
             };
@@ -298,12 +295,14 @@
             const handleSave = async () => {
                 setIsSaving(true);
                 try {
-                    const basePayload = selectedWorker._rawObj ? { ...selectedWorker._rawObj } : {};
+                    // スプレッドシートへ返すためのペイロード。元のオブジェクトの構造を復元
+                    const basePayload = selectedWorker._rawRawObj ? { ...selectedWorker._rawRawObj } : {};
                     
-                    // スプレッドシートの並び順インデックスに対しても確実に値を配置してGASへ送る
-                    Object.keys(ROW_INDEX_MAP).forEach(field => {
-                        const idx = ROW_INDEX_MAP[field];
+                    // 配列・オブジェクト両対応のため、インデックス番号およびフィールド名の両方に値を書き込む
+                    Object.keys(STRICT_MATRIX).forEach(field => {
+                        const idx = STRICT_MATRIX[field];
                         basePayload[idx] = selectedWorker[field];
+                        basePayload[`_${idx}`] = selectedWorker[field];
                         basePayload[field] = selectedWorker[field];
                     });
 
@@ -314,7 +313,7 @@
                         batch: selectedWorker.batch || selectedBatch
                     };
 
-                    delete payload._rawObj;
+                    delete payload._rawRawObj;
 
                     await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
                     await fetchData();
@@ -333,7 +332,7 @@
                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{label}</span>
                             <span className={`font-semibold text-slate-700 select-text ${field === 'laoName' ? 'lao-text text-sm' : ''} ${field === 'passport' ? 'mrz-font' : ''}`}>
                                 {field === 'driveUrl' ? (value ? <a href={value} target="_blank" className="text-blue-500 underline">Link ↗</a> : '-') : 
-                                 field === 'reEntry' ? (value === true || String(value).toUpperCase() === 'TRUE' ? '✅ Yes' : '❌ No') :
+                                 field === 'reEntry' ? (value === true || String(value).toUpperCase() === 'TRUE' ? '✅ Yes (再入国)' : '❌ No (未入国)') :
                                  value || '-'}
                             </span>
                         </div>
@@ -352,13 +351,19 @@
                                 <option value="F">F</option>
                             </select>
                         ) : field === 'status' ? (
-                            <select className="p-2 text-xs rounded bg-white w-full lao-text" value={value}
+                            <select className="p-2 text-xs rounded bg-white w-full lao-text font-semibold" value={value}
                                 onChange={e => setSelectedWorker({...selectedWorker, status: e.target.value})}>
                                 <option value="">- Select -</option>
-                                {(masterOptions.Status || []).map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                                <option value="ຄູ່">ຄູ່ (夫婦枠)</option>
+                                <option value="ດ່ຽວ">ດ່ຽວ (単独枠)</option>
                             </select>
                         ) : field === 'reEntry' ? (
-                            <input type="checkbox" className="w-5 h-5 accent-emerald-600 mt-1" checked={value === true || String(value).toUpperCase() === 'TRUE'} onChange={e => setSelectedWorker({...selectedWorker, [field]: e.target.checked})} />
+                            <div className="flex items-center gap-2 mt-1">
+                                <input type="checkbox" className="w-5 h-5 accent-emerald-600" 
+                                    checked={value === true || String(value).toUpperCase() === 'TRUE' || value === 'TRUE'} 
+                                    onChange={e => setSelectedWorker({...selectedWorker, reEntry: e.target.checked ? "TRUE" : ""})} />
+                                <span className="text-xs text-slate-600 font-medium">TRUE (再入国対象)</span>
+                            </div>
                         ) : (
                             <input className={`p-2 text-xs rounded w-full font-semibold ${field === 'laoName' ? 'lao-text' : ''}`} 
                                 type="text"
@@ -373,7 +378,7 @@
                 );
             };
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-black text-slate-700 tracking-widest bg-slate-100">HSDEC DATA HUB LOADING...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-black text-slate-700 tracking-widest bg-slate-100">HSDEC DIRECT MATRIX HUB LOADING...</div>;
 
             const isMobile = screenMode === 'mobile';
 
@@ -399,9 +404,9 @@
                                     className={`p-4 border-b cursor-pointer transition-all hover:bg-slate-50 ${selectedWorker?._row === w._row ? 'list-item-active' : ''}`}>
                                     <div className="flex justify-between items-center mb-1">
                                         <span className="text-[10px] text-slate-400 font-bold">#{w.no || '0'}</span>
-                                        <span className="text-emerald-600 font-black text-xs uppercase tracking-tight">{w.engName}</span>
+                                        <span className="text-emerald-600 font-black text-xs uppercase tracking-tight">{w.engName || 'NO NAME'}</span>
                                     </div>
-                                    <div className="text-slate-500 lao-text text-sm truncate">{w.laoName}</div>
+                                    <div className="text-slate-500 lao-text text-sm truncate">{w.laoName || '-'}</div>
                                 </div>
                             ))}
                         </div>
@@ -428,7 +433,7 @@
                                         )}
                                         <div className="truncate select-text">
                                             <span className="text-base md:text-xl font-black text-slate-800 block truncate uppercase tracking-tight">{selectedWorker.engName || 'New Entry'}</span>
-                                            <span className="text-emerald-600 lao-text text-base md:text-lg leading-tight block truncate">{selectedWorker.laoName}</span>
+                                            <span className="text-emerald-600 lao-text text-base md:text-lg leading-tight block truncate">{selectedWorker.laoName || '-'}</span>
                                         </div>
                                     </div>
                                     <div className="flex gap-2 items-center w-full sm:w-auto justify-end">
