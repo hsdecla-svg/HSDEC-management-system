@@ -14,7 +14,7 @@
     <div id="root"></div>
     <script type="text/babel">
         const { useState } = React;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxyIecfhrPZ1sh0QpJSWoe0z896qCS4Iv_ckOJpBW-_P8nCM9aVVSC6y1VllMnAKEmDOw/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxyIecfhrPZ1sh0QpJSWoe0z896qCS4Iv_ckOJpBW-_P8nCM9aVVSC6y1VllMnAKEmDOw/exec'; // ★あなたのURL
 
         function App() {
             const [mode, setMode] = useState('portal');
@@ -25,6 +25,7 @@
             const [formData, setFormData] = useState({});
 
             const fetchData = async (m, t) => {
+                // type=json を付けることでCORSを回避
                 const res = await fetch(`${GAS_URL}?type=json&mode=${m}&target=${encodeURIComponent(t)}`);
                 setRecords(await res.json());
             };
@@ -36,9 +37,9 @@
             };
 
             if (mode === 'portal') return (
-                <div className="h-screen flex flex-col items-center justify-center gap-4">
-                    <button onClick={()=>{setMode('hsdec'); setTarget('ເດືອນ 1'); fetchData('hsdec', 'ເດືອນ 1');}} className="p-8 bg-slate-900 text-white rounded-3xl font-bold">HSDEC Global Finance</button>
-                    <button onClick={()=>{setMode('korea'); setTarget('ຊຸດທີ 2'); fetchData('korea', 'ຊຸດທີ 2');}} className="p-8 bg-indigo-600 text-white rounded-3xl font-bold">Sessional Worker Korea</button>
+                <div className="h-screen flex flex-col items-center justify-center gap-6 p-4">
+                    <button onClick={()=>{setMode('hsdec'); setTarget('ເດືອນ 1'); fetchData('hsdec', 'ເດືອນ 1');}} className="w-full max-w-sm p-8 bg-slate-900 text-white rounded-3xl font-bold">HSDEC Global Finance</button>
+                    <button onClick={()=>{setMode('korea'); setTarget('ຊຸດທີ 2'); fetchData('korea', 'ຊຸດທີ 2');}} className="w-full max-w-sm p-8 bg-indigo-600 text-white rounded-3xl font-bold">Sessional Worker Korea</button>
                 </div>
             );
 
@@ -52,16 +53,16 @@
                         }} className="bg-blue-600 text-white px-3 rounded">+</button></div>
                         {records.map((r, i) => <div key={i} onClick={()=>{setSel(r); setEdit(false);}} className="p-4 border-b cursor-pointer hover:bg-slate-50 lao-text">{r.v[0]} - {r.v[2]}</div>)}
                     </div>
-                    <div className="flex-1 p-6">
+                    <div className="flex-1 p-6 overflow-y-auto">
                         {edit ? (
                             <div className="bg-white p-6 rounded-2xl shadow grid grid-cols-2 gap-4">
                                 <input className="border p-2 rounded" value={formData.no} readOnly />
                                 <input className="border p-2 rounded" type="date" value={formData.date} onChange={e=>update('date', e.target.value)} />
-                                <input className="col-span-2 border p-2 rounded" placeholder="Item" onChange={e=>update('item', e.target.value)} />
+                                <input className="col-span-2 border p-2 rounded" placeholder="Item Name" onChange={e=>update('item', e.target.value)} />
                                 <select className="border p-2 rounded" onChange={e=>update('currency', e.target.value)}><option>LAK</option><option>USD</option><option>THB</option></select>
-                                <input className="border p-2 rounded" placeholder="Qty" type="number" onChange={e=>update('qty', e.target.value)} />
-                                <input className="border p-2 rounded" placeholder="Price" type="number" onChange={e=>update('price', e.target.value)} />
-                                <div className="col-span-2 font-bold">Total: {formData.total.toLocaleString()}</div>
+                                <input className="border p-2 rounded" type="number" placeholder="Qty" onChange={e=>update('qty', e.target.value)} />
+                                <input className="border p-2 rounded" type="number" placeholder="Price" onChange={e=>update('price', e.target.value)} />
+                                <div className="col-span-2 font-bold p-3 bg-indigo-50 rounded">Total: {Number(formData.total).toLocaleString()}</div>
                                 <input type="file" className="col-span-2" onChange={e=>{
                                     const r = new FileReader(); r.onload = ev => update('photo', ev.target.result); r.readAsDataURL(e.target.files[0]);
                                 }} />
@@ -71,12 +72,14 @@
                                 }} className="col-span-2 bg-green-600 text-white py-3 rounded">Save</button>
                             </div>
                         ) : sel ? (
-                            <div className="bg-white p-6 rounded-2xl shadow">
-                                <h2 className="text-xl font-bold">No.{sel.v[0]} {sel.v[2]}</h2>
+                            <div className="bg-white p-6 rounded-2xl shadow space-y-2">
+                                <h2 className="text-xl font-bold border-b pb-2">No.{sel.v[0]}</h2>
+                                <p className="lao-text">Item: {sel.v[2]}</p>
                                 <p>Total: {Number(sel.v[11]).toLocaleString()}</p>
-                                {sel.v[13] && <img src={sel.v[13]} className="max-w-xs mt-4"/>}
+                                {sel.v[13] && <a href={sel.v[13]} target="_blank" className="text-blue-600 block">View Receipt</a>}
+                                <button onClick={()=>{setFormData({row_index:sel.row_index, no:sel.v[0], date:sel.v[1], item:sel.v[2], qty:sel.v[3], total:sel.v[11]}); setEdit(true);}} className="bg-amber-500 text-white px-6 py-2 rounded mt-4">Edit</button>
                             </div>
-                        ) : <div className="text-slate-400">Select an item</div>}
+                        ) : <div className="text-slate-400">Select an entry</div>}
                     </div>
                 </div>
             );
