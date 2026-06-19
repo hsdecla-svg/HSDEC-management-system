@@ -14,12 +14,12 @@
         .list-active { background: #eef2ff; border-right: 4px solid #4f46e5; }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800">
+<body class="bg-slate-100">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbx2hA6aPsAC8ucpNId_Nv1pFti9eJE7mW7G3n6l0a8KogIUNq_hSQDljXv4-nc3VVy4RQ/exec'; // ★デプロイURLをここに設定
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbymhLyFDoHNyINOHX4EwbGsG5eMhmqOmxgbPcZRAxtJdi-rakk_wvYXUCNesn3RbyBHTg/exec'; 
 
         function App() {
             const [mode, setMode] = useState('portal');
@@ -31,8 +31,7 @@
 
             const fetchData = async (m, t) => {
                 const res = await fetch(`${GAS_URL}?mode=${m}&target=${encodeURIComponent(t)}`);
-                const data = await res.json();
-                setRecords(data);
+                setRecords(await res.json());
             };
 
             const updateField = (field, value) => {
@@ -81,7 +80,7 @@
                     <div className="flex-1 p-6 overflow-y-auto">
                         {isEditing ? (
                             <div className="bg-white p-6 rounded-2xl shadow">
-                                <h2 className="font-bold mb-4 text-lg">Register / Edit Entry</h2>
+                                <h2 className="font-bold mb-4 text-lg">Register Entry</h2>
                                 <div className="grid grid-cols-2 gap-4">
                                     <input className="border p-2 rounded" placeholder="No" value={formData.no} readOnly />
                                     <input className="border p-2 rounded" type="date" value={formData.date} onChange={e=>updateField('date', e.target.value)} />
@@ -89,7 +88,7 @@
                                     <select className="border p-2 rounded" value={formData.currency} onChange={e=>updateField('currency', e.target.value)}>
                                         <option>LAK</option><option>USD</option><option>THB</option>
                                     </select>
-                                    <input className="border p-2 rounded" placeholder="Quantity" type="number" value={formData.qty} onChange={e=>updateField('qty', e.target.value)} />
+                                    <input className="border p-2 rounded" placeholder="Qty" type="number" value={formData.qty} onChange={e=>updateField('qty', e.target.value)} />
                                     <input className="border p-2 rounded" placeholder="Price" type="number" value={formData.price} onChange={e=>updateField('price', e.target.value)} />
                                     <div className="col-span-2 p-3 bg-indigo-50 rounded font-bold text-indigo-700">Total: {Number(formData.total).toLocaleString()}</div>
                                     <input type="file" accept="image/*" capture="environment" className="col-span-2" onChange={e=>{
@@ -105,9 +104,9 @@
                                 <h2 className="text-xl font-bold border-b pb-2">No.{selected.v[0]}</h2>
                                 <p><strong>Date:</strong> {selected.v[1]}</p>
                                 <p className="lao-text"><strong>Item:</strong> {selected.v[2]}</p>
-                                <p><strong>Quantity:</strong> {selected.v[3]}</p>
-                                <p><strong>Total:</strong> {Number(selected.v[11]).toLocaleString()}</p>
-                                {selected.v[13] && <img src={selected.v[13]} className="max-w-xs border rounded" />}
+                                <p><strong>Qty:</strong> {selected.v[3]}</p>
+                                <p><strong>Total:</strong> ₭ {Number(selected.v[11]).toLocaleString()}</p>
+                                {selected.v[13] && <div className="mt-4"><a href={selected.v[13]} target="_blank" className="text-blue-600 underline">View Receipt</a><img src={selected.v[13]} className="mt-2 max-w-xs border rounded shadow-md" /></div>}
                                 <button onClick={()=>{setFormData({no: selected.v[0], date: selected.v[1], item: selected.v[2], qty: selected.v[3], total: selected.v[11]}); setIsEditing(true);}} className="bg-amber-500 text-white px-6 py-2 rounded">Edit</button>
                             </div>
                         ) : <div className="text-slate-400">Please select an entry.</div>}
