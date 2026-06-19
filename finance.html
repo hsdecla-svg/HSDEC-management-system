@@ -25,9 +25,16 @@
             const [formData, setFormData] = useState({});
 
             const fetchData = async (m, t) => {
-                const res = await fetch(`${GAS_URL}?mode=${m}&target=${encodeURIComponent(t)}`);
-                setRecords(await res.json());
-            };
+                setLoading(true);
+                try {
+                    const res = await fetch(`${GAS_URL}?type=json&mode=${m}&target=${encodeURIComponent(t)}`);
+                    const data = await res.json();
+                    setRecords(data);
+                } catch(e) {
+                    console.error("Fetch Error:", e);
+                }
+                setLoading(false);
+        };
 
             const update = (f, v) => {
                 const next = {...formData, [f]: v};
