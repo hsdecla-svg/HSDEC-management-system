@@ -14,7 +14,7 @@
     <div id="root"></div>
     <script type="text/babel">
         const { useState } = React;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxyIecfhrPZ1sh0QpJSWoe0z896qCS4Iv_ckOJpBW-_P8nCM9aVVSC6y1VllMnAKEmDOw/exec'; // ★あなたのURL
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbxNDBH7DXotcXWgAbNIJswskMfPNQB0E23Azk545Yok9DY62RZbKVD3wRxw-3Ga2lzkuw/exec'; 
 
         function App() {
             const [mode, setMode] = useState('portal');
@@ -25,8 +25,7 @@
             const [formData, setFormData] = useState({});
 
             const fetchData = async (m, t) => {
-                // type=json を付けることでCORSを回避
-                const res = await fetch(`${GAS_URL}?type=json&mode=${m}&target=${encodeURIComponent(t)}`);
+                const res = await fetch(`${GAS_URL}?mode=${m}&target=${encodeURIComponent(t)}`);
                 setRecords(await res.json());
             };
 
@@ -37,9 +36,9 @@
             };
 
             if (mode === 'portal') return (
-                <div className="h-screen flex flex-col items-center justify-center gap-6 p-4">
-                    <button onClick={()=>{setMode('hsdec'); setTarget('ເດືອນ 1'); fetchData('hsdec', 'ເດືອນ 1');}} className="w-full max-w-sm p-8 bg-slate-900 text-white rounded-3xl font-bold">HSDEC Global Finance</button>
-                    <button onClick={()=>{setMode('korea'); setTarget('ຊຸດທີ 2'); fetchData('korea', 'ຊຸດທີ 2');}} className="w-full max-w-sm p-8 bg-indigo-600 text-white rounded-3xl font-bold">Sessional Worker Korea</button>
+                <div className="h-screen flex flex-col items-center justify-center gap-6">
+                    <button onClick={()=>{setMode('hsdec'); setTarget('ເດືອນ 1'); fetchData('hsdec', 'ເດືອນ 1');}} className="p-8 bg-slate-900 text-white rounded-3xl font-bold">HSDEC Global Finance</button>
+                    <button onClick={()=>{setMode('korea'); setTarget('ຊຸດທີ 2'); fetchData('korea', 'ຊຸດທີ 2');}} className="p-8 bg-indigo-600 text-white rounded-3xl font-bold">Sessional Worker Korea</button>
                 </div>
             );
 
@@ -72,11 +71,10 @@
                                 }} className="col-span-2 bg-green-600 text-white py-3 rounded">Save</button>
                             </div>
                         ) : sel ? (
-                            <div className="bg-white p-6 rounded-2xl shadow space-y-2">
-                                <h2 className="text-xl font-bold border-b pb-2">No.{sel.v[0]}</h2>
-                                <p className="lao-text">Item: {sel.v[2]}</p>
+                            <div className="bg-white p-6 rounded-2xl shadow">
+                                <h2 className="text-xl font-bold">No.{sel.v[0]} {sel.v[2]}</h2>
                                 <p>Total: {Number(sel.v[11]).toLocaleString()}</p>
-                                {sel.v[13] && <a href={sel.v[13]} target="_blank" className="text-blue-600 block">View Receipt</a>}
+                                {sel.v[13] && <img src={sel.v[13]} className="max-w-xs mt-4"/>}
                                 <button onClick={()=>{setFormData({row_index:sel.row_index, no:sel.v[0], date:sel.v[1], item:sel.v[2], qty:sel.v[3], total:sel.v[11]}); setEdit(true);}} className="bg-amber-500 text-white px-6 py-2 rounded mt-4">Edit</button>
                             </div>
                         ) : <div className="text-slate-400">Select an entry</div>}
