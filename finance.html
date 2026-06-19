@@ -3,95 +3,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Finance | v4.2 Full Mobile</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <title>HSDEC & Project Finance Hub</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0f172a; margin: 0; }
-        .form-input, .form-select, .form-textarea { border: 2px solid #e2e8f0; padding: 12px; border-radius: 12px; width: 100%; font-weight: 700; outline: none; background: white; font-size: 16px; }
-        .form-textarea { min-height: 80px; resize: none; }
-        .label-cap { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; margin-bottom: 4px; display: block; }
-        .modal-full { position: fixed; inset: 0; background: #f8fafc; z-index: 1000; overflow-y: auto; padding: 20px; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Phetsarath:wght@400;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background: #f1f5f9; height: 100vh; overflow: hidden; font-size: 13px; user-select: text !important; -webkit-user-select: text !important; }
+        .lao-text { font-family: 'Phetsarath OT', 'Phetsarath', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        input, select, textarea { border: 1px solid #e2e8f0 !important; }
+        .list-item-active { background-color: #f5f3ff; border-right: 3px solid #6366f1; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
     <div id="root"></div>
+
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
+        
+        // 会計用バックエンドのGAS_URL
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbyBhFVei9sJp7RJpbhacKgCtzYBu1v-rmaGHXNo89JSyJVNJ4n3E41DY-d0DwSrPjFz/exec';
+        
         const CATEGORIES = ["ALL", "Gasoline", "Office Supplies", "Equipment", "Food/Drink", "Transport", "Other"];
         const METHODS = ["Cash", "Transfer"];
-        const SORT_OPTIONS = [
-            { label: "Newest", key: "date", desc: true },
-            { label: "Oldest", key: "date", desc: false },
-            { label: "Price ↑", key: "total", desc: true },
-            { label: "Price ↓", key: "total", desc: false }
-        ];
+        
+        // フィールド構成
+        const FIELD_GROUPS = {
+            main: ['date', 'category', 'method', 'item_name'],
+            calc: ['qty', 'price', 'total'],
+            meta: ['memo', 'photo_url']
+        };
+
+        const FIELD_LABELS = {
+            'date': '日付 (Date)',
+            'category': 'カテゴリー (Category)',
+            'method': '決済方法 (Method)',
+            'item_name': '品名・内容 (Item Name)',
+            'qty': '数量 (Quantity)',
+            'price': '単価 (Price)',
+            'total': '合計金額 (Grand Total)',
+            'memo': '備考・メモ (Memo)',
+            'photo_url': '領収書画像 (Receipt Photo)'
+        };
 
         function FinanceApp() {
-            const [view, setView] = useState('list');
+            // モード管理: 'portal' (最初の選択画面), 'hsdec' (会社全体), 'korea' (Sessional Worker)
+            const [mainMode, setMainMode] = useState('portal');
+            // サブ選択（シート名やバッチ名）
+            const [selectedSubKey, setSelectedSubKey] = useState('');
+            
             const [records, setRecords] = useState([]);
-            const [fForm, setFForm] = useState({ id: "", date: "", category: "Other", method: "Cash", total: 0, item_name: "", qty: "", price: "", amount: "", photo_url: "" });
-            const [isLoading, setIsLoading] = useState(false);
+            const [loading, setLoading] = useState(false);
+            const [selectedRecord, setSelectedRecord] = useState(null);
+            const [isEditing, setIsEditing] = useState(false);
+            const [searchQuery, setSearchQuery] = useState('');
+            const [isSaving, setIsSaving] = useState(false);
             const [filterTab, setFilterTab] = useState('ALL');
-            const [sortIdx, setSortIdx] = useState(0);
 
-            useEffect(() => { fetchSheetData(); }, []);
+            const screenMode = useMemo(() => {
+                const params = new URLSearchParams(window.location.search);
+                return params.get('mode') === 'mobile' ? 'mobile' : 'pc';
+            }, []);
+
+            // 会社全体のシート選択肢（ເດືອນ 1 ～ ເດືອນ 12）
+            const hsdecSheets = useMemo(() => {
+                return Array.from({length: 12}, (_, i) => `ເດືອນ ${i + 1}`);
+            }, []);
+
+            // プロジェクト（Sessional Worker）の選択肢
+            const koreaBatches = ["ຊຸດທີ 2", "ຊຸດທີ 3", "ຊຸດທີ 4"];
+
+            // モードやサブキーが変わったらデータを自動取得
+            useEffect(() => {
+                if (mainMode === 'portal') {
+                    setRecords([]);
+                    setSelectedRecord(null);
+                    return;
+                }
+                fetchSheetData();
+            }, [mainMode, selectedSubKey]);
 
             const fetchSheetData = async () => {
-                setIsLoading(true);
+                if (!selectedSubKey) return;
+                setLoading(true);
                 try {
-                    const res = await fetch(GAS_URL);
+                    // GASに「どのモード」の「どのシート（バッチ）」が欲しいかパラメータを付与してリクエスト
+                    const res = await fetch(`${GAS_URL}?type=json&mode=${mainMode}&target=${encodeURIComponent(selectedSubKey)}`);
                     const data = await res.json();
                     if (data) {
                         const mapped = data.map(r => {
                             const v = r.v || Object.values(r);
                             return {
+                                _row: r.row_index,
                                 id: r.row_index,
-                                date: v[1] || "", category: v[2] || "Other", method: v[3] || "Cash",
+                                date: v[1] || "", 
+                                category: v[2] || "Other", 
+                                method: v[3] || "Cash",
                                 total: parseFloat(String(v[4]).replace(/[^0-9.-]+/g, "")) || 0,
-                                item_name: v[5] || "", qty: v[6] || "", price: v[7] || "",
-                                amount: v[8] || "", memo: v[10] || "", photo_url: v[11] || ""
+                                item_name: v[5] || "", 
+                                qty: v[6] || "", 
+                                price: v[7] || "",
+                                amount: v[8] || "", 
+                                memo: v[10] || "", 
+                                photo_url: v[11] || "",
+                                _rawObj: r
                             };
                         });
                         setRecords(mapped);
                     }
-                } catch (e) { console.error("Load Error:", e); }
-                setIsLoading(false);
+                } catch (e) { 
+                    console.error("Load Error:", e); 
+                }
+                setLoading(false);
             };
 
-            // 自動計算
+            // 自動計算ロジック
             useEffect(() => {
-                if (view !== 'edit') return;
-                const q = parseFloat(String(fForm.qty || "0").replace(/[^0-9.-]+/g, "")) || 0;
-                const p = parseFloat(String(fForm.price || "0").replace(/[^0-9.-]+/g, "")) || 0;
+                if (!isEditing || !selectedRecord) return;
+                const q = parseFloat(String(selectedRecord.qty || "0").replace(/[^0-9.-]+/g, "")) || 0;
+                const p = parseFloat(String(selectedRecord.price || "0").replace(/[^0-9.-]+/g, "")) || 0;
                 const grandTotal = q * p;
-                if (fForm.total !== grandTotal) {
-                    setFForm(prev => ({ ...prev, total: grandTotal }));
+                if (selectedRecord.total !== grandTotal && q > 0 && p > 0) {
+                    setSelectedRecord(prev => ({ ...prev, total: grandTotal }));
                 }
-            }, [fForm.qty, fForm.price, view]);
+            }, [selectedRecord?.qty, selectedRecord?.price, isEditing]);
 
-            const sortedRecords = useMemo(() => {
+            const filteredRecords = useMemo(() => {
                 let res = filterTab === 'ALL' ? [...records] : records.filter(r => r.category === filterTab);
-                const opt = SORT_OPTIONS[sortIdx];
-                res.sort((a, b) => {
-                    let vA = a[opt.key], vB = b[opt.key];
-                    if (opt.key === 'date') { vA = new Date(vA); vB = new Date(vB); }
-                    return opt.desc ? vB - vA : vA - vB;
-                });
-                return res;
-            }, [records, filterTab, sortIdx]);
+                if (searchQuery) {
+                    res = res.filter(r => {
+                        const str = `${r.item_name} ${r.memo} ${r.category}`.toLowerCase();
+                        return str.includes(searchQuery.toLowerCase());
+                    });
+                }
+                return res.sort((a, b) => new Date(b.date) - new Date(a.date));
+            }, [records, filterTab, searchQuery]);
 
-            const totalSum = useMemo(() => sortedRecords.reduce((acc, c) => acc + (c.total || 0), 0), [sortedRecords]);
+            const totalSum = useMemo(() => {
+                return filteredRecords.reduce((acc, c) => acc + (c.total || 0), 0);
+            }, [filteredRecords]);
 
             const handlePhotoUpload = (e) => {
                 const file = e.target.files[0];
-                if(!file) return;
-                setIsLoading(true);
+                if (!file) return;
+                setLoading(true);
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     const img = new Image();
@@ -99,125 +162,254 @@
                         const canvas = document.createElement('canvas');
                         const MAX_W = 800;
                         let w = img.width, h = img.height;
-                        if(w > MAX_W) { h *= MAX_W/w; w = MAX_W; }
+                        if (w > MAX_W) { h *= MAX_W / w; w = MAX_W; }
                         canvas.width = w; canvas.height = h;
                         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                        setFForm({ ...fForm, photo_url: canvas.toDataURL('image/jpeg', 0.6) });
-                        setIsLoading(false);
+                        setSelectedRecord({ ...selectedRecord, photo_url: canvas.toDataURL('image/jpeg', 0.6) });
+                        setLoading(false);
                     };
                     img.src = ev.target.result;
                 };
                 reader.readAsDataURL(file);
             };
 
-            const handleSave = async (e) => {
-                if(e) e.preventDefault();
-                setIsLoading(true);
+            const handleSave = async () => {
+                setIsSaving(true);
                 try {
-                    const payload = { ...fForm, row_index: fForm.id || "" };
-                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload)});
-                    setView('list'); 
-                    fetchSheetData();
-                } catch (err) { alert("Save Error: " + err); }
-                setIsLoading(false);
+                    const payload = { 
+                        ...selectedRecord, 
+                        row_index: selectedRecord.id || "",
+                        mode: mainMode,
+                        target: selectedSubKey
+                    };
+                    delete payload._rawObj;
+                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+                    setIsEditing(false);
+                    setSelectedRecord(null);
+                    await fetchSheetData();
+                } catch (err) { 
+                    alert("Save Error: " + err); 
+                }
+                setIsSaving(false);
             };
 
-            return (
-                <div className="max-w-xl mx-auto pb-20">
-                    {/* リスト表示 */}
-                    <div className="p-6 flex justify-between items-center">
-                        <h1 className="font-black text-2xl italic tracking-tighter text-slate-800">HSDEC FINANCE</h1>
-                        <button onClick={() => {
-                            setFForm({ id: "", date: new Date().toISOString().split('T')[0], category: 'Other', method: 'Cash', total: 0, item_name: "", qty: "", price: "", amount: "", memo: "", photo_url: "" });
-                            setView('edit');
-                        }} className="bg-indigo-600 text-white w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center text-2xl">+</button>
-                    </div>
-
-                    <div className="mx-4 p-6 bg-slate-900 rounded-[32px] text-white shadow-xl">
-                        <div className="flex justify-between items-start mb-4">
-                            <div><p className="text-[10px] opacity-50 font-bold uppercase tracking-widest">Total</p><h2 className="text-3xl font-black italic">₭ {totalSum.toLocaleString()}</h2></div>
-                            <button onClick={() => setSortIdx((sortIdx + 1) % SORT_OPTIONS.length)} className="bg-white/10 px-3 py-1.5 rounded-xl text-[10px] font-bold border border-white/20 uppercase tracking-tighter">⇅ {SORT_OPTIONS[sortIdx].label}</button>
+            const renderField = (field) => {
+                const value = selectedRecord[field] || "";
+                const label = FIELD_LABELS[field] || field;
+                
+                if (!isEditing) {
+                    return (
+                        <div key={field} className="border-b border-slate-100 py-2 flex justify-between items-center select-text">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{label}</span>
+                            <span className="font-semibold text-slate-700 select-text">
+                                {field === 'total' || field === 'price' ? `₭ ${Number(value).toLocaleString()}` : 
+                                 field === 'photo_url' ? (value ? "📎 画像あり" : "-") : 
+                                 String(value) || '-'}
+                            </span>
                         </div>
-                        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
-                            {CATEGORIES.map(cat => (
-                                <button key={cat} onClick={() => setFilterTab(cat)} className={`px-4 py-2 rounded-full text-[10px] font-black whitespace-nowrap transition-all ${filterTab === cat ? 'bg-indigo-600 text-white' : 'bg-white/10 text-white/60'}`}>{cat}</button>
-                            ))}
-                        </div>
+                    );
+                }
+
+                return (
+                    <div key={field} className="flex flex-col mb-2.5">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase mb-0.5 tracking-wider">{label}</label>
+                        {field === 'category' ? (
+                            <select className="p-2 text-xs rounded bg-white w-full font-semibold" value={value}
+                                onChange={e => setSelectedRecord({...selectedRecord, category: e.target.value})}>
+                                {CATEGORIES.filter(c => c !== 'ALL').map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        ) : field === 'method' ? (
+                            <select className="p-2 text-xs rounded bg-white w-full font-semibold" value={value}
+                                onChange={e => setSelectedRecord({...selectedRecord, method: e.target.value})}>
+                                {METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                        ) : field === 'date' ? (
+                            <input type="date" className="p-2 text-xs rounded w-full font-semibold" value={value}
+                                onChange={e => setSelectedRecord({...selectedRecord, date: e.target.value})} />
+                        ) : field === 'memo' ? (
+                            <textarea className="p-2 text-xs rounded w-full font-semibold h-16 resize-none" value={value}
+                                onChange={e => setSelectedRecord({...selectedRecord, memo: e.target.value})} />
+                        ) : field === 'photo_url' ? (
+                            <div className="relative aspect-video bg-slate-100 rounded-xl flex flex-col items-center justify-center border-2 border-dashed border-slate-200 overflow-hidden cursor-pointer">
+                                {value ? <img src={value} className="w-full h-full object-cover" /> : <span className="text-slate-400 text-xs font-bold">📷 タップして撮影</span>}
+                                <input type="file" accept="image/*" capture="environment" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handlePhotoUpload} />
+                            </div>
+                        ) : (
+                            <input className="p-2 text-xs rounded w-full font-semibold" 
+                                type={field === 'qty' || field === 'price' || field === 'total' ? 'number' : 'text'} 
+                                value={value} disabled={field === 'total'} 
+                                onChange={e => setSelectedRecord({ ...selectedRecord, [field]: e.target.value })} />
+                        )}
                     </div>
+                );
+            };
 
-                    <div className="px-4 space-y-3 mt-6">
-                        {isLoading && <div className="text-center py-10 font-black text-slate-400 animate-pulse text-[10px] tracking-widest">SYNCING...</div>}
-                        {sortedRecords.map((r, i) => (
-                            <div key={i} onClick={() => { setFForm(r); setView('view'); }} className="bg-white p-4 rounded-[24px] shadow-sm flex justify-between items-center border border-white active:scale-95 transition-all">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center border-2 border-slate-100 flex-shrink-0">
-                                        <span className="text-xl">{r.photo_url ? "📎" : "📄"}</span>
-                                    </div>
-                                    <div className="max-w-[150px]">
-                                        <p className="text-[9px] font-black text-indigo-500 uppercase">{r.date}</p>
-                                        <p className="font-bold text-slate-800 text-xs line-clamp-1">{r.item_name || "(No Title)"}</p>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-black text-sm text-slate-900">{Number(r.total || 0).toLocaleString()}₭</p>
-                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">{r.category}</p>
-                                </div>
+            // 【1】最初のポータル画面（選択画面）
+            if (mainMode === 'portal') {
+                return (
+                    <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-100 p-4">
+                        <div className="max-w-md w-full bg-white p-8 rounded-[32px] shadow-xl border border-slate-200 text-center space-y-6">
+                            <div>
+                                <h1 className="font-black text-2xl italic tracking-tighter text-slate-800">HSDEC FINANCE HUB</h1>
+                                <p className="text-xs text-slate-400 font-bold uppercase mt-1 tracking-widest">Select Finance Mode</p>
                             </div>
-                        ))}
-                    </div>
 
-                    {/* 詳細表示 (View) */}
-                    {view === 'view' && (
-                        <div className="modal-full bg-white">
-                            <div className="flex justify-between items-center mb-6">
-                                <button onClick={() => setView('list')} className="w-10 h-10 bg-slate-100 rounded-full font-bold text-slate-600">←</button>
-                                <button onClick={() => setView('edit')} className="bg-indigo-600 text-white px-6 py-2 rounded-full font-black text-xs shadow-md">EDIT</button>
-                            </div>
-                            <div className="rounded-[32px] overflow-hidden mb-6 bg-slate-50 aspect-square flex items-center justify-center shadow-inner relative">
-                                {fForm.photo_url ? <img src={fForm.photo_url} className="w-full h-full object-contain" /> : <div className="text-slate-400 font-bold text-[10px] uppercase italic">No Receipt</div>}
-                            </div>
-                            <div className="space-y-6">
-                                <div><p className="text-[10px] font-black text-indigo-500 uppercase">{fForm.date} • {fForm.category}</p><h2 className="text-3xl font-black text-slate-900 italic leading-none mt-1">₭ {Number(fForm.total || 0).toLocaleString()}</h2></div>
-                                <div className="bg-slate-50 p-6 rounded-[28px] space-y-2">
-                                    <p className="label-cap">Description</p>
-                                    <p className="text-sm font-bold text-slate-800">{fForm.item_name}</p>
-                                    {fForm.memo && <p className="text-xs italic text-slate-500 mt-2 border-t pt-2">{fForm.memo}</p>}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 入力・編集フォーム (Edit) */}
-                    {view === 'edit' && (
-                        <div className="modal-full">
-                            <form onSubmit={handleSave} className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="label-cap text-indigo-500">Date</label><input type="date" className="form-input" value={fForm.date} onChange={e=>setFForm({...fForm, date:e.target.value})} required /></div>
-                                    <div><label className="label-cap text-indigo-500">Category</label><select className="form-select" value={fForm.category} onChange={e=>setFForm({...fForm, category:e.target.value})}>{CATEGORIES.filter(c=>c!=='ALL').map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-                                </div>
-                                <div className="bg-white p-5 rounded-[28px] border-2 border-slate-100 space-y-4 shadow-sm">
-                                    <div><label className="label-cap">Item Name</label><input type="text" className="form-input" value={fForm.item_name} onChange={e=>setFForm({...fForm, item_name:e.target.value})} placeholder="Title" required /></div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="label-cap text-indigo-400">Qty</label><input type="number" inputmode="decimal" className="form-input bg-slate-50/50" value={fForm.qty} onChange={e=>setFForm({...fForm, qty:e.target.value})} /></div>
-                                        <div><label className="label-cap text-indigo-400">Price</label><input type="number" inputmode="decimal" className="form-input bg-slate-50/50" value={fForm.price} onChange={e=>setFForm({...fForm, price:e.target.value})} /></div>
-                                    </div>
-                                </div>
-                                <div className="p-6 bg-slate-900 rounded-[28px] text-white shadow-xl relative overflow-hidden">
-                                    <label className="text-[9px] font-black opacity-40 uppercase tracking-widest">Grand Total</label>
-                                    <div className="text-3xl font-black italic">₭ {fForm.total.toLocaleString()}</div>
-                                    <div className="absolute right-[-10px] bottom-[-15px] text-6xl font-black italic opacity-5 select-none">LAK</div>
-                                </div>
-                                <div className="relative aspect-video bg-slate-200 rounded-[32px] flex flex-col items-center justify-center border-4 border-white shadow-inner overflow-hidden">
-                                    {fForm.photo_url ? <img src={fForm.photo_url} className="w-full h-full object-cover" /> : <div className="text-center font-black text-slate-400 text-[10px] uppercase italic">Tap to Take Photo</div>}
-                                    <input type="file" accept="image/*" capture="environment" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handlePhotoUpload} />
-                                </div>
-                                <button disabled={isLoading} className="w-full bg-indigo-600 text-white py-5 rounded-[28px] font-black text-lg shadow-xl disabled:opacity-50">
-                                    {isLoading ? "SYNCING..." : "SAVE RECORD"}
+                            <div className="space-y-4">
+                                {/* ボタン1: HSDEC 会社全体 */}
+                                <button onClick={() => { setMainMode('hsdec'); setSelectedSubKey('`ເດືອນ 1`'); }} 
+                                    className="w-full bg-slate-900 hover:bg-slate-800 text-white p-5 rounded-2xl font-black text-sm tracking-wide uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-all active:scale-98">
+                                    <span className="text-xl">🏢</span>
+                                    <span>HSDEC 会社全体会計</span>
+                                    <span className="text-[10px] opacity-50 font-normal normal-case">(月別スプレッドシート管理)</span>
                                 </button>
-                                <button type="button" onClick={() => setView('list')} className="w-full text-slate-400 font-bold py-2">CANCEL</button>
-                            </form>
+
+                                {/* ボタン2: Sessional Worker Korea */}
+                                <button onClick={() => { setMainMode('korea'); setSelectedSubKey('ຊຸດທີ 2'); }} 
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-5 rounded-2xl font-black text-sm tracking-wide uppercase shadow-md flex flex-col items-center justify-center gap-1 transition-all active:scale-98">
+                                    <span className="text-xl">🇰🇷</span>
+                                    <span>Sessional Worker Korea</span>
+                                    <span className="text-[10px] opacity-60 font-normal normal-case">(期別プロジェクト会計)</span>
+                                </button>
+                            </div>
                         </div>
-                    )}
+                    </div>
+                );
+            }
+
+            if (loading) return <div className="h-screen flex items-center justify-center font-black text-indigo-700 tracking-widest bg-slate-100">SYNCING DATA...</div>;
+            const isMobile = screenMode === 'mobile';
+
+            return (
+                <div className="flex h-screen w-screen overflow-hidden bg-slate-100">
+                    {/* 左側サイドバー（レコード一覧・条件切り替え） */}
+                    <div className={`${isMobile ? (selectedRecord ? 'hidden' : 'w-full') : 'w-80 border-r'} bg-white flex flex-col shadow-sm z-10`}>
+                        <div className="p-4 border-b bg-slate-50 space-y-3">
+                            <div className="flex justify-between items-center">
+                                <button onClick={() => setMainMode('portal')} className="text-xs font-black text-slate-400 hover:text-slate-600 uppercase tracking-wider">◀ モード変更</button>
+                                <button onClick={() => { 
+                                    setSelectedRecord({ id: "", date: new Date().toISOString().split('T')[0], category: 'Other', method: 'Cash', total: 0, item_name: "", qty: "1", price: "0", memo: "", photo_url: "" }); 
+                                    setIsEditing(true); 
+                                }} className="bg-indigo-600 hover:bg-indigo-700 text-white w-9 h-9 rounded-xl text-lg font-black shadow-sm flex items-center justify-center">+</button>
+                            </div>
+
+                            {/* モードに応じたサブドロップダウン切り替え */}
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg">{mainMode === 'hsdec' ? '🏢' : '🇰🇷'}</span>
+                                <select className="flex-grow p-2 text-xs font-black rounded border bg-white text-slate-700 lao-text" 
+                                    value={selectedSubKey} onChange={e => { setSelectedSubKey(e.target.value); setSelectedRecord(null); }}>
+                                    {mainMode === 'hsdec' ? (
+                                        hsdecSheets.map(s => <option key={s} value={s}>{s}</option>)
+                                    ) : (
+                                        koreaBatches.map(b => <option key={b} value={b}>{b}</option>)
+                                    )}
+                                </select>
+                            </div>
+                            
+                            {/* 総計サマリーカード */}
+                            <div className="p-3 bg-slate-900 rounded-2xl text-white shadow-md">
+                                <p className="text-[9px] opacity-40 font-bold uppercase tracking-wider">Filtered Total</p>
+                                <h2 className="text-lg font-black italic text-indigo-400">₭ {totalSum.toLocaleString()}</h2>
+                            </div>
+
+                            <input type="text" placeholder="キーワード検索..." className="w-full p-2 text-xs rounded-xl border focus:outline-indigo-500" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                            
+                            {/* カテゴリー横スクロールタブ */}
+                            <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-1">
+                                {CATEGORIES.map(cat => (
+                                    <button key={cat} onClick={() => setFilterTab(cat)} className={`px-3 py-1 rounded-full text-[10px] font-black whitespace-nowrap transition-all ${filterTab === cat ? 'bg-indigo-600 text-white' : 'bg-slate-200/70 text-slate-600'}`}>{cat}</button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="flex-grow overflow-y-auto custom-scrollbar bg-white">
+                            {filteredRecords.length === 0 ? (
+                                <div className="p-8 text-center text-slate-400 font-bold text-xs">データがありません</div>
+                            ) : (
+                                filteredRecords.map((r, i) => (
+                                    <div key={i} onClick={() => { setSelectedRecord(r); setIsEditing(false); }}
+                                        className={`p-3.5 border-b cursor-pointer transition-all hover:bg-slate-50 ${selectedRecord?.id === r.id ? 'list-item-active' : ''}`}>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-[10px] text-slate-400 font-bold tracking-tight">{r.date}</span>
+                                            <span className="text-indigo-600 font-black text-xs">₭{Number(r.total || 0).toLocaleString()}</span>
+                                        </div>
+                                        <div className="text-slate-800 font-bold text-xs truncate flex items-center gap-1.5">
+                                            <span>{r.photo_url ? "📎" : "📄"}</span>
+                                            <span className="truncate">{r.item_name || "(名称未設定)"}</span>
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 font-semibold uppercase mt-0.5 tracking-tighter">{r.category} • {r.method}</div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 右側詳細・編集エリア */}
+                    <div className={`${isMobile ? (selectedRecord ? 'w-full flex' : 'hidden') : 'flex-grow flex'} flex-col bg-slate-50 overflow-hidden relative`}>
+                        {selectedRecord ? (
+                            <>
+                                <div className="bg-white border-b px-4 py-3 md:px-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm shrink-0">
+                                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                                        {isMobile && (
+                                            <button onClick={() => { if(!isEditing){setSelectedRecord(null)}else{setIsEditing(false)} }} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-xl font-black text-xs">◀ 戻る</button>
+                                        )}
+                                        <div className="truncate select-text">
+                                            <span className="text-base md:text-lg font-black text-slate-800 block truncate tracking-tight">{selectedRecord.item_name || '新規明細レコード'}</span>
+                                            <span className="text-indigo-600 font-black text-sm md:text-base leading-none block mt-0.5">₭ {Number(selectedRecord.total || 0).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 items-center w-full sm:w-auto justify-end">
+                                        {isEditing ? (
+                                            <>
+                                                <button onClick={() => setIsEditing(false)} className="px-3 py-2.5 text-[11px] font-black text-slate-400 uppercase tracking-wider">キャンセル</button>
+                                                <button onClick={handleSave} disabled={isSaving} className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-black text-[11px] tracking-wider uppercase shadow-sm">{isSaving ? '保存中...' : '変更を保存'}</button>
+                                            </>
+                                        ) : (
+                                            <button onClick={() => setIsEditing(true)} className="w-full sm:w-auto bg-white border border-slate-200 hover:bg-slate-50 px-5 py-2.5 rounded-xl font-black text-[11px] shadow-sm tracking-wider uppercase text-slate-700">明細を編集</button>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                <div className={`p-4 md:p-6 grid ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} gap-4 md:gap-6 h-full content-start overflow-y-auto custom-scrollbar select-text`}>
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm select-text">
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b pb-2">Main Info</h4>
+                                        {FIELD_GROUPS.main.map(f => renderField(f))}
+                                    </div>
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm select-text">
+                                        <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-3 border-b pb-2">Calculation (Auto)</h4>
+                                        {FIELD_GROUPS.calc.map(f => renderField(f))}
+                                    </div>
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col select-text">
+                                        <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-3 border-b pb-2">Memo & Receipt</h4>
+                                        <div className="mb-3">
+                                            {renderField('memo')}
+                                        </div>
+                                        <div className="flex-grow flex flex-col">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 tracking-wider">📄 領収書プレビュー</label>
+                                            {isEditing ? (
+                                                renderField('photo_url')
+                                            ) : (
+                                                selectedRecord.photo_url ? (
+                                                    <div className="w-full bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-inner flex items-center justify-center p-2" style={{ minHeight: '180px' }}>
+                                                        <img src={selectedRecord.photo_url} className="w-full h-auto max-h-60 object-contain rounded" />
+                                                    </div>
+                                                ) : (
+                                                    <div className="w-full h-32 bg-slate-50 border border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 text-center p-4">
+                                                        <span className="text-lg mb-1">📷</span>
+                                                        <span className="text-[11px]">画像が登録されていません。</span>
+                                                    </div>
+                                                )
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center text-slate-300 font-black uppercase tracking-[0.3em] text-center p-4">
+                                <div className="text-4xl mb-2">💰</div>
+                                <div className="text-sm md:text-xl">会計明細データを選択してください</div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             );
         }
