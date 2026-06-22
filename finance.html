@@ -1,37 +1,58 @@
 <script type="text/babel">
     const { useState } = React;
-    
-    // それぞれのGASのURLをここに設定してください
-    const URLS = {
-        hsdec: 'https://script.google.com/macros/s/AKfycbzqkRs7gx6HA0yTVeNmul-0fY1Xx0FFeLP4c-A4gc4W5kskL1E72WvzKk2WGuiHF4S1ww/exec',
-        korea: 'https://script.google.com/macros/s/労働者用のURL/exec'
-    };
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqkRs7gx6HA0yTVeNmul-0fY1Xx0FFeLP4c-A4gc4W5kskL1E72WvzKk2WGuiHF4S1ww/exec'; 
 
     function App() {
-        const [mode, setMode] = useState('portal');
-        const [target, setTarget] = useState('');
+        const [target, setTarget] = useState('ເດືອນ 1'); // 初期表示
         const [records, setRecords] = useState([]);
+        const [sel, setSel] = useState(null);
+        const [edit, setEdit] = useState(false);
+        const [formData, setFormData] = useState({});
 
-        const fetchData = async (m, t) => {
-            const url = URLS[m]; // 選んだモードでURLを切り替え
-            try {
-                const res = await fetch(`${url}?target=${encodeURIComponent(t)}`);
-                const data = await res.json();
+        // データを取得する関数（targetが変わるたびに呼び出す）
+        const fetchData = async (t) => {
+            const script = document.createElement('script');
+            const cb = 'cb_' + Math.floor(Math.random() * 1000000);
+            window[cb] = (data) => {
                 setRecords(Array.isArray(data) ? data : []);
-            } catch(e) { console.error(e); }
+                delete window[cb];
+                document.body.removeChild(script);
+            };
+            script.src = `${GAS_URL}?target=${encodeURIComponent(t)}&callback=${cb}`;
+            document.body.appendChild(script);
         };
 
-        if (mode === 'portal') return (
-            <div className="h-screen flex flex-col items-center justify-center gap-6 p-4">
-                <h1 className="text-2xl font-bold">Finance Hub</h1>
-                {/* 会社全体用ボタン */}
-                <button onClick={() => { setMode('hsdec'); setTarget('ເດືອນ 1'); fetchData('hsdec', 'ເດືອນ 1'); }} 
-                        className="p-6 bg-slate-900 text-white rounded-2xl w-full max-w-sm">HSDEC Global Finance</button>
-                
-                {/* 労働者用ボタン */}
-                <button onClick={() => { setMode('korea'); setTarget('ຊຸດທີ 2'); fetchData('korea', 'ຊຸດທີ 2'); }} 
-                        className="p-6 bg-indigo-600 text-white rounded-2xl w-full max-w-sm">Sessional Worker Korea</button>
+        // targetが変わるたびに自動でデータを読み直す
+        React.useEffect(() => { fetchData(target); }, [target]);
+
+        return (
+            <div className="flex h-screen bg-slate-100">
+                {/* サイドバー：タブ切り替えメニュー */}
+                <div className="w-48 bg-slate-900 text-white overflow-y-auto">
+                    <div className="p-4 font-bold text-lg">Months</div>
+                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
+                        <div key={m} 
+                             onClick={() => setTarget(`ເດືອນ ${m}`)}
+                             className={`p-4 cursor-pointer lao-text ${target === `ເດືອນ ${m}` ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                            ເດືອນ {m}
+                        </div>
+                    ))}
+                </div>
+
+                {/* メインエリア */}
+                <div className="flex-1 p-6 overflow-y-auto">
+                    <h1 className="text-2xl font-bold mb-4 lao-text">{target}</h1>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {records.map((r, i) => (
+                            <div key={i} className="bg-white p-4 rounded shadow">
+                                {r.v[0]} - {r.v[2]}
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
         );
-
-        // ... (以下、リスト表示や編集画面のコード)
+    }
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+</script>
