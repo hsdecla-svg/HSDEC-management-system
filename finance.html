@@ -1,76 +1,37 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HSDEC Finance Hub</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>@import url('https://fonts.googleapis.com/css2?family=Phetsarath&display=swap'); .lao-text { font-family: 'Phetsarath', sans-serif; }</style>
-</head>
-<body class="bg-slate-100">
-    <div id="root"></div>
-    <script type="text/babel">
-        const { useState } = React;
-        // 【重要】ここに新しいデプロイURLを貼り付けてください
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyK795v36ukfDAsU4YLiSuz3jm5rypw8WdHsTN7eNypf2-zbcyd6Aq4X4V8t1aMnAeZVw/exec'; 
+<script type="text/babel">
+    const { useState } = React;
+    
+    // それぞれのGASのURLをここに設定してください
+    const URLS = {
+        hsdec: 'https://script.google.com/macros/s/AKfycbyK795v36ukfDAsU4YLiSuz3jm5rypw8WdHsTN7eNypf2-zbcyd6Aq4X4V8t1aMnAeZVw/exec',
+        korea: 'https://script.google.com/macros/s/労働者用のURL/exec'
+    };
 
-        function App() {
-            const [mode, setMode] = useState('portal');
-            const [target, setTarget] = useState('');
-            const [records, setRecords] = useState([]);
-            const [sel, setSel] = useState(null);
-            const [edit, setEdit] = useState(false);
-            const [formData, setFormData] = useState({});
+    function App() {
+        const [mode, setMode] = useState('portal');
+        const [target, setTarget] = useState('');
+        const [records, setRecords] = useState([]);
 
-            const fetchData = async (t) => {
-                try {
-                    const res = await fetch(`${GAS_URL}?target=${encodeURIComponent(t)}`);
-                    const data = await res.json();
-                    setRecords(Array.isArray(data) ? data : []);
-                } catch(e) { console.error(e); }
-            };
+        const fetchData = async (m, t) => {
+            const url = URLS[m]; // 選んだモードでURLを切り替え
+            try {
+                const res = await fetch(`${url}?target=${encodeURIComponent(t)}`);
+                const data = await res.json();
+                setRecords(Array.isArray(data) ? data : []);
+            } catch(e) { console.error(e); }
+        };
 
-            if (mode === 'portal') return (
-                <div className="h-screen flex flex-col items-center justify-center gap-2 p-4 overflow-y-auto">
-                    <h1 className="text-2xl font-bold mb-4">HSDEC Finance</h1>
-                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => {
-                        const t = `ເດືອນ ${m}`;
-                        return (
-                            <button key={m} onClick={() => { setMode('hsdec'); setTarget(t); fetchData(t); }} 
-                                    className="w-full max-w-sm p-4 bg-slate-800 text-white rounded-xl shadow hover:bg-slate-700 lao-text">
-                                {t}
-                            </button>
-                        );
-                    })}
-                </div>
-            );
+        if (mode === 'portal') return (
+            <div className="h-screen flex flex-col items-center justify-center gap-6 p-4">
+                <h1 className="text-2xl font-bold">Finance Hub</h1>
+                {/* 会社全体用ボタン */}
+                <button onClick={() => { setMode('hsdec'); setTarget('ເດືອນ 1'); fetchData('hsdec', 'ເດືອນ 1'); }} 
+                        className="p-6 bg-slate-900 text-white rounded-2xl w-full max-w-sm">HSDEC Global Finance</button>
+                
+                {/* 労働者用ボタン */}
+                <button onClick={() => { setMode('korea'); setTarget('ຊຸດທີ 2'); fetchData('korea', 'ຊຸດທີ 2'); }} 
+                        className="p-6 bg-indigo-600 text-white rounded-2xl w-full max-w-sm">Sessional Worker Korea</button>
+            </div>
+        );
 
-            return (
-                <div className="flex h-screen">
-                    <div className="w-80 bg-white border-r overflow-y-auto">
-                        <div className="p-4 bg-slate-50 font-bold lao-text">{target}</div>
-                        {records.map((r, i) => (
-                            <div key={i} onClick={() => setSel(r)} className="p-4 border-b cursor-pointer hover:bg-slate-50 lao-text">
-                                {r.v[0]} - {r.v[2]}
-                            </div>
-                        ))}
-                    </div>
-                    <div className="flex-1 p-6">
-                        {sel ? (
-                            <div className="bg-white p-6 rounded-2xl shadow">
-                                <h2 className="text-xl font-bold">No.{sel.v[0]} {sel.v[2]}</h2>
-                                <p>Total: {Number(sel.v[11]).toLocaleString()}</p>
-                            </div>
-                        ) : <div className="text-slate-400">データを選択してください</div>}
-                    </div>
-                </div>
-            );
-        }
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+        // ... (以下、リスト表示や編集画面のコード)
