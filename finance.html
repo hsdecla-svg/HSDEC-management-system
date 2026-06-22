@@ -14,7 +14,8 @@
     <div id="root"></div>
     <script type="text/babel">
         const { useState } = React;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwvoY-3-h0nc-bTWJ1qSTDqnvqYXgidNIRJ4ju_zOxFiyopMp2fd67E3M9dYG4a_Dx8jw/exec'; 
+        // 【重要】ここに新しいデプロイURLを貼り付けてください
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbz4xE957I64Q-dAzKsLsPg00yBucyEBLLjOE-Ne5RGIZtKIRjEjh8h3BpAD5gw5pTUeFQ/exec'; 
 
         function App() {
             const [mode, setMode] = useState('portal');
@@ -24,60 +25,46 @@
             const [edit, setEdit] = useState(false);
             const [formData, setFormData] = useState({});
 
-            const fetchData = async (m, t) => {
-                const res = await fetch(`${GAS_URL}?type=json&mode=${m}&target=${encodeURIComponent(t)}`);
-                setRecords(await res.json());
-            };
-
-            const update = (f, v) => {
-                const next = {...formData, [f]: v};
-                if (f === 'qty' || f === 'price') next.total = (next.qty * next.price) || 0;
-                setFormData(next);
+            const fetchData = async (t) => {
+                try {
+                    const res = await fetch(`${GAS_URL}?target=${encodeURIComponent(t)}`);
+                    const data = await res.json();
+                    setRecords(Array.isArray(data) ? data : []);
+                } catch(e) { console.error(e); }
             };
 
             if (mode === 'portal') return (
-                <div className="h-screen flex flex-col items-center justify-center gap-6 p-4">
-                    <button onClick={()=>{setMode('hsdec'); setTarget('ເດືອນ 1'); fetchData('hsdec', 'ເດືອນ 1');}} className="w-full max-w-sm p-8 bg-slate-900 text-white rounded-3xl font-bold">HSDEC Global Finance</button>
-                    <button onClick={()=>{setMode('korea'); setTarget('ຊຸດທີ 2'); fetchData('korea', 'ຊຸດທີ 2');}} className="w-full max-w-sm p-8 bg-indigo-600 text-white rounded-3xl font-bold">Sessional Worker Korea</button>
+                <div className="h-screen flex flex-col items-center justify-center gap-2 p-4 overflow-y-auto">
+                    <h1 className="text-2xl font-bold mb-4">HSDEC Finance</h1>
+                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => {
+                        const t = `ເດືອນ ${m}`;
+                        return (
+                            <button key={m} onClick={() => { setMode('hsdec'); setTarget(t); fetchData(t); }} 
+                                    className="w-full max-w-sm p-4 bg-slate-800 text-white rounded-xl shadow hover:bg-slate-700 lao-text">
+                                {t}
+                            </button>
+                        );
+                    })}
                 </div>
             );
 
             return (
                 <div className="flex h-screen">
                     <div className="w-80 bg-white border-r overflow-y-auto">
-                        <div className="p-4 bg-slate-50 flex justify-between font-bold">{target} <button onClick={()=>{
-                            const nextNo = records.length > 0 ? Math.max(...records.map(r=>Number(r.v[0]))) + 1 : 1;
-                            setFormData({no: nextNo, date: new Date().toISOString().split('T')[0], currency: 'LAK', qty: 0, price: 0, total: 0});
-                            setSel(null); setEdit(true);
-                        }} className="bg-blue-600 text-white px-3 rounded">+</button></div>
-                        {records.map((r, i) => <div key={i} onClick={()=>{setSel(r); setEdit(false);}} className="p-4 border-b cursor-pointer hover:bg-slate-50 lao-text">{r.v[0]} - {r.v[2]}</div>)}
-                    </div>
-                    <div className="flex-1 p-6 overflow-y-auto">
-                        {edit ? (
-                            <div className="bg-white p-6 rounded-2xl shadow grid grid-cols-2 gap-4">
-                                <input className="border p-2 rounded" value={formData.no} readOnly />
-                                <input className="border p-2 rounded" type="date" value={formData.date} onChange={e=>update('date', e.target.value)} />
-                                <input className="col-span-2 border p-2 rounded" placeholder="Item Name" onChange={e=>update('item', e.target.value)} />
-                                <select className="border p-2 rounded" value={formData.currency} onChange={e=>update('currency', e.target.value)}><option>LAK</option><option>USD</option><option>THB</option></select>
-                                <input className="border p-2 rounded" type="number" placeholder="Qty" onChange={e=>update('qty', e.target.value)} />
-                                <input className="border p-2 rounded" type="number" placeholder="Price" onChange={e=>update('price', e.target.value)} />
-                                <div className="col-span-2 font-bold p-3 bg-indigo-50 rounded">Total: {Number(formData.total).toLocaleString()}</div>
-                                <input type="file" className="col-span-2" onChange={e=>{
-                                    const r = new FileReader(); r.onload = ev => update('photo', ev.target.result); r.readAsDataURL(e.target.files[0]);
-                                }} />
-                                <button onClick={async()=>{
-                                    await fetch(GAS_URL, {method:'POST', body:JSON.stringify({...formData, mode, target})});
-                                    setEdit(false); fetchData(mode, target);
-                                }} className="col-span-2 bg-green-600 text-white py-3 rounded">Save</button>
+                        <div className="p-4 bg-slate-50 font-bold lao-text">{target}</div>
+                        {records.map((r, i) => (
+                            <div key={i} onClick={() => setSel(r)} className="p-4 border-b cursor-pointer hover:bg-slate-50 lao-text">
+                                {r.v[0]} - {r.v[2]}
                             </div>
-                        ) : sel ? (
+                        ))}
+                    </div>
+                    <div className="flex-1 p-6">
+                        {sel ? (
                             <div className="bg-white p-6 rounded-2xl shadow">
                                 <h2 className="text-xl font-bold">No.{sel.v[0]} {sel.v[2]}</h2>
                                 <p>Total: {Number(sel.v[11]).toLocaleString()}</p>
-                                {sel.v[13] && <a href={sel.v[13]} target="_blank" className="text-blue-600 block">View Receipt</a>}
-                                <button onClick={()=>{setFormData({row_index:sel.row_index, no:sel.v[0], date:sel.v[1], item:sel.v[2], qty:sel.v[3], total:sel.v[11]}); setEdit(true);}} className="bg-amber-500 text-white px-6 py-2 rounded mt-4">Edit</button>
                             </div>
-                        ) : <div className="text-slate-400">Select an entry</div>}
+                        ) : <div className="text-slate-400">データを選択してください</div>}
                     </div>
                 </div>
             );
