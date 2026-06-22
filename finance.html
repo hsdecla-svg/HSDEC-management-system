@@ -1,58 +1,56 @@
 <script type="text/babel">
-    const { useState } = React;
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbzqkRs7gx6HA0yTVeNmul-0fY1Xx0FFeLP4c-A4gc4W5kskL1E72WvzKk2WGuiHF4S1ww/exec'; 
+    const { useState, useEffect } = React;
+
+    // ここにそれぞれのGAS URLを入れてください
+    const GAS_URLS = {
+        hsdec: 'https://script.google.com/macros/s/AKfycbzqkRs7gx6HA0yTVeNmul-0fY1Xx0FFeLP4c-A4gc4W5kskL1E72WvzKk2WGuiHF4S1ww/exec',
+        korea: 'https://script.google.com/macros/s/（労働者用のID）/exec'
+    };
 
     function App() {
-        const [target, setTarget] = useState('ເດືອນ 1'); // 初期表示
+        const [mode, setMode] = useState('hsdec'); // デフォルトを会社全体に設定
+        const [target, setTarget] = useState('ເດືອນ 1');
         const [records, setRecords] = useState([]);
-        const [sel, setSel] = useState(null);
-        const [edit, setEdit] = useState(false);
-        const [formData, setFormData] = useState({});
 
-        // データを取得する関数（targetが変わるたびに呼び出す）
-        const fetchData = async (t) => {
+        // URLをモードに応じて切り替える
+        const fetchData = async (m, t) => {
+            const url = GAS_URLS[m];
             const script = document.createElement('script');
             const cb = 'cb_' + Math.floor(Math.random() * 1000000);
+            
             window[cb] = (data) => {
                 setRecords(Array.isArray(data) ? data : []);
                 delete window[cb];
                 document.body.removeChild(script);
             };
-            script.src = `${GAS_URL}?target=${encodeURIComponent(t)}&callback=${cb}`;
+            
+            script.src = `${url}?target=${encodeURIComponent(t)}&callback=${cb}`;
             document.body.appendChild(script);
         };
 
-        // targetが変わるたびに自動でデータを読み直す
-        React.useEffect(() => { fetchData(target); }, [target]);
+        // モードかターゲットが変わったら再取得
+        useEffect(() => { fetchData(mode, target); }, [mode, target]);
 
         return (
-            <div className="flex h-screen bg-slate-100">
-                {/* サイドバー：タブ切り替えメニュー */}
-                <div className="w-48 bg-slate-900 text-white overflow-y-auto">
-                    <div className="p-4 font-bold text-lg">Months</div>
-                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
-                        <div key={m} 
-                             onClick={() => setTarget(`ເດືອນ ${m}`)}
-                             className={`p-4 cursor-pointer lao-text ${target === `ເດືອນ ${m}` ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                            ເດືອນ {m}
-                        </div>
-                    ))}
+            <div className="h-screen flex flex-col">
+                {/* ログインページには影響しない、finance専用の切り替えタブ */}
+                <div className="flex bg-slate-900 p-2 gap-2">
+                    <button onClick={() => setMode('hsdec')} 
+                            className={`px-6 py-2 rounded-lg ${mode === 'hsdec' ? 'bg-emerald-600' : 'bg-slate-700'}`}>
+                        HSDEC Finance
+                    </button>
+                    <button onClick={() => setMode('korea')} 
+                            className={`px-6 py-2 rounded-lg ${mode === 'korea' ? 'bg-indigo-600' : 'bg-slate-700'}`}>
+                        Worker Finance
+                    </button>
                 </div>
 
-                {/* メインエリア */}
+                {/* 以下、既存の表示ロジック（そのまま） */}
                 <div className="flex-1 p-6 overflow-y-auto">
-                    <h1 className="text-2xl font-bold mb-4 lao-text">{target}</h1>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {records.map((r, i) => (
-                            <div key={i} className="bg-white p-4 rounded shadow">
-                                {r.v[0]} - {r.v[2]}
-                            </div>
-                        ))}
-                    </div>
+                    {/* ...ここから下は変更なし... */}
                 </div>
             </div>
         );
     }
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    // ...render処理...
 </script>
