@@ -41,13 +41,13 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbytKqKDwwARk9D2h1Ggw_iS41b7bDJVB6B-DUyMwFfzkfUK4G-V-wsDF27vaXSI_zoygw/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyWvyNQK1DyBliwWeaMR-2LaRG0ASeJbk0JNnvJzLelbRv3qjFd5vaaIZi_0-R-AANUGQ/exec';
         
         // 画面レイアウトのブロック構成
         const FIELD_GROUPS = {
             basic: ['no', 'status', 'reEntry', 'laoName', 'engName', 'sex', 'dob', 'age', 'size'],
-            passport: ['passport', 'dateOfIssue', 'dateOfExpiry'],
-            address: ['village', 'district', 'province', 'driveUrl', 'acName', 'acNo']
+            passport: ['passport', 'dateOfIssue', 'dateOfExpiry'], // I, J がここに入っています
+            address: ['village', 'district', 'province', 'acName', 'acNo', 'driveUrl'] // K, L, M がここに入っています
         };
 
         // 実際のA〜R列に基づいた日本語・ラオ語対応の正確な画面用ラベル
@@ -57,19 +57,19 @@
             'reEntry': 'C: Re-entry (再入国)',
             'laoName': 'D: ຊື່ ແລະ ນາມສະກຸນ (ラオ語名)',
             'engName': 'E: Full Name (英語名)',
-            'dob': 'F: Date of birth (生年月日)',
-            'age': 'G: Age (年齢)',
-            'passport': 'H: Passport No. (旅券番号)',
-            'dateOfIssue': 'I: Date of issue (発行日)',
-            'dateOfExpiry': 'J: Date of expiry (有効期限)',
-            'village': 'K: Village (村)',
-            'district': 'L: District (郡)',
-            'province': 'M: Province (県)',
-            'sex': 'N: Sex (M / F)',
-            'driveUrl': 'O: Google drive URL',
-            'size': 'P: Size (洋服サイズ)',
-            'acName': 'Q: AC - Name (口座名義)',
-            'acNo': 'R: AC - No (口座番号)'
+            'dob': 'G: Date of birth (生年月日)',
+            'age': 'H: Age (年齢)',
+            'passport': 'I: Passport No. (旅券番号)',
+            'dateOfIssue': 'J: Date of issue (発行日)',
+            'dateOfExpiry': 'K: Date of expiry (有効期限)',
+            'village': 'L: Village (村)',
+            'district': 'M: District (郡)',
+            'province': 'N: Province (県)',
+            'sex': 'F: Sex (M / F)',
+            'driveUrl': 'R: Google drive URL',
+            'size': 'O: Size (洋服サイズ)',
+            'acName': 'P: AC - Name (口座名義)',
+            'acNo': 'Q: AC - No (口座番号)'
         };
 
         // ユーザーから提供された確定スプレッドシート行列インデックスマッピング (0始まり)
