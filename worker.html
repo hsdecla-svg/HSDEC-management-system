@@ -41,7 +41,7 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbx230Cd3Dn1IcMtXmqGEy8RZrBcDwMJElgPUcw-6HfiEdxbPukX3V55aZgw2zUhcSRSEQ/exec';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzam5IKd-OoUBQD7FbBVH5zWl1oJWO7n8Pu25cpYG7DCVz_HqroXPRUvaAsUsQGLyH4kg/exec';
         
         // 画面レイアウトのブロック構成
         const FIELD_GROUPS = {
@@ -161,58 +161,61 @@
             useEffect(() => { fetchData(); }, []);
 
             const fetchData = async () => {
-                setLoading(true);
-                try {
-                    const response = await fetch(`${GAS_URL}?type=json`); 
-                    const json = await response.json();
+            setLoading(true);
+            const url = `${GAS_URL}?type=json&callback=jsonCallback`;
+            
+            try {
+                const data = await new Promise((resolve, reject) => {
+                    window.jsonCallback = (data) => {
+                        resolve(data);
+                        delete window.jsonCallback;
+                        document.body.removeChild(script);
+                    };
+                    const script = document.createElement('script');
+                    script.src = url;
+                    script.onerror = () => reject(new Error("Failed to load JSONP"));
+                    document.body.appendChild(script);
+                });
 
-                    let allWorkers = [];
-                    Object.keys(json).forEach(sheetName => {
-                        if (sheetName !== 'options' && json[sheetName] && json[sheetName].rows) {
-                            const sheetWorkers = json[sheetName].rows.map((rawRow, index) => {
-                                // 指定された行列位置（STRICT_MATRIX）から確実にマッピング
-                                return {
-                                    _row: rawRow._row || (index + 2),
-                                    batch: sheetName,
-                                    no: strictExtract(rawRow, 'no'),
-                                    status: strictExtract(rawRow, 'status'),
-                                    reEntry: strictExtract(rawRow, 'reEntry'),
-                                    laoName: strictExtract(rawRow, 'laoName'),
-                                    engName: strictExtract(rawRow, 'engName'),
-                                    dob: strictExtract(rawRow, 'dob'),
-                                    age: strictExtract(rawRow, 'age'),
-                                    passport: strictExtract(rawRow, 'passport'),
-                                    dateOfIssue: strictExtract(rawRow, 'dateOfIssue'),
-                                    dateOfExpiry: strictExtract(rawRow, 'dateOfExpiry'),
-                                    village: strictExtract(rawRow, 'village'),
-                                    district: strictExtract(rawRow, 'district'),
-                                    province: strictExtract(rawRow, 'province'),
-                                    sex: strictExtract(rawRow, 'sex'),
-                                    driveUrl: strictExtract(rawRow, 'driveUrl'),
-                                    size: strictExtract(rawRow, 'size'),
-                                    acName: strictExtract(rawRow, 'acName'),
-                                    acNo: strictExtract(rawRow, 'acNo'),
-                                    _rawRawObj: rawRow // 元のオブジェクトをそのまま保存
-                                };
-                            });
-                            allWorkers = allWorkers.concat(sheetWorkers);
-                        }
-                    });
-
-                    setWorkers(allWorkers);
-                    if (json.options && json.options.Status) {
-                        setMasterOptions(json.options);
+                let allWorkers = [];
+                Object.keys(data).forEach(sheetName => {
+                    if (sheetName !== 'options' && data[sheetName] && data[sheetName].rows) {
+                        const sheetWorkers = data[sheetName].rows.map((rawRow, index) => {
+                            return {
+                                _row: rawRow._row || (index + 2),
+                                batch: sheetName,
+                                no: strictExtract(rawRow, 'no'),
+                                status: strictExtract(rawRow, 'status'),
+                                reEntry: strictExtract(rawRow, 'reEntry'),
+                                laoName: strictExtract(rawRow, 'laoName'),
+                                engName: strictExtract(rawRow, 'engName'),
+                                dob: strictExtract(rawRow, 'dob'),
+                                age: strictExtract(rawRow, 'age'),
+                                passport: strictExtract(rawRow, 'passport'),
+                                dateOfIssue: strictExtract(rawRow, 'dateOfIssue'),
+                                dateOfExpiry: strictExtract(rawRow, 'dateOfExpiry'),
+                                village: strictExtract(rawRow, 'village'),
+                                district: strictExtract(rawRow, 'district'),
+                                province: strictExtract(rawRow, 'province'),
+                                sex: strictExtract(rawRow, 'sex'),
+                                driveUrl: strictExtract(rawRow, 'driveUrl'),
+                                size: strictExtract(rawRow, 'size'),
+                                acName: strictExtract(rawRow, 'acName'),
+                                acNo: strictExtract(rawRow, 'acNo'),
+                                _rawRawObj: rawRow
+                            };
+                        });
+                        allWorkers = allWorkers.concat(sheetWorkers);
                     }
+                });
 
-                    const batches = Object.keys(json).filter(name => name !== 'options');
-                    if (batches.length > 0 && !selectedBatch) {
-                        setSelectedBatch(batches[0]);
-                    }
-                } catch (e) { 
-                    console.error("Fetch Data Matrix Error:", e); 
-                }
+                setWorkers(allWorkers);
                 setLoading(false);
-            };
+            } catch (e) {
+                console.error("Fetch Data Matrix Error:", e);
+                setLoading(false);
+            }
+        };
 
             const batchList = useMemo(() => {
                 return [...new Set(workers.map(w => w.batch))].filter(Boolean).sort();
