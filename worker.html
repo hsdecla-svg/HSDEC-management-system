@@ -44,54 +44,40 @@
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbzam5IKd-OoUBQD7FbBVH5zWl1oJWO7n8Pu25cpYG7DCVz_HqroXPRUvaAsUsQGLyH4kg/exec';
         
         // 画面レイアウトのブロック構成
+        // 画面レイアウトのブロック構成
         const FIELD_GROUPS = {
-            basic: ['no', 'status', 'reEntry', 'laoName', 'engName', 'sex', 'dob', 'age', 'size'],
-            passport: ['passport', 'dateOfIssue', 'dateOfExpiry'], // I, J がここに入っています
-            address: ['village', 'district', 'province', 'acName', 'acNo', 'driveUrl'] // K, L, M がここに入っています
+            basic: ['no', 'status', 'reEntry', 'laoName', 'engName', 'sex', 'dob', 'age', 'size', 'tel'],
+            passport: ['passport', 'dateOfIssue', 'dateOfExpiry'],
+            address: ['village', 'district', 'province', 'driveUrl']
         };
 
-        // 実際のA〜R列に基づいた日本語・ラオ語対応の正確な画面用ラベル
+        // ラベル定義
         const FIELD_LABELS = {
             'no': 'A: No. (連番)',
             'status': 'B: ສະຖານະ (ຄູ່ / ດ່ຽວ)',
             'reEntry': 'C: Re-entry (再入国)',
             'laoName': 'D: ຊື່ ແລະ ນາມສະກຸນ (ラオ語名)',
             'engName': 'E: Full Name (英語名)',
-            'dob': 'G: Date of birth (生年月日)',
-            'age': 'H: Age (年齢)',
-            'passport': 'I: Passport No. (旅券番号)',
-            'dateOfIssue': 'J: Date of issue (発行日)',
-            'dateOfExpiry': 'K: Date of expiry (有効期限)',
-            'village': 'L: Village (村)',
-            'district': 'M: District (郡)',
-            'province': 'N: Province (県)',
-            'sex': 'F: Sex (M / F)',
-            'driveUrl': 'R: Google drive URL',
+            'dob': 'F: Date of birth (生年月日)',
+            'age': 'G: Age (年齢)',
+            'passport': 'H: Passport No. (旅券番号)',
+            'dateOfIssue': 'I: Date of issue (発行日)',
+            'dateOfExpiry': 'J: Date of expiry (有効期限)',
+            'village': 'K: Village (村)',
+            'district': 'L: District (郡)',
+            'province': 'M: Province (県)',
+            'sex': 'N: Sex (M / F)',
             'size': 'O: Size (洋服サイズ)',
-            'acName': 'P: AC - Name (口座名義)',
-            'acNo': 'Q: AC - No (口座番号)'
+            'tel': 'P: Phone No. (電話番号)',
+            'driveUrl': 'Q: Google drive URL'
         };
 
-        // ユーザーから提供された確定スプレッドシート行列インデックスマッピング (0始まり)
+        // マッピング定義 (インデックスは0始まり)
         const STRICT_MATRIX = {
-            no: 0,          // A
-            status: 1,      // B
-            reEntry: 2,     // C
-            laoName: 3,     // D
-            engName: 4,     // E
-            dob: 5,         // F
-            age: 6,         // G
-            passport: 7,    // H
-            dateOfIssue: 8, // I
-            dateOfExpiry: 9,// J
-            village: 10,    // K
-            district: 11,   // L
-            province: 12,   // M
-            sex: 13,        // N
-            driveUrl: 14,   // O
-            size: 15,       // P
-            acName: 16,     // Q
-            acNo: 17        // R
+            no: 0, status: 1, reEntry: 2, laoName: 3, engName: 4, 
+            dob: 5, age: 6, passport: 7, dateOfIssue: 8, dateOfExpiry: 9, 
+            village: 10, district: 11, province: 12, sex: 13, size: 14, 
+            tel: 15, driveUrl: 16
         };
 
         // 配列構造・オブジェクト構造のどちらでも指定インデックスから「値」を100%確実にブッコ抜く処理
