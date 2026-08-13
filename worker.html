@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Management System - Enhanced</title>
+    <title>HSDEC Management System - Data Matrix</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -12,7 +12,6 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Phetsarath:wght@400;700&display=swap');
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; height: 100vh; overflow: hidden; font-size: 13px; }
         .lao-text { font-family: 'Phetsarath OT', 'Phetsarath', sans-serif; }
-        .mrz-font { font-family: 'Courier New', Courier, monospace; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .list-item-active { background-color: #f0fdf4; border-right: 3px solid #10b981; }
@@ -23,63 +22,112 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-        const GAS_URL = 'YOUR_GAS_URL';
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbzbi7Yk9pGVrI2P11tk93jsU3fldvV0On1P2caohl8d9l21ia_Ck8Fa2ranG6X6T95qTw/exec'; // ここを書き換えてください
 
-        // 構造を新しいデータ定義に合わせて更新
         const FIELD_LABELS = {
-            id: 'A: ID', no: 'B: ລໍາດັບ', status: 'C: ສະຖານະ', reEntry: 'D: Re-entry', 
-            laoName: 'E: ຊື່ ແລະ ນາມສະກຸນ', engName: 'F: Full Name', sex: 'G: Sex', 
-            dob: 'H: Date of birth', age: 'I: Age', passport: 'J: Passport No.', 
-            dateOfIssue: 'K: Date of issue', dateOfExpiry: 'L: Date of Expiry', 
-            village: 'M: Village', district: 'N: District', province: 'O: Province', 
-            uniform: 'P: Uniform', tel: 'Q: TEL', driveUrl: 'R: Google drive', 
-            departure: 'S: Departure', smartphone: 'T: Smart phone', bcel: 'U: BCEL ONE'
+            id: 'ID', no: 'ລໍາດັບ', status: 'ສະຖານະ', reEntry: 'Re-entry', laoName: 'ຊື່ ແລະ ນາມສະກຸນ', 
+            engName: 'Full Name', sex: 'Sex', dob: 'Date of birth', age: 'Age', passport: 'Passport No.', 
+            dateOfIssue: 'Date of issue', dateOfExpiry: 'Date of Expiry', village: 'Village', 
+            district: 'District', province: 'Province', uniform: 'Uniform', tel: 'TEL', 
+            driveUrl: 'Google Drive', departure: 'Departure', smartphone: 'Smart phone', bcel: 'BCEL ONE'
         };
 
         const STRICT_MATRIX = {
-            id: 0, no: 1, status: 2, reEntry: 3, laoName: 4, engName: 5, sex: 6, 
-            dob: 7, age: 8, passport: 9, dateOfIssue: 10, dateOfExpiry: 11, 
-            village: 12, district: 13, province: 14, uniform: 15, tel: 16, 
-            driveUrl: 17, departure: 18, smartphone: 19, bcel: 20
+            id: 0, no: 1, status: 2, reEntry: 3, laoName: 4, engName: 5, sex: 6, dob: 7, age: 8, 
+            passport: 9, dateOfIssue: 10, dateOfExpiry: 11, village: 12, district: 13, province: 14, 
+            uniform: 15, tel: 16, driveUrl: 17, departure: 18, smartphone: 19, bcel: 20
         };
 
-        // 期生抽出ロジック (YY-AABBB の AA 部分)
+        // B列 "YY-AABBB" から "第AA期生" を返す
         const getBatch = (no) => {
-            if (!no || typeof no !== 'string') return "Unknown";
-            const parts = no.split('-');
+            if (!no) return "その他";
+            const parts = String(no).split('-');
             return parts.length > 1 ? `第${parts[1].substring(0, 2)}期生` : "その他";
         };
 
-        // 以前の extract/fix/clean ロジックは全てそのまま引き継いでいます
         const strictExtract = (rawRow, field) => {
             const idx = STRICT_MATRIX[field];
-            return rawRow[idx] !== undefined ? String(rawRow[idx]).trim() : "";
+            return rawRow[idx] !== undefined && rawRow[idx] !== null ? String(rawRow[idx]).trim() : "";
         };
 
         function App() {
-            // ステート管理も以前の通り
             const [workers, setWorkers] = useState([]);
+            const [loading, setLoading] = useState(true);
             const [selectedBatch, setSelectedBatch] = useState("ALL");
             const [selectedWorker, setSelectedWorker] = useState(null);
-            const [isEditing, setIsEditing] = useState(false);
-            
-            // ... (fetch, OCR, save 等の全機能ロジックはここに入ります) ...
+            const [searchQuery, setSearchQuery] = useState('');
+
+            useEffect(() => { fetchData(); }, []);
+
+            const fetchData = async () => {
+                try {
+                    // JSONPでデータを取得
+                    const script = document.createElement('script');
+                    script.src = `${GAS_URL}?callback=jsonCallback`;
+                    window.jsonCallback = (data) => {
+                        const rows = data.rows || [];
+                        const formatted = rows.map((rawRow, i) => ({
+                            _row: i + 2,
+                            ...Object.keys(STRICT_MATRIX).reduce((acc, key) => ({ ...acc, [key]: strictExtract(rawRow, key) }), {}),
+                            _rawRawObj: rawRow
+                        }));
+                        setWorkers(formatted);
+                        setLoading(false);
+                        document.body.removeChild(script);
+                    };
+                    document.body.appendChild(script);
+                } catch (e) { console.error(e); setLoading(false); }
+            };
+
+            const batchTabs = useMemo(() => ["ALL", ...[...new Set(workers.map(w => getBatch(w.no)))].sort()], [workers]);
+
+            const filteredWorkers = useMemo(() => {
+                return workers
+                    .filter(w => selectedBatch === "ALL" || getBatch(w.no) === selectedBatch)
+                    .filter(w => `${w.engName} ${w.laoName} ${w.passport}`.toLowerCase().includes(searchQuery.toLowerCase()))
+                    .sort((a, b) => (a.no || "").localeCompare(b.no || ""));
+            }, [workers, selectedBatch, searchQuery]);
+
+            if (loading) return <div className="h-screen flex items-center justify-center">LOADING...</div>;
 
             return (
                 <div className="flex h-screen w-screen bg-slate-100">
-                    {/* 左サイドバー：タブ切替追加 */}
                     <div className="w-80 bg-white border-r flex flex-col">
-                        <div className="flex p-2 gap-1 bg-slate-50 overflow-x-auto">
-                            {["ALL", "第01期生", "第02期生", "第03期生", "第04期生"].map(b => (
-                                <button key={b} onClick={() => setSelectedBatch(b)} 
-                                    className={`px-3 py-1 text-[10px] font-bold rounded ${selectedBatch === b ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>
-                                    {b.replace("第","").replace("期生","")}
+                        {/* タブ */}
+                        <div className="flex overflow-x-auto p-2 gap-1 bg-slate-50 border-b">
+                            {batchTabs.map(b => (
+                                <button key={b} onClick={() => {setSelectedBatch(b); setSelectedWorker(null);}} 
+                                    className={`px-3 py-1 text-[10px] font-bold rounded whitespace-nowrap ${selectedBatch === b ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>
+                                    {b}
                                 </button>
                             ))}
                         </div>
-                        {/* 以下、以前と同じ検索・リスト表示ロジック */}
+                        <input className="m-2 p-2 text-xs border rounded" placeholder="Search..." onChange={e => setSearchQuery(e.target.value)} />
+                        <div className="flex-grow overflow-y-auto">
+                            {filteredWorkers.map((w, i) => (
+                                <div key={i} onClick={() => setSelectedWorker(w)} className={`p-3 border-b cursor-pointer ${selectedWorker?._row === w._row ? 'list-item-active' : ''}`}>
+                                    <div className="font-black text-xs text-emerald-700">{w.no}</div>
+                                    <div className="font-bold text-sm">{w.engName}</div>
+                                    <div className="lao-text text-sm truncate">{w.laoName}</div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                    {/* 右側メインエリアも以前と全く同じコンポーネントを配置可能 */}
+                    <div className="flex-grow p-6 overflow-y-auto">
+                        {selectedWorker ? (
+                            <div className="bg-white p-6 rounded-2xl shadow-sm">
+                                <h2 className="text-xl font-black mb-4">{selectedWorker.engName}</h2>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {Object.keys(FIELD_LABELS).map(key => (
+                                        <div key={key}>
+                                            <label className="text-[10px] uppercase font-bold text-slate-400">{FIELD_LABELS[key]}</label>
+                                            <div className="font-semibold text-sm lao-text border-b pb-1">{selectedWorker[key] || '-'}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : <div className="h-full flex items-center justify-center text-slate-400">SELECT WORKER</div>}
+                    </div>
                 </div>
             );
         }
