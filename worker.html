@@ -60,25 +60,27 @@
             useEffect(() => { fetchData(); }, []);
 
             const fetchData = async () => {
+                setLoading(true);
                 try {
-                    // JSONPでデータを取得
-                    const script = document.createElement('script');
-                    script.src = `${GAS_URL}?callback=jsonCallback`;
-                    window.jsonCallback = (data) => {
-                        const rows = data.rows || [];
-                        const formatted = rows.map((rawRow, i) => ({
-                            _row: i + 2,
-                            ...Object.keys(STRICT_MATRIX).reduce((acc, key) => ({ ...acc, [key]: strictExtract(rawRow, key) }), {}),
-                            _rawRawObj: rawRow
-                        }));
-                        setWorkers(formatted);
-                        setLoading(false);
-                        document.body.removeChild(script);
-                    };
-                    document.body.appendChild(script);
-                } catch (e) { console.error(e); setLoading(false); }
-            };
+                    // GASのURLを直接叩く（JSONとして取得）
+                    const response = await fetch(GAS_URL);
+                    const data = await response.json();
+        
+                    console.log("取得したデータ:", data); // F12のコンソールでデータの中身を確認！
 
+                    if (data && data.rows) {
+                        setWorkers(data.rows); // 直接 data.rows をセット
+                    } else {
+                        console.error("データ形式が正しくありません:", data);
+                    }
+                } catch (e) {
+                    console.error("読み込みエラー:", e);
+                    alert("データの読み込みに失敗しました。URLを確認してください。");
+                } finally {
+                    setLoading(false);
+                }
+           };
+            
             const batchTabs = useMemo(() => ["ALL", ...[...new Set(workers.map(w => getBatch(w.no)))].sort()], [workers]);
 
             const filteredWorkers = useMemo(() => {
