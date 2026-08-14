@@ -68,18 +68,36 @@
         
                     console.log("取得したデータ:", data); // F12のコンソールでデータの中身を確認！
 
+                    // fetchDataの中の setWorkers を呼び出す部分をこれに置き換えてください
                     if (data && data.rows) {
-                        setWorkers(data.rows); // 直接 data.rows をセット
-                    } else {
-                        console.error("データ形式が正しくありません:", data);
-                    }
-                } catch (e) {
-                    console.error("読み込みエラー:", e);
-                    alert("データの読み込みに失敗しました。URLを確認してください。");
-                } finally {
-                    setLoading(false);
-                }
-           };
+                        // 届いた rawData をマッピングし直す
+                        const processedWorkers = data.rows.map((row, index) => ({
+                            _row: row._row || (index + 2),
+                            id: row.id,
+                            no: row.no,
+                            status: row.status,
+                            reEntry: row.reEntry,
+                            laoName: row.laoName,
+                            engName: row.engName,
+                            sex: row.sex,
+                            dob: row.dob,
+                            age: row.age,
+                            passport: row.passport,
+                            dateOfIssue: row.dateOfIssue,
+                            dateOfExpiry: row.dateOfExpiry,
+                            village: row.village,
+                            district: row.district,
+                            province: row.province,
+                            uniform: row.uniform,
+                            tel: row.tel,
+                            driveUrl: row.driveUrl,
+                            departure: row.departure,
+                            smartphone: row.smartphone,
+                            bcel: row.bcel
+                       }));
+    
+                       setWorkers(processedWorkers);
+                  }
             
             const batchTabs = useMemo(() => ["ALL", ...[...new Set(workers.map(w => getBatch(w.no)))].sort()], [workers]);
 
