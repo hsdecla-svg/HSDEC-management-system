@@ -3,38 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Management System - Advanced</title>
+    <title>HSDEC Management System - Multi-Language</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Phetsarath:wght@400;700&display=swap');
-        body { font-family: 'Inter', sans-serif; background: #f1f5f9; height: 100vh; overflow: hidden; }
-        .lao-text { font-family: 'Phetsarath OT', 'Phetsarath', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Phetsarath:wght@400;700&display=swap');
+        /* 各言語のフォント設定 */
+        body.lang-en { font-family: 'Times New Roman', Times, serif; }
+        body.lang-la { font-family: 'Phetsarath OT', 'Phetsarath', sans-serif; }
+        body.lang-ko { font-family: 'Batang', '바탕체', serif; }
+        body.lang-ja { font-family: 'UDDigiKyokashoN-R', 'UD デジタル 教科書体', sans-serif; }
+
+        body { background: #f1f5f9; height: 100vh; overflow: hidden; font-size: 13px; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .list-item-active { background-color: #f0fdf4; border-right: 3px solid #10b981; }
     </style>
 </head>
-<body>
+<body class="lang-en">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbxkvDIaRxOlQGAebaqcnY8j1DVAcljwB-C6qm7Asn8SW5Yd3ss3-RGrp8kdMiDftKIXOg/exec';
 
-        const FIELDS = [
-            {key: 'id', label: 'ID'}, {key: 'no', label: 'ລໍາດັບ'}, {key: 'status', label: 'ສະຖານະ'},
-            {key: 'reEntry', label: 'Re-entry'}, {key: 'laoName', label: 'ຊື່ ແລະ ນາມສະກຸນ'}, {key: 'engName', label: 'Full Name (Given Name Surname)'},
-            {key: 'sex', label: 'Sex'}, {key: 'dob', label: 'Date of birth'}, {key: 'age', label: 'Age'},
-            {key: 'passport', label: 'Passport No.'}, {key: 'dateOfIssue', label: 'Date of issue'},
-            {key: 'dateOfExpiry', label: 'Date of Expiry'}, {key: 'village', label: 'Village'},
-            {key: 'district', label: 'District'}, {key: 'province', label: 'Province'},
-            {key: 'uniform', label: 'Uniform'}, {key: 'tel', label: 'TEL'},
-            {key: 'departure', label: 'Departure'}, {key: 'smartphone', label: 'Smart phone'}, {key: 'bcel', label: 'BCEL ONE'}
-        ];
+        // 多言語対応のラベル定義
+        const TRANSLATIONS = {
+            en: {
+                search: "Search ID, No, Name...",
+                allDistricts: "All Districts",
+                selectWorker: "SELECT A WORKER",
+                edit: "EDIT PROFILE",
+                save: "SAVE",
+                cancel: "CANCEL",
+                scan: "SCAN 📷",
+                loading: "LOADING...",
+                updating: "Updated!",
+                saveFailed: "Save failed.",
+                scanFailed: "Scan failed.",
+                drivePreview: "Google Drive Preview",
+                openDrive: "Open in Drive ↗",
+                fields: {
+                    id: 'ID', no: 'No.', status: 'Status', reEntry: 'Re-entry', 
+                    laoName: 'Lao Name', engName: 'Full Name (Given Name Surname)', sex: 'Sex', 
+                    dob: 'Date of Birth', age: 'Age', passport: 'Passport No.', 
+                    dateOfIssue: 'Date of Issue', dateOfExpiry: 'Date of Expiry', 
+                    village: 'Village', district: 'District', province: 'Province', 
+                    uniform: 'Uniform', tel: 'TEL', departure: 'Departure', 
+                    smartphone: 'Smartphone', bcel: 'BCEL ONE'
+                }
+            },
+            la: {
+                search: "ຄົ້ນຫາ ID, ລະຫັດ, ຊື່...",
+                allDistricts: "ທຸກເມືອງ",
+                selectWorker: "ກະລຸນາເລືອກ ໂປຣໄล์",
+                edit: "ແກ້ໄຂຂໍ້ມູນ",
+                save: "ບັນທຶກ",
+                cancel: "ຍົກເລີກ",
+                scan: "ສະແກນ 📷",
+                loading: "ກຳລັງໂຫຼດ...",
+                updating: "ອັບເດດຮຽບຮ້ອຍ!",
+                saveFailed: "ບັນທຶກບໍ່ສຳເລັດ",
+                scanFailed: "ສະແກນບໍ່ສຳເລັດ",
+                drivePreview: "ຕົວຢ່າງ Google Drive",
+                openDrive: "ເປີດໃນ Drive ↗",
+                fields: {
+                    id: 'ID', no: 'ລໍາດັບ', status: 'ສະຖານະ', reEntry: 'Re-entry', 
+                    laoName: 'ຊື່ ແລະ ນາມສະກຸນ', engName: 'ຊື່ພາສາອັງກິດ (Given Name Surname)', sex: 'ເພດ', 
+                    dob: 'ວັນເດືອນປີເກີດ', age: 'ອາຍຸ', passport: 'ເລກໜັງສືຜ່ານແດນ', 
+                    dateOfIssue: 'ວັນທີອອກ', dateOfExpiry: 'ວັນທີໝົດອາຍຸ', 
+                    village: 'ບ້ານ', district: 'ເມືອງ', province: 'ແຂວງ', 
+                    uniform: 'ຊຸດເຄື່ອງແບບ', tel: 'ເບີໂທລະສັບ', departure: 'ວັນທີອອກເດີນທາງ', 
+                    smartphone: 'ໂທລະສັບມືຖື', bcel: 'BCEL ONE'
+                }
+            },
+            ko: {
+                search: "ID, 번호, 이름 검색...",
+                allDistricts: "모든 구/군",
+                selectWorker: "근로자를 선택하세요",
+                edit: "프로필 수정",
+                save: "저장",
+                cancel: "취소",
+                scan: "스캔 📷",
+                loading: "불러오는 중...",
+                updating: "업데이트되었습니다!",
+                saveFailed: "저장에 실패했습니다.",
+                scanFailed: "스캔에 실패했습니다.",
+                drivePreview: "구글 드라이브 미리보기",
+                openDrive: "드라이브에서 열기 ↗",
+                fields: {
+                    id: 'ID', no: '번호', status: '상태', reEntry: '재입국', 
+                    laoName: '라오스 이름', engName: '영문 성명 (Given Name Surname)', sex: '성별', 
+                    dob: '생년월일', age: '나이', passport: '여권 번호', 
+                    dateOfIssue: '발급일', dateOfExpiry: '만료일', 
+                    village: '마을', district: '구/군', province: '주', 
+                    uniform: '유니폼', tel: '전화번호', departure: '출국일', 
+                    smartphone: '스마트폰', bcel: 'BCEL ONE'
+                }
+            },
+            ja: {
+                search: "ID, 番号, 氏名で検索...",
+                allDistricts: "すべての郡",
+                selectWorker: "ワーカーを選択してください",
+                edit: "プロフィール編集",
+                save: "保存",
+                cancel: "キャンセル",
+                scan: "スキャン 📷",
+                loading: "読み込み中...",
+                updating: "更新しました！",
+                saveFailed: "保存に失敗しました。",
+                scanFailed: "スキャンに失敗しました。",
+                drivePreview: "Google ドライブ プレビュー",
+                openDrive: "ドライブで開く ↗",
+                fields: {
+                    id: 'ID', no: '番号', status: 'ステータス', reEntry: '再入国', 
+                    laoName: 'ラオ語氏名', engName: 'ローマ字氏名 (Given Name Surname)', sex: '性別', 
+                    dob: '生年月日', age: '年齢', passport: 'パスポート番号', 
+                    dateOfIssue: '発行日', dateOfExpiry: '有効期限', 
+                    village: '村', district: '郡', province: '県', 
+                    uniform: '制服', tel: '電話番号', departure: '出発日', 
+                    smartphone: 'スマートフォン', bcel: 'BCEL ONE'
+                }
+            }
+        };
 
         const getBatch = (no) => (String(no || "").includes('-')) ? `第${String(no).split('-')[1].substring(0, 2)}期生` : "その他";
 
@@ -42,12 +136,20 @@
             const [workers, setWorkers] = useState([]);
             const [loading, setLoading] = useState(true);
             const [isScanning, setIsScanning] = useState(false);
+            const [lang, setLang] = useState('en'); // デフォルトは英語
             const [selectedBatch, setSelectedBatch] = useState("ALL");
             const [selectedWorker, setSelectedWorker] = useState(null);
             const [searchQuery, setSearchQuery] = useState('');
             const [selectedDistrict, setSelectedDistrict] = useState("");
             const [isEditing, setIsEditing] = useState(false);
             const [editData, setEditData] = useState({});
+
+            const t = TRANSLATIONS[lang];
+
+            // 言語変更時にbodyのクラスを切り替えてフォントを反映
+            useEffect(() => {
+                document.body.className = `lang-${lang}`;
+            }, [lang]);
 
             useEffect(() => { fetchData(); }, []);
 
@@ -60,36 +162,20 @@
                 } catch (e) { console.error(e); } finally { setLoading(false); }
             };
 
-            const handleEditStart = () => { 
-                setEditData({ ...selectedWorker }); 
-                setIsEditing(true); 
-            };
-
-            const handleInputChange = (key, value) => { 
-                setEditData(prev => ({ ...prev, [key]: value })); 
-            };
+            const handleEditStart = () => { setEditData({ ...selectedWorker }); setIsEditing(true); };
+            const handleInputChange = (key, value) => { setEditData(prev => ({ ...prev, [key]: value })); };
 
             const handleSave = async () => {
                 const payload = { ...editData, action: "update", _row: editData._row };
                 try {
-                    await fetch(GAS_URL, { 
-                        method: 'POST', 
-                        mode: 'no-cors', 
-                        headers: { 'Content-Type': 'application/json' }, 
-                        body: JSON.stringify(payload) 
-                    });
+                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     setIsEditing(false);
                     await fetchData();
-                    // 更新されたデータを現在の選択中ワーカーにも反映
                     setSelectedWorker(editData);
-                    alert("更新しました！");
-                } catch (e) { 
-                    console.error(e);
-                    alert("保存に失敗しました。"); 
-                }
+                    alert(t.updating);
+                } catch (e) { alert(t.saveFailed); }
             };
 
-            // OCRスキャン処理
             const handlePassportScan = async (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -98,17 +184,13 @@
                     const worker = await Tesseract.createWorker('eng');
                     const { data: { text } } = await worker.recognize(file);
                     console.log("OCR Result:", text);
-                    alert("Scan complete! Check console for results.");
+                    alert("Scan complete!");
                     await worker.terminate();
-                } catch (err) { 
-                    console.error(err); 
-                    alert("Scan failed."); 
-                }
+                } catch (err) { alert(t.scanFailed); }
                 setIsScanning(false);
             };
 
             const batchTabs = useMemo(() => ["ALL", ...[...new Set(workers.map(w => getBatch(w.no)))].sort()], [workers]);
-            
             const filteredWorkers = useMemo(() => {
                 return workers.filter(w => selectedBatch === "ALL" || getBatch(w.no) === selectedBatch)
                     .filter(w => selectedDistrict === "" || w.district === selectedDistrict)
@@ -121,24 +203,34 @@
                 return match ? `https://drive.google.com/embeddedfolderview?id=${match[1]}#grid` : null;
             }, [selectedWorker]);
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-black">LOADING...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-black">{t.loading}</div>;
 
             return (
                 <div className="flex h-screen w-screen bg-slate-100">
                     <div className="w-80 bg-white border-r flex flex-col">
+                        {/* 言語切り替えバー */}
+                        <div className="flex justify-around p-2 bg-slate-900 text-white text-[10px] font-bold">
+                            <button onClick={() => setLang('en')} className={`px-2 py-0.5 rounded ${lang === 'en' ? 'bg-emerald-600' : ''}`}>EN</button>
+                            <button onClick={() => setLang('la')} className={`px-2 py-0.5 rounded ${lang === 'la' ? 'bg-emerald-600' : ''}`}>ລາວ</button>
+                            <button onClick={() => setLang('ko')} className={`px-2 py-0.5 rounded ${lang === 'ko' ? 'bg-emerald-600' : ''}`}>한국어</button>
+                            <button onClick={() => setLang('ja')} className={`px-2 py-0.5 rounded ${lang === 'ja' ? 'bg-emerald-600' : ''}`}>日本語</button>
+                        </div>
+                        {/* タブ */}
                         <div className="flex flex-wrap p-2 gap-1 bg-slate-50 border-b">
                             {batchTabs.map(b => (
                                 <button key={b} onClick={() => {setSelectedBatch(b); setSelectedWorker(null); setIsEditing(false);}} 
                                     className={`px-2 py-1 text-[9px] font-bold rounded ${selectedBatch === b ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>{b}</button>
                             ))}
                         </div>
+                        {/* 検索・絞込 */}
                         <div className="p-3 bg-white border-b space-y-2">
-                            <input className="w-full p-2 text-xs border rounded-lg bg-slate-50" placeholder="Search ID, No, Name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                            <input className="w-full p-2 text-xs border rounded-lg bg-slate-50" placeholder={t.search} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                             <select className="w-full p-2 text-[10px] border rounded-lg bg-slate-50" onChange={e => setSelectedDistrict(e.target.value)}>
-                                <option value="">All Districts</option>
+                                <option value="">{t.allDistricts}</option>
                                 {[...new Set(workers.map(w => w.district).filter(Boolean))].map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
                         </div>
+                        {/* リスト */}
                         <div className="flex-grow overflow-y-auto">
                             {filteredWorkers.map((w, i) => (
                                 <div key={i} onClick={() => {setSelectedWorker(w); setIsEditing(false);}} className={`p-3 border-b cursor-pointer ${selectedWorker?._row === w._row ? 'list-item-active' : ''}`}>
@@ -149,6 +241,7 @@
                             ))}
                         </div>
                     </div>
+                    {/* メインエリア */}
                     <div className="flex-grow p-6 overflow-y-auto relative">
                         {isScanning && <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center font-black">SCANNING...</div>}
                         {selectedWorker ? (
@@ -158,29 +251,28 @@
                                     <div className="flex gap-2">
                                         {isEditing ? (
                                             <>
-                                                <label className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg cursor-pointer">SCAN 📷<input type="file" className="hidden" onChange={handlePassportScan}/></label>
-                                                <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-xs font-bold text-slate-400">CANCEL</button>
-                                                <button onClick={handleSave} className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg">SAVE</button>
+                                                <label className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg cursor-pointer">{t.scan}<input type="file" className="hidden" onChange={handlePassportScan}/></label>
+                                                <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-xs font-bold text-slate-400">{t.cancel}</button>
+                                                <button onClick={handleSave} className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg">{t.save}</button>
                                             </>
                                         ) : (
-                                            <button onClick={handleEditStart} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold">EDIT PROFILE</button>
+                                            <button onClick={handleEditStart} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold">{t.edit}</button>
                                         )}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    {FIELDS.map(f => (
-                                        <div key={f.key}>
-                                            <label className="text-[10px] uppercase font-bold text-slate-400">{f.label}</label>
+                                    {Object.keys(t.fields).map(key => (
+                                        <div key={key}>
+                                            <label className="text-[10px] uppercase font-bold text-slate-400">{t.fields[key]}</label>
                                             {isEditing ? (
                                                 <input 
                                                     className="w-full font-semibold text-sm border-b pb-1 focus:outline-none focus:border-emerald-500 bg-emerald-50/50 px-1"
-                                                    value={editData[f.key] || ''} 
-                                                    placeholder={f.key === 'dob' ? 'DD-MM-YYYY' : f.key.includes('date') ? 'DD/MM/YYYY' : ''}
-                                                    onChange={(e) => handleInputChange(f.key, e.target.value)} 
+                                                    value={editData[key] || ''} 
+                                                    onChange={(e) => handleInputChange(key, e.target.value)} 
                                                 />
                                             ) : (
                                                 <div className="font-semibold text-sm border-b pb-1">
-                                                    {selectedWorker[f.key] || '-'}
+                                                    {selectedWorker[key] || '-'}
                                                 </div>
                                             )}
                                         </div>
@@ -189,14 +281,14 @@
                                 {driveFrame && (
                                     <div className="mt-6">
                                         <div className="flex justify-between items-center mb-2">
-                                            <label className="text-[10px] uppercase font-bold text-slate-400">Google Drive Preview</label>
-                                            <a href={selectedWorker.driveUrl} target="_blank" className="text-blue-600 text-[10px] underline">Open in Drive ↗</a>
+                                            <label className="text-[10px] uppercase font-bold text-slate-400">{t.drivePreview}</label>
+                                            <a href={selectedWorker.driveUrl} target="_blank" className="text-blue-600 text-[10px] underline">{t.openDrive}</a>
                                         </div>
                                         <iframe src={driveFrame} className="w-full h-64 border rounded-xl" />
                                     </div>
                                 )}
                             </div>
-                        ) : <div className="h-full flex items-center justify-center text-slate-400 font-bold">SELECT A WORKER</div>}
+                        ) : <div className="h-full flex items-center justify-center text-slate-400 font-bold">{t.selectWorker}</div>}
                     </div>
                 </div>
             );
