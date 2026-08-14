@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Management System - Data Matrix</title>
+    <title>HSDEC Management System - OCR Enabled</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- OCR用ライブラリ -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Phetsarath:wght@400;700&display=swap');
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; height: 100vh; overflow: hidden; font-size: 13px; }
@@ -44,51 +46,42 @@
         function App() {
             const [workers, setWorkers] = useState([]);
             const [loading, setLoading] = useState(true);
+            const [isScanning, setIsScanning] = useState(false);
             const [selectedBatch, setSelectedBatch] = useState("ALL");
             const [selectedWorker, setSelectedWorker] = useState(null);
             const [searchQuery, setSearchQuery] = useState('');
             const [isEditing, setIsEditing] = useState(false);
             const [editData, setEditData] = useState({});
 
-            // 編集開始
-            const handleEditStart = () => {
-                setEditData({ ...selectedWorker });
-                setIsEditing(true);
-            };
-
-            // 変更管理
-            const handleInputChange = (key, value) => {
-                setEditData(prev => ({ ...prev, [key]: value }));
-            };
-
-            // 保存処理（TODO: 次のステップで実装）
-            // 保存処理
-            const handleSave = async () => {
-                const payload = {
-                    ...editData,
-                    action: "update",
-                    _row: editData._row
-                };
-
+            // OCRスキャン処理
+            const handlePassportScan = async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setIsScanning(true);
                 try {
-                    await fetch(GAS_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    
-                    setIsEditing(false);
-                    // 保存成功後、最新データを再取得して表示を更新
-                    await fetchData(); 
-                    alert("更新しました！");
-                } catch (e) {
-                    console.error("保存失敗:", e);
-                    alert("保存に失敗しました。");
-                }
+                    const worker = await Tesseract.createWorker('eng');
+                    const { data: { text } } = await worker.recognize(file);
+                    // MRZ解析ロジック（必要に応じて以前の regex 等をここに移植してください）
+                    console.log("OCR Result:", text);
+                    alert("Scan complete! Check console for results.");
+                    await worker.terminate();
+                } catch (err) { console.error(err); alert("Scan failed."); }
+                setIsScanning(false);
             };
 
-            // fetchDataを再利用できるようにApp関数内で定義
+            const handleEditStart = () => { setEditData({ ...selectedWorker }); setIsEditing(true); };
+            const handleInputChange = (key, value) => { setEditData(prev => ({ ...prev, [key]: value })); };
+            
+            const handleSave = async () => {
+                const payload = { ...editData, action: "update", _row: editData._row };
+                try {
+                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    setIsEditing(false);
+                    await fetchData();
+                    alert("Updated!");
+                } catch (e) { alert("Save failed."); }
+            };
+
             const fetchData = async () => {
                 setLoading(true);
                 try {
@@ -98,16 +91,10 @@
                 } catch (e) { console.error(e); } finally { setLoading(false); }
             };
 
-            useEffect(() => {
-                fetchData();
-            }, []);
+            useEffect(() => { fetchData(); }, []);
 
             const batchTabs = useMemo(() => ["ALL", ...[...new Set(workers.map(w => getBatch(w.no)))].sort()], [workers]);
-            const filteredWorkers = useMemo(() => {
-                return workers
-                    .filter(w => selectedBatch === "ALL" || getBatch(w.no) === selectedBatch)
-                    .filter(w => `${w.engName} ${w.laoName} ${w.passport}`.toLowerCase().includes(searchQuery.toLowerCase()));
-            }, [workers, selectedBatch, searchQuery]);
+            const filteredWorkers = useMemo(() => workers.filter(w => selectedBatch === "ALL" || getBatch(w.no) === selectedBatch).filter(w => `${w.engName} ${w.laoName} ${w.passport}`.toLowerCase().includes(searchQuery.toLowerCase())), [workers, selectedBatch, searchQuery]);
 
             if (loading) return <div className="h-screen flex items-center justify-center font-bold">LOADING...</div>;
 
@@ -117,10 +104,7 @@
                     <div className="w-80 bg-white border-r flex flex-col">
                         <div className="flex overflow-x-auto p-2 gap-1 bg-slate-50 border-b">
                             {batchTabs.map(b => (
-                                <button key={b} onClick={() => {setSelectedBatch(b); setSelectedWorker(null);}} 
-                                    className={`px-3 py-1 text-[10px] font-bold rounded whitespace-nowrap ${selectedBatch === b ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>
-                                    {b}
-                                </button>
+                                <button key={b} onClick={() => {setSelectedBatch(b); setSelectedWorker(null);}} className={`px-3 py-1 text-[10px] font-bold rounded ${selectedBatch === b ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>{b}</button>
                             ))}
                         </div>
                         <input className="m-2 p-2 text-xs border rounded" placeholder="Search..." onChange={e => setSearchQuery(e.target.value)} />
@@ -135,27 +119,30 @@
                         </div>
                     </div>
                     {/* メインエリア */}
-                    <div className="flex-grow p-6 overflow-y-auto">
+                    <div className="flex-grow p-6 overflow-y-auto relative">
+                        {isScanning && <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center font-black">SCANNING...</div>}
                         {selectedWorker ? (
                             <div className="bg-white p-6 rounded-2xl shadow-sm">
                                 <div className="flex justify-between items-center mb-4">
                                     <h2 className="text-xl font-black">{isEditing ? "EDITING" : selectedWorker.engName}</h2>
-                                    {isEditing ? (
-                                        <div className="flex gap-2">
-                                            <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-xs font-bold text-slate-400">CANCEL</button>
-                                            <button onClick={handleSave} className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg">SAVE</button>
-                                        </div>
-                                    ) : (
-                                        <button onClick={handleEditStart} className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg">EDIT PROFILE</button>
-                                    )}
+                                    <div className="flex gap-2">
+                                        {isEditing ? (
+                                            <>
+                                                <label className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg cursor-pointer">SCAN 📷<input type="file" className="hidden" onChange={handlePassportScan}/></label>
+                                                <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-xs font-bold text-slate-400">CANCEL</button>
+                                                <button onClick={handleSave} className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg">SAVE</button>
+                                            </>
+                                        ) : (
+                                            <button onClick={handleEditStart} className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg">EDIT PROFILE</button>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     {FIELDS.map(f => (
                                         <div key={f.key}>
                                             <label className="text-[10px] uppercase font-bold text-slate-400">{f.label}</label>
                                             {isEditing ? (
-                                                <input className="w-full font-semibold text-sm lao-text border-b pb-1 focus:outline-none focus:border-emerald-500"
-                                                    value={editData[f.key] || ''} onChange={(e) => handleInputChange(f.key, e.target.value)} />
+                                                <input className="w-full font-semibold text-sm lao-text border-b pb-1 focus:outline-none focus:border-emerald-500" value={editData[f.key] || ''} onChange={(e) => handleInputChange(f.key, e.target.value)} />
                                             ) : (
                                                 <div className="font-semibold text-sm lao-text border-b pb-1">{selectedWorker[f.key] || '-'}</div>
                                             )}
@@ -168,7 +155,6 @@
                 </div>
             );
         }
-
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
