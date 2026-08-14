@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HSDEC Management System - Enhanced</title>
+    <title>HSDEC Management System - Advanced</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -36,22 +36,16 @@
             {key: 'departure', label: 'Departure'}, {key: 'smartphone', label: 'Smart phone'}, {key: 'bcel', label: 'BCEL ONE'}
         ];
 
-        const formatDate = (dateStr) => {
-            if (!dateStr || typeof dateStr !== 'string') return dateStr;
-            return dateStr.split('T')[0];
-        };
-
-        const getBatch = (no) => {
-            if (!no) return "その他";
-            const parts = String(no).split('-');
-            return parts.length > 1 ? `第${parts[1].substring(0, 2)}期生` : "その他";
-        };
+        const formatDate = (dateStr) => (!dateStr || typeof dateStr !== 'string') ? dateStr : dateStr.split('T')[0];
+        const getBatch = (no) => (String(no || "").includes('-')) ? `第${String(no).split('-')[1].substring(0, 2)}期生` : "その他";
 
         function App() {
             const [workers, setWorkers] = useState([]);
             const [loading, setLoading] = useState(true);
             const [selectedBatch, setSelectedBatch] = useState("ALL");
             const [selectedWorker, setSelectedWorker] = useState(null);
+            const [searchQuery, setSearchQuery] = useState('');
+            const [selectedDistrict, setSelectedDistrict] = useState("");
             const [isEditing, setIsEditing] = useState(false);
             const [editData, setEditData] = useState({});
 
@@ -67,7 +61,11 @@
             };
 
             const batchTabs = useMemo(() => ["ALL", ...[...new Set(workers.map(w => getBatch(w.no)))].sort()], [workers]);
-            const filteredWorkers = useMemo(() => workers.filter(w => selectedBatch === "ALL" || getBatch(w.no) === selectedBatch), [workers, selectedBatch]);
+            const filteredWorkers = useMemo(() => {
+                return workers.filter(w => selectedBatch === "ALL" || getBatch(w.no) === selectedBatch)
+                    .filter(w => selectedDistrict === "" || w.district === selectedDistrict)
+                    .filter(w => `${w.engName} ${w.laoName} ${w.passport} ${w.id} ${w.no}`.toLowerCase().includes(searchQuery.toLowerCase()));
+            }, [workers, selectedBatch, searchQuery, selectedDistrict]);
 
             const driveFrame = useMemo(() => {
                 if (!selectedWorker?.driveUrl) return null;
@@ -80,20 +78,24 @@
             return (
                 <div className="flex h-screen w-screen bg-slate-100">
                     <div className="w-80 bg-white border-r flex flex-col">
-                        {/* タブ修正: flex-wrap で折り返し */}
                         <div className="flex flex-wrap p-2 gap-1 bg-slate-50 border-b">
                             {batchTabs.map(b => (
                                 <button key={b} onClick={() => {setSelectedBatch(b); setSelectedWorker(null);}} 
-                                    className={`px-2 py-1 text-[9px] font-bold rounded ${selectedBatch === b ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>
-                                    {b}
-                                </button>
+                                    className={`px-2 py-1 text-[9px] font-bold rounded ${selectedBatch === b ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>{b}</button>
                             ))}
+                        </div>
+                        <div className="p-3 bg-white border-b space-y-2">
+                            <input className="w-full p-2 text-xs border rounded-lg bg-slate-50" placeholder="Search ID, No, Name..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                            <select className="w-full p-2 text-[10px] border rounded-lg bg-slate-50" onChange={e => setSelectedDistrict(e.target.value)}>
+                                <option value="">All Districts</option>
+                                {[...new Set(workers.map(w => w.district).filter(Boolean))].map(d => <option key={d} value={d}>{d}</option>)}
+                            </select>
                         </div>
                         <div className="flex-grow overflow-y-auto">
                             {filteredWorkers.map((w, i) => (
                                 <div key={i} onClick={() => setSelectedWorker(w)} className={`p-3 border-b cursor-pointer ${selectedWorker?._row === w._row ? 'list-item-active' : ''}`}>
-                                    <div className="font-black text-[10px] text-emerald-700">{w.no}</div>
-                                    <div className="font-bold text-sm">{w.engName}</div>
+                                    <div className="flex justify-between"><span className="font-black text-[10px] text-emerald-700">{w.no}</span><span className="text-[9px] text-slate-400">ID: {w.id}</span></div>
+                                    <div className="font-bold text-sm truncate">{w.engName}</div>
                                     <div className="lao-text text-xs text-slate-500 truncate">{w.laoName}</div>
                                 </div>
                             ))}
@@ -102,29 +104,16 @@
                     <div className="flex-grow p-6 overflow-y-auto">
                         {selectedWorker ? (
                             <div className="bg-white p-6 rounded-2xl shadow-sm space-y-6">
-                                <div className="flex justify-between items-center">
-                                    <h2 className="text-xl font-black">{selectedWorker.engName}</h2>
-                                    <button onClick={() => setIsEditing(true)} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold">EDIT</button>
-                                </div>
+                                <div className="flex justify-between items-center"><h2 className="text-xl font-black">{selectedWorker.engName}</h2><button onClick={() => setSelectedWorker(selectedWorker)} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold">EDIT</button></div>
                                 <div className="grid grid-cols-2 gap-4">
                                     {FIELDS.map(f => (
                                         <div key={f.key}>
                                             <label className="text-[10px] uppercase font-bold text-slate-400">{f.label}</label>
-                                            <div className="font-semibold text-sm border-b pb-1">
-                                                {['dob', 'dateOfIssue', 'dateOfExpiry'].includes(f.key) ? formatDate(selectedWorker[f.key]) : (selectedWorker[f.key] || '-')}
-                                            </div>
+                                            <div className="font-semibold text-sm border-b pb-1">{['dob', 'dateOfIssue', 'dateOfExpiry'].includes(f.key) ? formatDate(selectedWorker[f.key]) : (selectedWorker[f.key] || '-')}</div>
                                         </div>
                                     ))}
                                 </div>
-                                {driveFrame && (
-                                    <div className="mt-6">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <label className="text-[10px] uppercase font-bold text-slate-400">Google Drive Preview</label>
-                                            <a href={selectedWorker.driveUrl} target="_blank" className="text-blue-600 text-[10px] underline">Open in Drive ↗</a>
-                                        </div>
-                                        <iframe src={driveFrame} className="w-full h-64 border rounded-xl" />
-                                    </div>
-                                )}
+                                {driveFrame && <iframe src={driveFrame} className="w-full h-64 border rounded-xl mt-6" />}
                             </div>
                         ) : <div className="h-full flex items-center justify-center text-slate-400 font-bold">SELECT A WORKER</div>}
                     </div>
