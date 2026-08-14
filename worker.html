@@ -22,32 +22,23 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwkjbYSnkbO9QfhZ-SQS7_2ChIiUO9JzJRDsWsjvVu06bNFcY5wZ_CLvO8PaMWCuSTqtg/exec'; // ここを書き換えてください
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbwkjbYSnkbO9QfhZ-SQS7_2ChIiUO9JzJRDsWsjvVu06bNFcY5wZ_CLvO8PaMWCuSTqtg/exec';
 
-        const FIELD_LABELS = {
-            id: 'ID', no: 'ລໍາດັບ', status: 'ສະຖານະ', reEntry: 'Re-entry', laoName: 'ຊື່ ແລະ ນາມສະກຸນ', 
-            engName: 'Full Name', sex: 'Sex', dob: 'Date of birth', age: 'Age', passport: 'Passport No.', 
-            dateOfIssue: 'Date of issue', dateOfExpiry: 'Date of Expiry', village: 'Village', 
-            district: 'District', province: 'Province', uniform: 'Uniform', tel: 'TEL', 
-            driveUrl: 'Google Drive', departure: 'Departure', smartphone: 'Smart phone', bcel: 'BCEL ONE'
-        };
+        const FIELDS = [
+            {key: 'id', label: 'ID'}, {key: 'no', label: 'ລໍາດັບ'}, {key: 'status', label: 'ສະຖານະ'},
+            {key: 'reEntry', label: 'Re-entry'}, {key: 'laoName', label: 'ຊື່ ແລະ ນາມສະກຸນ'}, {key: 'engName', label: 'Full Name'},
+            {key: 'sex', label: 'Sex'}, {key: 'dob', label: 'Date of birth'}, {key: 'age', label: 'Age'},
+            {key: 'passport', label: 'Passport No.'}, {key: 'dateOfIssue', label: 'Date of issue'},
+            {key: 'dateOfExpiry', label: 'Date of Expiry'}, {key: 'village', label: 'Village'},
+            {key: 'district', label: 'District'}, {key: 'province', label: 'Province'},
+            {key: 'uniform', label: 'Uniform'}, {key: 'tel', label: 'TEL'}, {key: 'driveUrl', label: 'Google Drive'},
+            {key: 'departure', label: 'Departure'}, {key: 'smartphone', label: 'Smart phone'}, {key: 'bcel', label: 'BCEL ONE'}
+        ];
 
-        const STRICT_MATRIX = {
-            id: 0, no: 1, status: 2, reEntry: 3, laoName: 4, engName: 5, sex: 6, dob: 7, age: 8, 
-            passport: 9, dateOfIssue: 10, dateOfExpiry: 11, village: 12, district: 13, province: 14, 
-            uniform: 15, tel: 16, driveUrl: 17, departure: 18, smartphone: 19, bcel: 20
-        };
-
-        // B列 "YY-AABBB" から "第AA期生" を返す
         const getBatch = (no) => {
             if (!no) return "その他";
             const parts = String(no).split('-');
             return parts.length > 1 ? `第${parts[1].substring(0, 2)}期生` : "その他";
-        };
-
-        const strictExtract = (rawRow, field) => {
-            const idx = STRICT_MATRIX[field];
-            return rawRow[idx] !== undefined && rawRow[idx] !== null ? String(rawRow[idx]).trim() : "";
         };
 
         function App() {
@@ -57,74 +48,37 @@
             const [selectedWorker, setSelectedWorker] = useState(null);
             const [searchQuery, setSearchQuery] = useState('');
 
-            useEffect(() => { fetchData(); }, []);
+            useEffect(() => {
+                const fetchData = async () => {
+                    try {
+                        const response = await fetch(GAS_URL);
+                        const data = await response.json();
+                        // 修正：GASから送られてきたデータを直接利用できるようにマップ
+                        if (data && data.rows) {
+                            setWorkers(data.rows);
+                        }
+                    } catch (e) { console.error(e); } finally { setLoading(false); }
+                };
+                fetchData();
+            }, []);
 
-            const fetchData = async () => {
-            setLoading(true);
-            try {
-                // GASのURLを直接叩く（JSONとして取得）
-                const response = await fetch(GAS_URL);
-                const data = await response.json();
-                
-                console.log("取得したデータ:", data);
-
-                if (data && data.rows) {
-                    const processedWorkers = data.rows.map((row, index) => ({
-                        _row: row._row || (index + 2),
-                        id: row.id,
-                        no: row.no,
-                        status: row.status,
-                        reEntry: row.reEntry,
-                        laoName: row.laoName,
-                        engName: row.engName,
-                        sex: row.sex,
-                        dob: row.dob,
-                        age: row.age,
-                        passport: row.passport,
-                        dateOfIssue: row.dateOfIssue,
-                        dateOfExpiry: row.dateOfExpiry,
-                        village: row.village,
-                        district: row.district,
-                        province: row.province,
-                        uniform: row.uniform,
-                        tel: row.tel,
-                        driveUrl: row.driveUrl,
-                        departure: row.departure,
-                        smartphone: row.smartphone,
-                        bcel: row.bcel
-                    }));
-                    setWorkers(processedWorkers);
-                } else {
-                    console.error("データ形式が正しくありません:", data);
-                }
-            } catch (e) {
-                // ★ここが抜けていたためエラーになっていました
-                console.error("読み込みエラー:", e);
-                alert("データの読み込みに失敗しました。");
-            } finally {
-                setLoading(false);
-            }
-        };
-            
             const batchTabs = useMemo(() => ["ALL", ...[...new Set(workers.map(w => getBatch(w.no)))].sort()], [workers]);
 
             const filteredWorkers = useMemo(() => {
                 return workers
                     .filter(w => selectedBatch === "ALL" || getBatch(w.no) === selectedBatch)
-                    .filter(w => `${w.engName} ${w.laoName} ${w.passport}`.toLowerCase().includes(searchQuery.toLowerCase()))
-                    .sort((a, b) => (a.no || "").localeCompare(b.no || ""));
+                    .filter(w => `${w.engName} ${w.laoName} ${w.passport}`.toLowerCase().includes(searchQuery.toLowerCase()));
             }, [workers, selectedBatch, searchQuery]);
 
-            if (loading) return <div className="h-screen flex items-center justify-center">LOADING...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-bold">LOADING DATA...</div>;
 
             return (
                 <div className="flex h-screen w-screen bg-slate-100">
                     <div className="w-80 bg-white border-r flex flex-col">
-                        {/* タブ */}
                         <div className="flex overflow-x-auto p-2 gap-1 bg-slate-50 border-b">
                             {batchTabs.map(b => (
                                 <button key={b} onClick={() => {setSelectedBatch(b); setSelectedWorker(null);}} 
-                                    className={`px-3 py-1 text-[10px] font-bold rounded whitespace-nowrap ${selectedBatch === b ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>
+                                    className={`px-3 py-1 text-[10px] font-bold rounded ${selectedBatch === b ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>
                                     {b}
                                 </button>
                             ))}
@@ -145,15 +99,17 @@
                             <div className="bg-white p-6 rounded-2xl shadow-sm">
                                 <h2 className="text-xl font-black mb-4">{selectedWorker.engName}</h2>
                                 <div className="grid grid-cols-2 gap-4">
-                                    {Object.keys(FIELD_LABELS).map(key => (
-                                        <div key={key}>
-                                            <label className="text-[10px] uppercase font-bold text-slate-400">{FIELD_LABELS[key]}</label>
-                                            <div className="font-semibold text-sm lao-text border-b pb-1">{selectedWorker[key] || '-'}</div>
+                                    {FIELDS.map(f => (
+                                        <div key={f.key}>
+                                            <label className="text-[10px] uppercase font-bold text-slate-400">{f.label}</label>
+                                            <div className="font-semibold text-sm lao-text border-b pb-1">
+                                                {selectedWorker[f.key] !== undefined ? String(selectedWorker[f.key]) : '-'}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                        ) : <div className="h-full flex items-center justify-center text-slate-400">SELECT WORKER</div>}
+                        ) : <div className="h-full flex items-center justify-center text-slate-400">SELECT A WORKER</div>}
                     </div>
                 </div>
             );
