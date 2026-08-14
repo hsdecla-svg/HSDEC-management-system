@@ -47,38 +47,55 @@
             const [selectedBatch, setSelectedBatch] = useState("ALL");
             const [selectedWorker, setSelectedWorker] = useState(null);
             const [searchQuery, setSearchQuery] = useState('');
+            const [isEditing, setIsEditing] = useState(false);
+            const [editData, setEditData] = useState({});
+
+            // 編集開始
+            const handleEditStart = () => {
+                setEditData({ ...selectedWorker });
+                setIsEditing(true);
+            };
+
+            // 変更管理
+            const handleInputChange = (key, value) => {
+                setEditData(prev => ({ ...prev, [key]: value }));
+            };
+
+            // 保存処理（TODO: 次のステップで実装）
+            const handleSave = () => {
+                console.log("Saving:", editData);
+                setSelectedWorker(editData);
+                setIsEditing(false);
+            };
 
             useEffect(() => {
                 const fetchData = async () => {
                     try {
                         const response = await fetch(GAS_URL);
                         const data = await response.json();
-                        // 修正：GASから送られてきたデータを直接利用できるようにマップ
-                        if (data && data.rows) {
-                            setWorkers(data.rows);
-                        }
+                        if (data && data.rows) setWorkers(data.rows);
                     } catch (e) { console.error(e); } finally { setLoading(false); }
                 };
                 fetchData();
             }, []);
 
             const batchTabs = useMemo(() => ["ALL", ...[...new Set(workers.map(w => getBatch(w.no)))].sort()], [workers]);
-
             const filteredWorkers = useMemo(() => {
                 return workers
                     .filter(w => selectedBatch === "ALL" || getBatch(w.no) === selectedBatch)
                     .filter(w => `${w.engName} ${w.laoName} ${w.passport}`.toLowerCase().includes(searchQuery.toLowerCase()));
             }, [workers, selectedBatch, searchQuery]);
 
-            if (loading) return <div className="h-screen flex items-center justify-center font-bold">LOADING DATA...</div>;
+            if (loading) return <div className="h-screen flex items-center justify-center font-bold">LOADING...</div>;
 
             return (
                 <div className="flex h-screen w-screen bg-slate-100">
+                    {/* サイドバー */}
                     <div className="w-80 bg-white border-r flex flex-col">
                         <div className="flex overflow-x-auto p-2 gap-1 bg-slate-50 border-b">
                             {batchTabs.map(b => (
                                 <button key={b} onClick={() => {setSelectedBatch(b); setSelectedWorker(null);}} 
-                                    className={`px-3 py-1 text-[10px] font-bold rounded ${selectedBatch === b ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>
+                                    className={`px-3 py-1 text-[10px] font-bold rounded whitespace-nowrap ${selectedBatch === b ? 'bg-emerald-600 text-white' : 'bg-gray-200'}`}>
                                     {b}
                                 </button>
                             ))}
@@ -94,17 +111,31 @@
                             ))}
                         </div>
                     </div>
+                    {/* メインエリア */}
                     <div className="flex-grow p-6 overflow-y-auto">
                         {selectedWorker ? (
                             <div className="bg-white p-6 rounded-2xl shadow-sm">
-                                <h2 className="text-xl font-black mb-4">{selectedWorker.engName}</h2>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-xl font-black">{isEditing ? "EDITING" : selectedWorker.engName}</h2>
+                                    {isEditing ? (
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-xs font-bold text-slate-400">CANCEL</button>
+                                            <button onClick={handleSave} className="px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg">SAVE</button>
+                                        </div>
+                                    ) : (
+                                        <button onClick={handleEditStart} className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg">EDIT PROFILE</button>
+                                    )}
+                                </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     {FIELDS.map(f => (
                                         <div key={f.key}>
                                             <label className="text-[10px] uppercase font-bold text-slate-400">{f.label}</label>
-                                            <div className="font-semibold text-sm lao-text border-b pb-1">
-                                                {selectedWorker[f.key] !== undefined ? String(selectedWorker[f.key]) : '-'}
-                                            </div>
+                                            {isEditing ? (
+                                                <input className="w-full font-semibold text-sm lao-text border-b pb-1 focus:outline-none focus:border-emerald-500"
+                                                    value={editData[f.key] || ''} onChange={(e) => handleInputChange(f.key, e.target.value)} />
+                                            ) : (
+                                                <div className="font-semibold text-sm lao-text border-b pb-1">{selectedWorker[f.key] || '-'}</div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
